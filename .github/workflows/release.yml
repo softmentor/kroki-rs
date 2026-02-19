@@ -25,10 +25,19 @@ jobs:
       - name: Install System Dependencies (macOS)
         run: |
           brew install pkg-config cairo pango libpng jpeg giflib librsvg graphviz
-          curl -fsSL https://d2lang.com/install.sh | sh -s --
+          # Install D2 to /usr/local/bin which is usually in PATH
+          curl -fsSL https://d2lang.com/install.sh | sudo sh -s --
 
       - name: Install dependencies
         run: npm install
+
+      - name: Debug Environment
+        run: |
+          echo "PATH: $PATH"
+          which dot || true
+          which d2 || true
+          ls -l /usr/local/bin/d2 || true
+          ls -l node_modules/.bin/bpmn-to-image || true
 
       - name: Build and Package
         run: make verify
