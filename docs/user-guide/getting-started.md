@@ -12,6 +12,7 @@ See the [**Supported Diagrams**](supported-diagrams.md) page for details on tool
 
 ## Installation
 
+(the-quick-way-recommended)=
 ### The Quick Way (Recommended)
 Install `kroki-rs` and verify dependencies with a single command:
 
