@@ -11,9 +11,9 @@ site:
 Unified Rendering
 
 # One API. Infinite Diagrams. 
-# Optimized for Rust.
+# Native Rust Performance.
 
-Kroki-rs brings the simplicity of the unified Kroki API to the native performance of Rust. No Docker. No overhead. Just speed.
+Kroki-rs brings the simplicity of the unified Kroki API to the speed and safety of Rust. Lightweight, instant-start, and Docker-free rendering for all your documentation needs.
 
 ```{image} assets/logo.png
 :class: only-light
