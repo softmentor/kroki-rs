@@ -1,0 +1,30 @@
+project:
+  title: Kroki-rs
+  description: A high-performance Rust port of the Kroki diagram generation service.
+  authors:
+    - name: softmentor
+  keywords:
+    - diagram
+    - kroki
+    - rust
+    - mermaid
+    - graphviz
+  github: https://github.com/softmentor/kroki-rs
+
+site:
+  template: book-theme
+  nav:
+    - title: Documentation
+      children:
+        - file: docs/index.md
+        - file: docs/getting-started.md
+        - file: docs/usage.md
+        - file: docs/configuration.md
+        - file: docs/supported-diagrams.md
+    - title: Developer Guide
+      children:
+        - file: docs/developer-guide.md
+        - file: docs/distribution.md
+        - file: CONTRIBUTING.md
+    - title: Source Code Documentation
+      url: https://softmentor.github.io/kroki-rs/rustdoc/kroki_rs/index.html

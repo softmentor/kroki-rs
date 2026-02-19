@@ -1,0 +1,51 @@
+name: Doc Deployment
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Rustdoc
+        run: make doc
+
+      - name: Setup MyST
+        run: npm install -g mystmd
+
+      - name: Build MyST
+        run: myst build --html
+
+      - name: Merge Docs
+        run: |
+          mkdir -p _build/html/rustdoc
+          cp -r target/doc/* _build/html/rustdoc/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _build/html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
