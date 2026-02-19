@@ -1,4 +1,4 @@
-name: Release
+name: Project Release (Tags Only)
 on:
   push:
     tags:
