@@ -11,6 +11,7 @@ project:
   github: https://github.com/softmentor/kroki-rs
 
 site:
+  url: https://softmentor.github.io/kroki-rs/
   template: book-theme
   options:
     folders: false
