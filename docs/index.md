@@ -1,30 +1,72 @@
-# Welcome to Kroki-rs
+---
+title: Kroki-rs
+subtitle: Unified, High-Performance Diagram Generation in Rust.
+---
 
-**Kroki-rs** is a unified API for all your diagramming needs, written in Rust. It serves as a drop-in replacement for the original Kroki service, designed for performance and ease of local deployment.
++++ { "part": "summary" }
+# Unified API for Diagrams
+Kroki-rs is a lightweight, blazing-fast Rust port of the popular Kroki service. It provides a single API to convert text-based diagram descriptions into images using native CLI tools.
++++
 
-## Why Kroki-rs?
+<p align="center">
+  <img src="./assets/logo.png" width="250" />
+</p>
 
--   **Performance**: Built with Rust and Axum for high throughput.
--   **No Docker Required**: Leverages your system's installed tools, avoiding the overhead of massive Docker images.
--   **Flexibility**: Supports a wide range of diagram tools (Graphviz, Mermaid, PlantUML, D2, Vega, etc.).
--   **CLI & Server**: Use it as a command-line tool or a web service.
+# Kroki-rs
 
-## Documentation
+> **One API, Infinite Diagrams.**
 
--   [**Getting Started**](getting-started.md): Installation and setup instructions.
--   [**Usage Guide**](usage.md): How to use the CLI and Server API.
--   [**Supported Diagrams**](supported-diagrams.md): List of supported diagram types and required tools.
--   [**Configuration**](configuration.md): Customizing the service with `kroki.toml`.
--   [**Distribution**](distribution.md): Options for installing and distributing the CLI.
--   [**Developer Guide**](developer-guide.md): Architecture internals and contributing.
+In the world of documentation, diagrams are essential. But managing multiple tools like Mermaid, Graphviz, D2, and PlantUML is a chore. Kroki-rs brings them all under one roof with a unified, high-performance interface.
 
-## Quick Example
+---
 
-Generate an SVG from a Graphviz dot file:
+## 🚀 Key Features
+
+- **Unified Interface**: Use a single HTTP API or CLI for 10+ diagram types.
+- **Blazing Performance**: Built with Rust for maximum efficiency and low latency.
+- **Native Execution**: Leverages industry-standard CLI tools for accurate rendering.
+- **Drop-in Support**: Compatible with the original Kroki API specification.
+- **Zero Confusion**: Simple configuration, clear logging, and robust error handling.
+
+---
+
+## 🛠 Supported Diagrams
+
+Kroki-rs currently supports a wide array of diagramming formats:
+
+- **Flowcharts & Sequences**: Mermaid, PlantUML
+- **Graph Visualization**: Graphviz (dot)
+- **Modern Diagrams**: D2
+- **Data Visualization**: Vega, Vega-Lite
+- **Hardware/Logic**: WaveDrom
+- **Business Process**: BPMN
+- **ASCII Art**: Ditaa
+
+---
+
+## 📖 Quick Start
+
+Want to get running in seconds?
 
 ```bash
-curl http://localhost:8000/graphviz/svg/eNpLyUwvSizm5TIGAAWDAY0=
+# Start the server
+kroki-rs serve --port 8000
+
+# Convert a file directly via CLI
+kroki-rs convert --type mermaid --format svg test.mmd
 ```
+
+[Getting Started Guide →](./getting-started.md)
+
+---
+
+## Documentation Index
+
+- [**Usage Guide**](usage.md): How to use the CLI and Server API.
+- [**Supported Diagrams**](supported-diagrams.md): List of supported diagram types and required tools.
+- [**Configuration**](configuration.md): Customizing the service with `kroki.toml`.
+- [**Distribution**](distribution.md): Options for installing and distributing the CLI.
+- [**Developer Guide**](developer-guide.md): Architecture internals and contributing.
 
 ## License
 
