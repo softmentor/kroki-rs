@@ -2,18 +2,25 @@
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
+Kroki-rs is highly modular and relies on external tools to render specific diagrams. The [**Installation Script**](#the-quick-way-recommended) will check for these automatically, but you should eventually install:
 
-1.  **Rust Toolchain**: Required to build the project.
-    -   Install via [rustup.rs](https://rustup.rs): `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-2.  **Diagram Tools**: Kroki-rs relies on external tools to generate diagrams. Install the ones you need:
-    -   **Graphviz**: `brew install graphviz` (macOS) or `apt-get install graphviz` (Linux).
-    -   **Node.js**: Required for Mermaid, Vega, Wavedrom, etc.
-        -   Run `npm install` in the project root to install Node-based tools locally in `node_modules`.
+- **Graphviz**: For DOT and PlantUML support.
+- **Node.js**: Required for Mermaid, Vega, and Wavedrom.
+- **D2**: For modern, data-driven diagrams.
+
+See the [**Supported Diagrams**](supported-diagrams.md) page for details on tool requirements.
 
 ## Installation
 
+### The Quick Way (Recommended)
+Install `kroki-rs` and verify dependencies with a single command:
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/softmentor/kroki-rs/main/install.sh | sh
+```
+
 ### From Source
+If you prefer to build from source:
 
 1.  Clone the repository:
     ```bash

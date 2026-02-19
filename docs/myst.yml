@@ -15,8 +15,9 @@ site:
   options:
     folders: false
     hide_authors: true
-    logo: assets/logo.png
-    favicon: assets/logo.png
-    style: assets/css/myst.css
+    logo: assets/images/k-rs-icon.png
+    logo_dark: assets/images/k-rs-icon.png
+    favicon: assets/images/k-rs-icon.png
+    style: assets/css/kroki-rs.css
   parts:
     footer: assets/parts/footer.md
