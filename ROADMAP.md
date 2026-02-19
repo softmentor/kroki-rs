@@ -1,6 +1,6 @@
 # 🗺️ Kroki-rs Roadmap
 
-This document outlines the planned internal improvements and future features for **Kroki-rs**. We aim to make this the most efficient and reliable unified diagramming service in the Rust ecosystem.
+This document outlines the planned internal improvements and future features for **Kroki-rs**. We aim to make this the most efficient and reliable unified diagramming service using the Rust ecosystem.
 
 ## 🟢 v0.1.x: Stability & Core Polish
 - [ ] **Excalidraw Support**: Implement the remaining major provider.
@@ -10,7 +10,8 @@ This document outlines the planned internal improvements and future features for
 ## 🟡 v0.2.x: Performance & Efficiency
 - [ ] **Local Caching Layer**: Add optional SQLite or filesystem-based caching of rendered SVGs to avoid redundant subprocess calls.
 - [ ] **Parallel Batch Conversion**: CLI support for converting entire directories of diagrams in one command.
-- [ ] **Streamlined Docker Image**: A multi-stage build that includes all necessary CLI tools in a minimal (Alpine/Distroless) image.
+- [ ] **Optional Production Targets**: Provide OCI-compliant, streamlined Docker/Distroless images for containerized environments (K8s, ECS). This serves as a "batteries-included" target for production where all rendering engines are pre-configured.
+- [ ] **CNCF Standards Alignment**: Adopt **CloudEvents** for rendering triggers and **OpenTelemetry** for observability across distributed deployments.
 
 ## 🟠 v0.3.x: Server Features
 - [ ] **API Key Authentication**: Simple token-based security for the `serve` endpoint.
