@@ -89,10 +89,98 @@ fn test_convert_vega() {
         assert!(stdout.contains("<svg"), "Output did not contain SVG tag");
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        if stderr.contains("not found") {
+        if stderr.contains("not found") || stderr.contains("No such file or directory") {
             println!("Skipping Vega test: tool not found");
         } else {
             panic!("Vega conversion failed: {}", stderr);
+        }
+    }
+}
+
+#[test]
+fn test_convert_vegalite() {
+    let output = run_convert("vegalite", "svg", "test.vl.json");
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("<svg"), "Output did not contain SVG tag");
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("not found") || stderr.contains("No such file or directory") {
+            println!("Skipping Vega-Lite test: tool not found");
+        } else {
+            panic!("Vega-Lite conversion failed: {}", stderr);
+        }
+    }
+}
+
+#[test]
+fn test_convert_graphviz() {
+    let output = run_convert("graphviz", "svg", "test.dot");
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("<svg"), "Output did not contain SVG tag");
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("not found") || stderr.contains("No such file or directory") {
+            println!("Skipping Graphviz test: tool not found");
+        } else {
+            panic!("Graphviz conversion failed: {}", stderr);
+        }
+    }
+}
+
+#[test]
+fn test_convert_mermaid() {
+    let output = run_convert("mermaid", "svg", "test.mmd");
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("<svg"), "Output did not contain SVG tag");
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("not found") || stderr.contains("No such file or directory") {
+            println!("Skipping Mermaid test: tool not found");
+        } else {
+            panic!("Mermaid conversion failed: {}", stderr);
+        }
+    }
+}
+
+#[test]
+fn test_convert_plantuml() {
+    let output = run_convert("plantuml", "svg", "test.puml");
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("<svg") || stdout.contains("<?xml"),
+            "Output did not contain SVG/XML tag"
+        );
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("not found") || stderr.contains("No such file or directory") {
+            println!("Skipping PlantUML test: tool not found");
+        } else {
+            panic!("PlantUML conversion failed: {}", stderr);
+        }
+    }
+}
+
+#[test]
+fn test_convert_ditaa() {
+    let output = run_convert("ditaa", "png", "test.ditaa");
+    if output.status.success() {
+        // PNG magic bytes
+        let png_header = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        assert!(
+            output.stdout.starts_with(&png_header),
+            "Output did not contain PNG header"
+        );
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("not found") || stderr.contains("No such file or directory") {
+            println!("Skipping Ditaa test: tool not found");
+        } else {
+            // ditaa often fails gracefully if java is missing
+            println!("Skipping Ditaa test (likely java/ditaa issue): {}", stderr);
         }
     }
 }

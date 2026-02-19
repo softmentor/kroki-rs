@@ -18,14 +18,73 @@ kroki-rs convert --type <DIAGRAM_TYPE> --format <OUTPUT_FORMAT> <INPUT_FILE>
 
 ### Examples
 
-**Convert Mermaid to SVG:**
-```bash
-kroki-rs convert -t mermaid -f svg diagram.mmd > output.svg
-```
+```{dropdown} Click to view conversion examples for all supported types
+::::{tab-set}
 
-**Convert PlantUML to SVG:**
+:::{tab-item} Graphviz
+**Command:**
 ```bash
-kroki-rs convert -t plantuml -f svg diagram.puml > output.svg
+kroki-rs convert -t graphviz -f svg tests/fixtures/test.dot > output.svg
+```
+:::
+
+:::{tab-item} Mermaid
+**Command:**
+```bash
+kroki-rs convert -t mermaid -f svg tests/fixtures/test.mmd > output.svg
+```
+:::
+
+:::{tab-item} PlantUML
+**Command:**
+```bash
+kroki-rs convert -t plantuml -f svg tests/fixtures/test.puml > output.svg
+```
+:::
+
+:::{tab-item} D2
+**Command:**
+```bash
+kroki-rs convert -t d2 -f svg tests/fixtures/test.d2 > output.svg
+```
+:::
+
+:::{tab-item} BPMN
+**Command:**
+```bash
+kroki-rs convert -t bpmn -f svg tests/fixtures/test.bpmn > output.svg
+```
+:::
+
+:::{tab-item} Wavedrom
+**Command:**
+```bash
+kroki-rs convert -t wavedrom -f svg tests/fixtures/test.json5 > output.svg
+```
+:::
+
+:::{tab-item} Ditaa
+**Command:**
+```bash
+kroki-rs convert -t ditaa -f png tests/fixtures/test.ditaa > output.png
+```
+:::
+
+:::{tab-item} Vega
+**Command:**
+```bash
+kroki-rs convert -t vega -f svg tests/fixtures/test.vega > output.svg
+```
+:::
+
+:::{tab-item} Vega-Lite
+**Command:**
+```bash
+kroki-rs convert -t vegalite -f svg tests/fixtures/test.vl.json > output.svg
+```
+:::
+
+::::
 ```
 
 ---

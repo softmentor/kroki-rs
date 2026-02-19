@@ -1,0 +1,6 @@
+digraph G {
+  node [shape=box];
+  "Kroki-rs" -> "Graphviz";
+  "Kroki-rs" -> "Mermaid";
+  "Kroki-rs" -> "PlantUML";
+}
