@@ -25,8 +25,14 @@ jobs:
       - name: Install System Dependencies (macOS)
         run: |
           brew install pkg-config cairo pango libpng jpeg giflib librsvg graphviz
-          # Install D2 to /usr/local/bin which is usually in PATH
-          curl -fsSL https://d2lang.com/install.sh | sudo sh -s --
+          # D2 installation without sudo to avoid Homebrew as root error
+          curl -fsSL https://d2lang.com/install.sh | sh -s --
+          
+          # Set environment variables for keg-only jpeg and other dependencies
+          echo "PKG_CONFIG_PATH=$(brew --prefix jpeg)/lib/pkgconfig:$(brew --prefix libpng)/lib/pkgconfig:$(brew --prefix zlib)/lib/pkgconfig" >> $GITHUB_ENV
+          echo "LDFLAGS=-L$(brew --prefix jpeg)/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I$(brew --prefix jpeg)/include" >> $GITHUB_ENV
+          echo "$(brew --prefix jpeg)/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: npm install
