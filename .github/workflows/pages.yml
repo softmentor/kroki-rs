@@ -35,6 +35,8 @@ jobs:
       - name: Build MyST
         run: myst build --html
         working-directory: docs
+        env:
+          BASE_URL: "/kroki-rs"
 
       - name: Merge Docs
         run: |
