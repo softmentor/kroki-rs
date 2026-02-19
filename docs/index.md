@@ -16,8 +16,10 @@ Unified Rendering
 Kroki-rs brings the simplicity of the unified Kroki API to the speed and safety of Rust. Lightweight, instant-start, and Docker-free rendering for all your documentation needs.
 
 ```{image} assets/logo.png
-:width: 320px
-:align: center
+:class: only-light
+```
+```{image} assets/logo-dark.png
+:class: only-dark
 ```
 
 {button}`🚀 Get Started </user-guide/getting-started>`
