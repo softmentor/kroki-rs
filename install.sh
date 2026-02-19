@@ -80,7 +80,7 @@ if command -v node >/dev/null 2>&1; then
   if [ -n "$MISSING_TOOLS" ]; then
     echo "  - ⚠️  Missing rendering tools:$MISSING_TOOLS"
     echo "  - Would you like to install them now via 'npm install -g'? (y/n)"
-    read -r response
+    read -r response < /dev/tty
     if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
       echo "  - 📥 Installing Mermaid, Vega, Wavedrom, and BPMN tools..."
       sudo npm install -g @mermaid-js/mermaid-cli vega-cli vega-lite wavedrom-cli bpmn-to-image
