@@ -1,0 +1,18 @@
+version: 1
+extends:
+  - toc.yml
+
+project:
+  id: kroki-rs
+  title: Kroki-rs
+  description: A high-performance Rust port of the Kroki diagram generation service.
+  authors:
+    - name: softmentor
+  github: https://github.com/softmentor/kroki-rs
+
+site:
+  template: book-theme
+  options:
+    logo: assets/logo.png
+    favicon: assets/logo.png
+    hide_authors: true

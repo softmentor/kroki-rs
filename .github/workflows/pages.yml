@@ -35,16 +35,17 @@ jobs:
 
       - name: Build MyST
         run: myst build --html
+        working-directory: docs
 
       - name: Merge Docs
         run: |
-          mkdir -p _build/html/rustdoc
-          cp -r target/doc/* _build/html/rustdoc/
+          mkdir -p docs/_build/html/rustdoc
+          cp -r target/doc/* docs/_build/html/rustdoc/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _build/html
+          path: docs/_build/html
 
       - name: Deploy to GitHub Pages
         id: deployment
