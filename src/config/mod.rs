@@ -25,6 +25,8 @@ pub struct Config {
     pub d2: ToolConfig,
     #[serde(default)]
     pub ditaa: ToolConfig,
+    #[serde(default)]
+    pub excalidraw: ToolConfig,
 }
 
 impl Default for Config {
@@ -65,6 +67,10 @@ impl Default for Config {
             },
             ditaa: ToolConfig {
                 bin_path: Some("ditaa".into()),
+                ..Default::default()
+            },
+            excalidraw: ToolConfig {
+                bin_path: Some("excalidraw-to-svg".into()),
                 ..Default::default()
             },
         }

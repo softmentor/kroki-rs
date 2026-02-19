@@ -3,6 +3,7 @@ pub mod providers {
     pub mod cmd;
     pub mod d2;
     pub mod ditaa;
+    pub mod excalidraw;
     pub mod mermaid;
     pub mod plantuml;
     pub mod vega;

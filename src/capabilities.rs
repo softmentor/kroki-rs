@@ -14,6 +14,7 @@ pub struct Capabilities {
     pub bpmn: Option<PathBuf>,
     pub d2: Option<PathBuf>,
     pub ditaa: Option<PathBuf>,
+    pub excalidraw: Option<PathBuf>,
     // Add other tools
 }
 
@@ -30,6 +31,7 @@ impl Capabilities {
             bpmn: Self::find_tool(&config.bpmn.bin_path, "bpmn-to-image"),
             d2: Self::find_tool(&config.d2.bin_path, "d2"),
             ditaa: Self::find_tool(&config.ditaa.bin_path, "ditaa"),
+            excalidraw: Self::find_tool(&config.excalidraw.bin_path, "excalidraw-to-svg"),
         };
         // Log discovered tools
         tracing::debug!("Capabilities discovery:");
@@ -62,6 +64,11 @@ impl Capabilities {
         tracing::debug!("  BPMN ({:?}): {:?}", config.bpmn.bin_path, caps.bpmn);
         tracing::debug!("  D2 ({:?}): {:?}", config.d2.bin_path, caps.d2);
         tracing::debug!("  Ditaa ({:?}): {:?}", config.ditaa.bin_path, caps.ditaa);
+        tracing::debug!(
+            "  Excalidraw ({:?}): {:?}",
+            config.excalidraw.bin_path,
+            caps.excalidraw
+        );
         caps
     }
 

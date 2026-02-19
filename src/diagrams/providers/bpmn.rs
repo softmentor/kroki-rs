@@ -67,6 +67,12 @@ impl DiagramProvider for BpmnProvider {
         file.read_to_end(&mut result)
             .context("Failed to read output file")?;
 
+        if result.is_empty() {
+            return Err(anyhow::anyhow!(
+                "BPMN conversion succeeded but output file is empty"
+            ));
+        }
+
         Ok(result)
     }
 }

@@ -5,6 +5,7 @@ use crate::diagrams::{
         cmd::CommandProvider,
         d2::D2Provider,
         ditaa::DitaaProvider,
+        excalidraw::ExcalidrawProvider,
         mermaid::MermaidProvider,
         plantuml::PlantUmlProvider,
         vega::{VegaLiteProvider, VegaProvider},
@@ -83,6 +84,12 @@ impl DiagramRegistry {
             let provider = Arc::new(DitaaProvider::new(path.clone()))
                 as Arc<dyn DiagramProvider + Send + Sync>;
             providers.insert("ditaa".to_string(), provider);
+        }
+
+        if let Some(path) = &capabilities.excalidraw {
+            let provider = Arc::new(ExcalidrawProvider::new(path.clone()))
+                as Arc<dyn DiagramProvider + Send + Sync>;
+            providers.insert("excalidraw".to_string(), provider);
         }
 
         // Add other providers here

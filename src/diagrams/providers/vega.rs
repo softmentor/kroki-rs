@@ -56,6 +56,11 @@ impl DiagramProvider for VegaProvider {
         let output = child.wait_with_output()?;
 
         if output.status.success() {
+            if output.stdout.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "Vega conversion succeeded but output is empty"
+                ));
+            }
             Ok(output.stdout)
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -122,6 +127,9 @@ impl DiagramProvider for VegaLiteProvider {
 
         let vg_output = vg_child.wait_with_output()?;
         if vg_output.status.success() {
+            if vg_output.stdout.is_empty() {
+                return Err(anyhow::anyhow!("vg2svg succeeded but output is empty"));
+            }
             Ok(vg_output.stdout)
         } else {
             let stderr = String::from_utf8_lossy(&vg_output.stderr);

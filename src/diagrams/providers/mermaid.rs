@@ -54,6 +54,11 @@ impl DiagramProvider for MermaidProvider {
         let output = child.wait_with_output()?;
 
         if output.status.success() {
+            if output.stdout.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "Mermaid conversion succeeded but output is empty"
+                ));
+            }
             Ok(output.stdout)
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);

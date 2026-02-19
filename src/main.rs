@@ -12,6 +12,9 @@ struct Cli {
 
     #[arg(short, long, value_name = "FILE")]
     config: Option<PathBuf>,
+
+    #[arg(long, value_name = "DIR")]
+    cache_dir: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
@@ -29,6 +32,19 @@ enum Commands {
         format: String,
         #[arg(value_name = "FILE")]
         input: PathBuf,
+    },
+    /// Convert all diagrams in a directory
+    Batch {
+        #[arg(short, long, default_value = "svg")]
+        format: String,
+        #[arg(value_name = "DIR")]
+        input: PathBuf,
+        /// Optional: Force a specific diagram type for all files
+        #[arg(short, long)]
+        type_: Option<String>,
+        /// Optional: Output directory (defaults to input dir)
+        #[arg(short, long)]
+        out_dir: Option<PathBuf>,
     },
 }
 
@@ -53,7 +69,15 @@ async fn main() -> anyhow::Result<()> {
             format,
             input,
         } => {
-            cli::convert(type_, format, input, config).await?;
+            cli::convert(type_, format, input, config, args.cache_dir).await?;
+        }
+        Commands::Batch {
+            format,
+            input,
+            type_,
+            out_dir,
+        } => {
+            cli::batch(format, input, type_, out_dir, config, args.cache_dir).await?;
         }
     }
 

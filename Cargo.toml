@@ -1,6 +1,6 @@
 [package]
 name = "kroki-rs"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 
 [dependencies]
@@ -21,5 +21,9 @@ flate2 = "1.0"
 toml = "0.8"
 reqwest = { version = "0.12", features = ["json"] }
 tempfile = "3.25.0"
+dirs = "4.0"
+sha2 = "0.10"
+hex = "0.4"
+walkdir = "2.4"
 # Optional experimental support
 # rustyscript = { version = "0.1", optional = true } 

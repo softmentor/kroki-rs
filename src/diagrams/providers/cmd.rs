@@ -39,6 +39,11 @@ impl DiagramProvider for CommandProvider {
         let output = child.wait_with_output()?;
 
         if output.status.success() {
+            if output.stdout.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "Command succeeded but returned empty output"
+                ));
+            }
             Ok(output.stdout)
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);

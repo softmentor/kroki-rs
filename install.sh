@@ -71,7 +71,7 @@ if command -v node >/dev/null 2>&1; then
   
   # Check for core diagram tools
   MISSING_TOOLS=""
-  for tool in mmdc vg2svg vl2svg wavedrom bpmn-to-image; do
+  for tool in mmdc vg2svg vl2svg wavedrom bpmn-to-image excalidraw-to-svg; do
     if ! command -v "$tool" >/dev/null 2>&1; then
       MISSING_TOOLS="$MISSING_TOOLS $tool"
     fi
@@ -82,8 +82,8 @@ if command -v node >/dev/null 2>&1; then
     echo "  - Would you like to install them now via 'npm install -g'? (y/n)"
     read -r response < /dev/tty
     if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
-      echo "  - 📥 Installing Mermaid, Vega, Wavedrom, and BPMN tools..."
-      sudo npm install -g @mermaid-js/mermaid-cli vega-cli vega-lite wavedrom-cli bpmn-to-image
+      echo "  - 📥 Installing Mermaid, Vega, Wavedrom, BPMN, and Excalidraw tools..."
+      sudo npm install -g @mermaid-js/mermaid-cli vega-cli vega-lite wavedrom-cli bpmn-to-image excalidraw-to-svg
       echo "  - ✅ Rendering tools installed successfully."
     else
       echo "  - ℹ️  Skipping tool installation. You can install them later using 'npm install' in the source directory."
