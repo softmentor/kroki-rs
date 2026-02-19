@@ -58,7 +58,7 @@ rm -rf "$TMP_DIR"
 
 echo "✅ $BINARY_NAME $LATEST_RELEASE installed successfully!"
 
-# Dependency Check
+# Dependency Check & Setup
 echo "\n🔍 Checking dependencies..."
 if command -v dot >/dev/null 2>&1; then
   echo "  - Graphviz: Found ($(dot -V 2>&1 | head -n 1))"
@@ -68,6 +68,29 @@ fi
 
 if command -v node >/dev/null 2>&1; then
   echo "  - Node.js: Found ($(node -v))"
+  
+  # Check for core diagram tools
+  MISSING_TOOLS=""
+  for tool in mmdc vg2svg vl2svg wavedrom bpmn-to-image; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      MISSING_TOOLS="$MISSING_TOOLS $tool"
+    fi
+  done
+
+  if [ -n "$MISSING_TOOLS" ]; then
+    echo "  - ⚠️  Missing rendering tools:$MISSING_TOOLS"
+    echo "  - Would you like to install them now via 'npm install -g'? (y/n)"
+    read -r response
+    if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
+      echo "  - 📥 Installing Mermaid, Vega, Wavedrom, and BPMN tools..."
+      sudo npm install -g @mermaid-js/mermaid-cli vega-cli vega-lite wavedrom-cli bpmn-to-image
+      echo "  - ✅ Rendering tools installed successfully."
+    else
+      echo "  - ℹ️  Skipping tool installation. You can install them later using 'npm install' in the source directory."
+    fi
+  else
+    echo "  - ✅ All core rendering tools found."
+  fi
 else
   echo "  - ⚠️  Node.js not found. Install it for Mermaid/Vega/Wavedrom support."
 fi
