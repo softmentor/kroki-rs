@@ -6,7 +6,7 @@ ARCHIVE_NAME=$(BINARY_NAME)-$(PLATFORM).tar.gz
 
 # Default target: complete project lifecycle
 .PHONY: all
-all: deps clean fmt lint build test doc verify
+all: deps clean fmt verify doc
 
 # Build in debug mode
 .PHONY: build
