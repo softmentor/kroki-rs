@@ -40,7 +40,9 @@ jobs:
           ls -l node_modules/.bin/bpmn-to-image || true
 
       - name: Build and Package
-        run: make verify
+        run: |
+          export PATH=$PATH:$(pwd)/node_modules/.bin
+          make verify
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
