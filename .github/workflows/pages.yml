@@ -1,7 +1,8 @@
-name: Doc Deployment
+name: Doc Deployment (Main Branch Only)
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
