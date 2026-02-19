@@ -1,51 +1,53 @@
 ---
-title: Kroki-rs
-subtitle: Unified, High-Performance Diagram Generation in Rust.
-label: index
+title: Kroki-rs - High Performance Diagram Generation
+site:
+  hide_outline: true
+  hide_toc: true
+  hide_title_block: true
 ---
 
-+++ { "part": "summary" }
-# One API, Infinite Diagrams
-Kroki-rs is a high-performance Rust port of Kroki. One service to render Mermaid, Graphviz, D2, PlantUML, and more — without the weight of Docker.
-+++
++++ { "kind": "split-image" }
 
-<p align="center">
-  <img src="./assets/logo.png" width="300" />
-</p>
+Unified Rendering
 
-# Why Kroki-rs?
+# One API. Infinite Diagrams. 
+# Optimized for Rust.
 
-Traditional Kroki is powerful, but its Docker-centric architecture can be heavy and complex to manage locally. **Kroki-rs** was built for developers who want:
+Kroki-rs brings the simplicity of the unified Kroki API to the native performance of Rust. No Docker. No overhead. Just speed.
 
-- **Speed**: Instant-start and high-throughput rendering.
-- **Simplicity**: No Docker required — it uses your local CLI tools.
-- **Lightweight**: Minimal memory footprint, ideal for local dev or edge deployment.
-- **Native**: Built on the safety and performance of Rust.
+```{image} assets/logo.png
+:class: only-light
+```
+```{image} assets/logo-dark.png
+:class: only-dark
+```
+
+{button}`🚀 Get Started </user-guide/getting-started>`
+
++++ { "kind": "justified" }
+
+## The Motive
+
+> **Developer time is precious. Documentation shouldn't be a chore.**
+
+Managing multiple rendering engines—Mermaid, Graphviz, D2—often leads to "Docker bloat" or complex CI/CD setups. We built **Kroki-rs** to solve this.
+
+By leveraging native CLI tools and the safety of Rust, we've created a drop-in replacement for the Kroki API that is:
+- **Instant**: Low latency rendering for local development.
+- **Resource Efficient**: Fraction of the memory footprint of Java-based alternatives.
+- **Native**: Runs directly on your host or edge devices.
+
+---
+
+## Structure of the Documentation
+
+This guide is designed to get you from zero to production quickly:
+
+- **[Discover](./user-guide/features.md)**: Why Kroki-rs is the right choice for your stack.
+- **[Understand](./user-guide/supported-diagrams.md)**: Explore the supported engines and tool requirements.
+- **[Apply](./user-guide/usage.md)**: Practical patterns for CLI and Server usage.
+- **[Reflect](./developer-guide/index.md)**: Deep dive into the rust-native architecture.
 
 > **Information is visual. Rendering should be effortless.**
 
 ---
-
-## Moving Beyond the Heavyweight
-
-If you've ever struggled with large Docker images just to render a simple Mermaid chart, Kroki-rs is for you. We've taken the unified API concept and optimized it for native execution.
-
-- **Unified**: Stop managing multiple rendering libraries.
-- **Direct**: CLI tools speak directly to the Rust core.
-- **Ready**: Built-in discovery finds your tools automatically.
-
-[Get Started in 60 Seconds →](./user-guide/getting-started.md)
-
----
-
-## Explore
-
-- [**Feature Showcase**](./user-guide/features.md)
-- [**Supported Engines**](./user-guide/supported-diagrams.md)
-- [**Developer Guide**](./developer-guide/index.md)
-
----
-
-<p align="center">
-  Released under the MIT License.
-</p>
