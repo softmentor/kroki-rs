@@ -59,7 +59,7 @@ dist: release
 	@cd $(DIST_DIR) && tar -czvf $(ARCHIVE_NAME) $(BINARY_NAME)
 	cd $(DIST_DIR) && shasum -a 256 $(ARCHIVE_NAME) > $(ARCHIVE_NAME).sha256
 	@echo "Distribution package created in $(DIST_DIR)/$(ARCHIVE_NAME)"
-	@cat $(DIST_DIR)/$(ARCHIVE_NAME).sha256.sha256
+	@cat $(DIST_DIR)/$(ARCHIVE_NAME).sha256
 
 # Full verification: check, test, and package
 .PHONY: verify
