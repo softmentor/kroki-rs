@@ -53,11 +53,25 @@ On startup, `kroki-rs` automatically checks for available tools in your `PATH` a
       ...
     ```
 
-### Verify Installation
+### Quick Start (Server)
+Start the high-performance server in a single command:
+```bash
+kroki-rs serve --port 8000
+```
 
-Check the health endpoint (if implemented) or try a simple conversion:
+### Quick Start (CLI)
+Convert a diagram file directly without starting the server:
+```bash
+kroki-rs convert --type mermaid --format svg test.mmd
+```
+
+## Quick Example
+Once the server is running, you can generate an SVG from a Graphviz dot file using `curl`:
 
 ```bash
-echo "digraph G { A -> B }" > test.dot
-./target/release/kroki-rs convert -t dot -f svg test.dot
+curl http://localhost:8000/graphviz/svg/eNpLyUwvSizm5TIGAAWDAY0=
 ```
+
+## Next Steps
+- Explore [**Usage Details**](usage.md) for advanced CLI flags.
+- Check [**Supported Diagrams**](supported-diagrams.md) to see what you can build.

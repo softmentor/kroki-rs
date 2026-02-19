@@ -17,6 +17,6 @@ site:
     hide_authors: true
     logo: assets/logo.png
     favicon: assets/logo.png
-    style: assets/css/katlas.css
+    style: assets/css/myst.css
   parts:
     footer: assets/parts/footer.md
