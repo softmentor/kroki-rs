@@ -70,24 +70,10 @@ pub async fn get_diagram(
     match provider.generate(&source, base_format) {
         Ok(mut bytes) => {
             if is_webp {
-                let quality = match config.webp.quality.to_lowercase().as_str() {
-                    "lossless" => image_converter::WebpQuality::Lossless,
-                    "high" => image_converter::WebpQuality::Lossy(90),
-                    "medium" => image_converter::WebpQuality::Lossy(75),
-                    "low" => image_converter::WebpQuality::Lossy(50),
-                    q => {
-                        if let Ok(num) = q.parse::<u8>() {
-                            image_converter::WebpQuality::Lossy(num.clamp(0, 100))
-                        } else {
-                            image_converter::WebpQuality::Lossless
-                        }
-                    }
-                };
-
                 let convert_result = if base_format == "png" {
-                    image_converter::png_to_webp(&bytes, quality)
+                    image_converter::png_to_webp(&bytes, image_converter::WebpQuality::Lossless)
                 } else {
-                    image_converter::svg_to_webp(&bytes, quality)
+                    image_converter::svg_to_webp(&bytes, image_converter::WebpQuality::Lossless)
                 };
 
                 match convert_result {

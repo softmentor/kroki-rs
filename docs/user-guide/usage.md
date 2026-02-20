@@ -13,17 +13,16 @@ kroki-rs convert --type <DIAGRAM_TYPE> --format <OUTPUT_FORMAT> <INPUT_FILE>
 ```
 
 -   `-t, --type`: The diagram type (e.g., `dot`, `mermaid`, `d2`, `excalidraw`).
--   `-f, --format`: The output format (`svg`, `png`, `pdf`, `webp`). *Note: SVG provides the best vector fidelity, but WebP is supported natively by kroki-rs via high-quality rasterization.*
+-   `-f, --format`: The output format (`svg`, `png`, `pdf`, `webp`). *Note: SVG provides the best vector fidelity, but WebP is supported natively by kroki-rs via high-quality lossless rasterization.*
 -   `<INPUT_FILE>`: Path to the file containing the diagram description.
 -   `--cache-dir <DIR>`: (Optional) Path to enable local SVG/WebP caching to skip redundant conversions.
--   `--webp-quality <STR>`: (Optional) Configure WebP output quality (`lossless` (default), `high`, `medium`, `low`, or `0-100`).
 
 ### Batch Conversion
 
 Have a folder full of diagrams? Kroki-rs can convert them all concurrently:
 
 ```bash
-kroki-rs batch -f webp --webp-quality high --out-dir ./output ./my-diagrams
+kroki-rs batch -f webp --out-dir ./output ./my-diagrams
 ```
 *Kroki-rs will automatically detect the diagram type from the file extension (e.g., `.mmd` -> `mermaid`, `.d2` -> `d2`).*
 

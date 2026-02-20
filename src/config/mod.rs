@@ -8,8 +8,6 @@ pub struct Config {
     #[serde(default)]
     pub server: ServerConfig,
     #[serde(default)]
-    pub webp: WebpConfig,
-    #[serde(default)]
     pub graphviz: ToolConfig,
     #[serde(default)]
     pub mermaid: ToolConfig,
@@ -35,7 +33,6 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
-            webp: WebpConfig::default(),
             graphviz: ToolConfig {
                 bin_path: Some("dot".into()),
                 ..Default::default()
@@ -102,24 +99,6 @@ fn default_port() -> u16 {
 }
 fn default_timeout() -> u64 {
     5000
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct WebpConfig {
-    #[serde(default = "default_webp_quality")]
-    pub quality: String,
-}
-
-impl Default for WebpConfig {
-    fn default() -> Self {
-        Self {
-            quality: "lossless".to_string(), // Default to lossless for diagrams
-        }
-    }
-}
-
-fn default_webp_quality() -> String {
-    "lossless".to_string()
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
