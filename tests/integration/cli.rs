@@ -72,9 +72,13 @@ fn test_batch_conversion() {
     let input_path = temp_input.path();
     let output_path = temp_output.path();
 
-    // Create inputs — use diagram types known to work reliably
-    fs::write(input_path.join("file1.d2"), "a -> b").unwrap();
-    fs::write(input_path.join("file2.dot"), "digraph G { Hello -> World }").unwrap();
+    // Create inputs — use diagram types that rely on Playwright (installed in CI)
+    fs::write(input_path.join("file1.mmd"), "graph TD;\n    A-->B;").unwrap();
+    fs::write(
+        input_path.join("file2.mmd"),
+        "sequenceDiagram\n    Alice->>Bob: Hello",
+    )
+    .unwrap();
 
     let bin = get_binary_path();
 
