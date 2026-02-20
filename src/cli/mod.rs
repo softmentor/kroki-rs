@@ -122,6 +122,7 @@ pub async fn convert(
     // Just writing to stdout for this simple CLI
     let mut stdout = tokio::io::stdout();
     stdout.write_all(&output_bytes).await?;
+    stdout.flush().await?;
 
     Ok(())
 }
