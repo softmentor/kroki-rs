@@ -14,23 +14,14 @@ impl DiagramProvider for WavedromProvider {
     }
 
     async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
-        // Wavedrom CLI: wavedrom-cli -i input.json -s output.svg
-        // Does not support stdin/stdout well in all versions.
-
         let mut input_file =
             NamedTempFile::new().context("Failed to create temporary input file")?;
         input_file
             .write_all(source.as_bytes())
             .context("Failed to write source to temp file")?;
 
-        // We need a path for output.
-        // Wavedrom CLI infers format from extension?
-        // Help says: -s, --svg path to generated SVG.
-
         let output_file = NamedTempFile::new().context("Failed to create temporary output file")?;
-        let output_path = output_file.path().to_path_buf(); // Keep path, but file might be deleted/overwritten?
-
-        // NamedTempFile deletes on drop. We can perform operation on its path.
+        let output_path = output_file.path().to_path_buf();
 
         let mut cmd = Command::new(&self.bin_path);
         cmd.arg("-i").arg(input_file.path());
@@ -44,25 +35,29 @@ impl DiagramProvider for WavedromProvider {
             }
             _ => {
                 return Err(anyhow::anyhow!(
-                    "Unsupported format for Wavedrom: {}",
+                    "Unsupported format for Wavedrom: '{}'. Supported: svg, png",
                     format
                 ))
             }
         }
 
-        let output =
-            crate::diagrams::run_process_with_timeout(cmd, None, self.timeout_ms, source.len())
-                .await?;
+        let output = crate::diagrams::run_process_with_timeout(
+            "wavedrom-cli",
+            cmd,
+            None,
+            self.timeout_ms,
+            source.len(),
+        )
+        .await?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow::anyhow!("Wavedrom conversion failed: {}", stderr));
         }
 
-        // Read output file
-        let mut result = Vec::new();
-        let mut file = std::fs::File::open(&output_path).context("Failed to open output file")?;
-        std::io::Read::read_to_end(&mut file, &mut result).context("Failed to read output file")?;
+        let result = tokio::fs::read(&output_path)
+            .await
+            .context("Failed to read Wavedrom output file")?;
 
         Ok(result)
     }

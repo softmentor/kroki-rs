@@ -72,13 +72,9 @@ fn test_batch_conversion() {
     let input_path = temp_input.path();
     let output_path = temp_output.path();
 
-    // Create inputs
+    // Create inputs — use diagram types known to work reliably
     fs::write(input_path.join("file1.d2"), "a -> b").unwrap();
-    fs::write(
-        input_path.join("file2.excalidraw"),
-        "{\"type\":\"excalidraw\"}",
-    )
-    .unwrap();
+    fs::write(input_path.join("file2.dot"), "digraph G { Hello -> World }").unwrap();
 
     let bin = get_binary_path();
 

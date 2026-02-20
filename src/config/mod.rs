@@ -83,6 +83,9 @@ pub struct ServerConfig {
     pub port: u16,
     #[serde(default = "default_timeout")]
     pub timeout_ms: u64,
+    /// Maximum allowed input size in bytes (default: 1MB).
+    #[serde(default = "default_max_input_size")]
+    pub max_input_size: usize,
 }
 
 impl Default for ServerConfig {
@@ -90,6 +93,7 @@ impl Default for ServerConfig {
         Self {
             port: 8000,
             timeout_ms: 5000,
+            max_input_size: 1_048_576, // 1MB
         }
     }
 }
@@ -100,6 +104,9 @@ fn default_port() -> u16 {
 fn default_timeout() -> u64 {
     5000
 }
+fn default_max_input_size() -> usize {
+    1_048_576 // 1MB
+}
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct ToolConfig {
@@ -109,6 +116,9 @@ pub struct ToolConfig {
     pub fonts: Vec<String>,
     pub timeout_ms: Option<u64>,
 }
+
+/// Supported output formats.
+pub const SUPPORTED_FORMATS: &[&str] = &["svg", "png", "pdf", "webp", "txt"];
 
 impl Config {
     /// Loads the configuration from a path, environment variable, or default file.
@@ -126,5 +136,26 @@ impl Config {
         let content = fs::read_to_string(path)?;
         let config: Config = toml::from_str(&content)?;
         Ok(config)
+    }
+
+    /// Collects all font URLs from every tool configuration.
+    pub fn all_fonts(&self) -> Vec<String> {
+        let mut fonts = Vec::new();
+        fonts.extend_from_slice(&self.mermaid.fonts);
+        fonts.extend_from_slice(&self.graphviz.fonts);
+        fonts.extend_from_slice(&self.plantuml.fonts);
+        fonts.extend_from_slice(&self.excalidraw.fonts);
+        fonts
+    }
+
+    /// Resolves the cache directory from CLI override, env var, or system default.
+    pub fn resolve_cache_dir(cli_override: Option<PathBuf>) -> Option<PathBuf> {
+        if let Some(d) = cli_override {
+            Some(d)
+        } else if let Ok(d) = env::var("KROKI_CACHE_DIR") {
+            Some(PathBuf::from(d))
+        } else {
+            dirs::cache_dir().map(|d| d.join("kroki-rs"))
+        }
     }
 }

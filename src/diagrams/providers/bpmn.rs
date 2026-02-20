@@ -1,7 +1,7 @@
 use crate::diagrams::DiagramProvider;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use std::io::{Read, Write};
+use std::io::Write;
 use tempfile::NamedTempFile;
 use tokio::process::Command;
 
@@ -14,20 +14,14 @@ impl DiagramProvider for BpmnProvider {
     }
 
     async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
-        // bpmn-to-image input.bpmn:output.png
-
         let mut input_file =
             NamedTempFile::new().context("Failed to create temporary input file")?;
         input_file
             .write_all(source.as_bytes())
             .context("Failed to write source to temp file")?;
 
-        // Construct argument: input_path:output_path
-        // Remove unused io_arg block
-
         let mut cmd = Command::new(&self.bin_path);
 
-        // Fix temporary value dropped while borrowed
         let suffix = format!(".{}", format);
         let mut output_file_builder = tempfile::Builder::new();
         output_file_builder.suffix(&suffix);
@@ -44,23 +38,23 @@ impl DiagramProvider for BpmnProvider {
 
         cmd.arg(io_arg_ext);
 
-        // Add min-dimensions or other defaults?
-
-        let output =
-            crate::diagrams::run_process_with_timeout(cmd, None, self.timeout_ms, source.len())
-                .await?;
+        let output = crate::diagrams::run_process_with_timeout(
+            "bpmn-to-image",
+            cmd,
+            None,
+            self.timeout_ms,
+            source.len(),
+        )
+        .await?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow::anyhow!("BPMN conversion failed: {}", stderr));
         }
 
-        // Read output file
-        let mut result = Vec::new();
-        let mut file =
-            std::fs::File::open(&output_path_with_ext).context("Failed to open output file")?;
-        file.read_to_end(&mut result)
-            .context("Failed to read output file")?;
+        let result = tokio::fs::read(&output_path_with_ext)
+            .await
+            .context("Failed to read BPMN output file")?;
 
         if result.is_empty() {
             return Err(anyhow::anyhow!(

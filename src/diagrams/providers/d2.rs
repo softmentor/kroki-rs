@@ -75,6 +75,7 @@ impl DiagramProvider for D2Provider {
             .stderr(Stdio::piped());
 
         let output = crate::diagrams::run_process_with_timeout(
+            "d2",
             cmd,
             Some(source.as_bytes()),
             self.timeout_ms,

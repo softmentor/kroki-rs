@@ -37,6 +37,7 @@ impl DiagramProvider for MermaidProvider {
             .stderr(Stdio::piped());
 
         let output = crate::diagrams::run_process_with_timeout(
+            "mmdc",
             cmd,
             Some(source.as_bytes()),
             self.timeout_ms,

@@ -29,6 +29,7 @@ impl DiagramProvider for PlantUmlProvider {
             .stderr(Stdio::piped());
 
         let output = crate::diagrams::run_process_with_timeout(
+            "plantuml",
             cmd,
             Some(source.as_bytes()),
             self.timeout_ms,

@@ -44,7 +44,15 @@ macro_rules! define_provider {
 pub(crate) use define_provider;
 
 /// Safely executes a child process, automatically managing timeouts, input piping, and memory cleanup.
+///
+/// # Arguments
+/// * `tool_name` - Human-readable name of the tool (e.g., "mmdc", "dot") for error messages.
+/// * `cmd` - The tokio Command to execute.
+/// * `source` - Optional bytes to pipe to stdin.
+/// * `timeout_ms` - Optional explicit timeout; falls back to adaptive_timeout.
+/// * `source_len` - Length of the source input (used for adaptive timeout and error context).
 pub async fn run_process_with_timeout(
+    tool_name: &str,
     mut cmd: tokio::process::Command,
     source: Option<&[u8]>,
     timeout_ms: Option<u64>,
@@ -54,13 +62,16 @@ pub async fn run_process_with_timeout(
     use tokio::io::AsyncWriteExt;
 
     cmd.kill_on_drop(true);
-    let mut child = cmd.spawn().context("Failed to spawn process")?;
+    let mut child = cmd.spawn().context(format!(
+        "Failed to spawn '{}'. Is the tool installed and in your PATH?",
+        tool_name
+    ))?;
 
     if let (Some(mut stdin), Some(src)) = (child.stdin.take(), source) {
         stdin
             .write_all(src)
             .await
-            .context("Failed to write to stdin")?;
+            .context(format!("Failed to write to stdin of '{}'", tool_name))?;
     }
 
     let actual_timeout = std::cmp::min(
@@ -76,8 +87,18 @@ pub async fn run_process_with_timeout(
     .await
     {
         Ok(Ok(out)) => Ok(out),
-        Ok(Err(e)) => anyhow::bail!("IO Error during execution: {}", e),
-        Err(_) => anyhow::bail!("Process timed out after {}ms", actual_timeout),
+        Ok(Err(e)) => anyhow::bail!(
+            "'{}' IO error (input: {} bytes): {}",
+            tool_name,
+            source_len,
+            e
+        ),
+        Err(_) => anyhow::bail!(
+            "'{}' timed out after {}ms (input: {} bytes). Consider increasing the timeout in kroki.toml.",
+            tool_name,
+            actual_timeout,
+            source_len
+        ),
     }
 }
 
@@ -113,11 +134,11 @@ mod tests {
         cmd.arg("2"); // Sleep for 2 seconds
 
         // Set timeout to 100ms, which is much shorter than 2 seconds
-        let result = run_process_with_timeout(cmd, None, Some(100), 0).await;
+        let result = run_process_with_timeout("sleep", cmd, None, Some(100), 0).await;
 
         // Ensure the function returns an error and it's specifically a timeout
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert_eq!(err_msg, "Process timed out after 100ms");
+        assert_eq!(err_msg, "'sleep' timed out after 100ms (input: 0 bytes). Consider increasing the timeout in kroki.toml.");
     }
 }

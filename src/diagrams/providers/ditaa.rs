@@ -14,25 +14,11 @@ impl DiagramProvider for DitaaProvider {
     }
 
     async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
-        // ditaa -jar ditaa.jar input output
-        // OR ditaa input output if it's a wrapper script
-        // Config bin_path points to the executable.
-
-        // Support only specific formats
-        if format != "png" && format != "svg" {
-            // ditaa mostly produces PNG. SVG might be supported by recent versions or ditaa-mini/similar?
-            // Original ditaa is PNG (and EPS?).
-            // Some forks support SVG.
-            // Let's assume defaults for now. If format is not png, warn or fail?
-            // Users might want SVG. If ditaa supports --svg or similar.
-            // Standard ditaa does NOT support SVG.
-            // Kroki uses `ditaa` (java) -> PNG. output must be png.
-            // If user asks for SVG, we might fail.
-            if format == "svg" {
-                return Err(anyhow::anyhow!(
-                    "Ditaa provider only supports PNG format (standard ditaa limitation)"
-                ));
-            }
+        if format != "png" {
+            return Err(anyhow::anyhow!(
+                "Ditaa provider only supports PNG format (standard ditaa limitation), got '{}'",
+                format
+            ));
         }
 
         let mut input_file =
@@ -50,25 +36,26 @@ impl DiagramProvider for DitaaProvider {
         let output_path = output_file_with_ext.path().to_path_buf();
 
         let mut cmd = Command::new(&self.bin_path);
-
-        // ditaa input output
         cmd.arg(input_file.path());
         cmd.arg(&output_path);
 
-        // ditaa options?
-
-        let output =
-            crate::diagrams::run_process_with_timeout(cmd, None, self.timeout_ms, source.len())
-                .await?;
+        let output = crate::diagrams::run_process_with_timeout(
+            "ditaa",
+            cmd,
+            None,
+            self.timeout_ms,
+            source.len(),
+        )
+        .await?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow::anyhow!("Ditaa conversion failed: {}", stderr));
         }
 
-        let mut result = Vec::new();
-        let mut file = std::fs::File::open(&output_path).context("Failed to open output file")?;
-        std::io::Read::read_to_end(&mut file, &mut result).context("Failed to read output file")?;
+        let result = tokio::fs::read(&output_path)
+            .await
+            .context("Failed to read ditaa output file")?;
 
         Ok(result)
     }

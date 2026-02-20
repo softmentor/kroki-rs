@@ -1,6 +1,5 @@
-use crate::capabilities::Capabilities;
-use crate::config::Config;
-use crate::diagrams::registry::DiagramRegistry;
+use crate::config::SUPPORTED_FORMATS;
+use crate::server::AppState;
 use crate::utils::decode;
 use crate::utils::image_converter;
 use axum::{
@@ -15,17 +14,26 @@ pub async fn root() -> &'static str {
 }
 
 /// Handler for retrieving diagrams via the Kroki GET API.
-///
-/// Path parameters:
-/// - `type_`: The diagram type (e.g., "mermaid").
-/// - `format`: The desired output format (e.g., "svg").
-/// - `source_encoded`: The Base64URL encoded and compressed diagram source.
 pub async fn get_diagram(
     Path((type_, format, source_encoded)): Path<(String, String, String)>,
-    State(config): State<Config>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
     tracing::info!("Request: type={}, format={}", type_, format);
-    // 1. Decode payload
+
+    // 1. Validate format against whitelist (TD-21)
+    if !SUPPORTED_FORMATS.contains(&format.as_str()) {
+        return (
+            StatusCode::BAD_REQUEST,
+            format!(
+                "Unsupported format '{}'. Supported: {}",
+                format,
+                SUPPORTED_FORMATS.join(", ")
+            ),
+        )
+            .into_response();
+    }
+
+    // 2. Decode payload
     let source = match decode(&source_encoded) {
         Ok(s) => s,
         Err(e) => {
@@ -38,12 +46,21 @@ pub async fn get_diagram(
         }
     };
 
-    // 2. Discover capabilities
-    let capabilities = Capabilities::discover(&config);
-    let registry = DiagramRegistry::new(&capabilities, &config);
+    // 3. Validate input size (TD-19)
+    if source.len() > state.config.server.max_input_size {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            format!(
+                "Input too large ({} bytes). Maximum allowed: {} bytes",
+                source.len(),
+                state.config.server.max_input_size
+            ),
+        )
+            .into_response();
+    }
 
-    // 3. Find provider
-    let provider = match registry.get(&type_) {
+    // 4. Find provider from pre-built registry (TD-04)
+    let provider = match state.registry.get(&type_) {
         Some(p) => p,
         None => {
             tracing::warn!("Diagram type '{}' not supported or tool not found", type_);
@@ -66,18 +83,11 @@ pub async fn get_diagram(
         &format
     };
 
-    // 4. Generate
+    // 5. Generate
     match provider.generate(&source, base_format).await {
         Ok(mut bytes) => {
             if is_webp {
-                // Fallback to empty fonts slice if the tool isn't specifically defined, or try to extract from tool config
-                // Wait, we can just aggregate all fonts for simplicity or use a generic list. Let's extract from the specific tool config.
-                let mut fonts = Vec::new();
-                // Simple hack: grab all fonts from all tools for the server context since we evaluate them anyway
-                fonts.extend_from_slice(&config.mermaid.fonts);
-                fonts.extend_from_slice(&config.graphviz.fonts);
-                fonts.extend_from_slice(&config.plantuml.fonts);
-                fonts.extend_from_slice(&config.excalidraw.fonts);
+                let fonts = state.config.all_fonts();
 
                 let convert_result = if base_format == "png" {
                     image_converter::png_to_webp(&bytes, image_converter::WebpQuality::Lossless)
@@ -100,7 +110,7 @@ pub async fn get_diagram(
                         tracing::error!("WebP conversion failed for {}: {}", type_, e);
                         return (
                             StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("WebP conversion failed: {}", e),
+                            "Diagram generation failed. Check server logs for details.".to_string(),
                         )
                             .into_response();
                     }
@@ -127,7 +137,7 @@ pub async fn get_diagram(
             tracing::error!("Generation failed for {}: {}", type_, e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Generation failed: {}", e),
+                "Diagram generation failed. Check server logs for details.".to_string(),
             )
                 .into_response()
         }

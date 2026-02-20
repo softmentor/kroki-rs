@@ -14,12 +14,13 @@ impl DiagramProvider for CommandProvider {
 
     async fn generate(&self, source: &str, _format: &str) -> Result<Vec<u8>> {
         let mut cmd = Command::new(&self.bin_path);
-        cmd.args(["-Tsvg"]) // Default to SVG for now, make configurable
+        cmd.arg(format!("-T{}", _format))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
         let output = crate::diagrams::run_process_with_timeout(
+            "dot",
             cmd,
             Some(source.as_bytes()),
             self.timeout_ms,

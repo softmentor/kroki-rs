@@ -5,94 +5,85 @@ use crate::utils::image_converter;
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
+use walkdir::WalkDir;
 
-pub async fn convert(
-    type_: String,
-    format: String,
-    input: PathBuf,
-    config: Config,
-    cache_dir: Option<PathBuf>,
-) -> Result<()> {
-    let capabilities = Capabilities::discover(&config);
-    let registry = DiagramRegistry::new(&capabilities, &config);
+/// Resolves WebP format to the appropriate base format for generation.
+fn resolve_base_format<'a>(format: &'a str, type_: &str) -> (&'a str, bool) {
+    let is_webp = format.eq_ignore_ascii_case("webp");
+    if is_webp {
+        if type_.eq_ignore_ascii_case("ditaa") {
+            ("png", true)
+        } else {
+            ("svg", true)
+        }
+    } else {
+        (format, false)
+    }
+}
 
-    let provider = registry.get(&type_).context(format!(
+/// Core generation pipeline shared by convert and batch.
+/// Returns the final output bytes (including optional WebP conversion).
+async fn generate_diagram(
+    source: &str,
+    type_: &str,
+    format: &str,
+    config: &Config,
+    registry: &DiagramRegistry,
+    cache_dir: &Option<PathBuf>,
+) -> Result<Vec<u8>> {
+    let provider = registry.get(type_).context(format!(
         "Diagram type '{}' not supported or tool not found",
         type_
     ))?;
 
-    let source = fs::read_to_string(&input)
-        .await
-        .context(format!("Failed to read input file '{}'", input.display()))?;
+    // Validate input size
+    if source.len() > config.server.max_input_size {
+        anyhow::bail!(
+            "Input too large ({} bytes). Maximum allowed: {} bytes. Configure via server.max_input_size in kroki.toml.",
+            source.len(),
+            config.server.max_input_size
+        );
+    }
 
-    // Caching Logic
-    // Compute hash: type + format + source content
+    // Caching: compute hash
     let mut hasher = Sha256::new();
-    hasher.update(&type_);
-    hasher.update(&format);
-    hasher.update(&source);
+    hasher.update(type_);
+    hasher.update(format);
+    hasher.update(source);
     let hash = hex::encode(hasher.finalize());
 
-    // Determine cache directory
-    let cache_dir = if let Some(d) = cache_dir {
-        Some(d)
-    } else {
-        // Try env var KROKI_CACHE_DIR
-        if let Ok(d) = std::env::var("KROKI_CACHE_DIR") {
-            Some(PathBuf::from(d))
-        } else {
-            // Default system cache
-            dirs::cache_dir().map(|d| d.join("kroki-rs"))
-        }
-    };
-
-    if let Some(cache_path) = &cache_dir {
+    // Check cache
+    if let Some(cache_path) = cache_dir {
         if !cache_path.exists() {
             fs::create_dir_all(cache_path).await.ok();
         }
-
         let cached_file = cache_path.join(format!("{}.{}", hash, format));
-
         if cached_file.exists() {
             if let Ok(content) = fs::read(&cached_file).await {
-                let mut stdout = tokio::io::stdout();
-                stdout.write_all(&content).await?;
                 tracing::info!("Cache hit! Served from {}", cached_file.display());
-                return Ok(());
+                return Ok(content);
             }
         }
     }
 
-    // Validate if possible
+    // Validate
     provider
-        .validate(&source)
+        .validate(source)
         .context("Source validation failed")?;
 
-    let is_webp = format.to_lowercase() == "webp";
-    let base_format = if is_webp {
-        if type_.to_lowercase() == "ditaa" {
-            "png"
-        } else {
-            "svg"
-        }
-    } else {
-        &format
-    };
-
+    // Generate with format resolution
+    let (base_format, is_webp) = resolve_base_format(format, type_);
     let mut output_bytes = provider
-        .generate(&source, base_format)
+        .generate(source, base_format)
         .await
         .context("Diagram generation failed")?;
 
+    // WebP post-processing
     if is_webp {
-        let mut fonts = Vec::new();
-        fonts.extend_from_slice(&config.mermaid.fonts);
-        fonts.extend_from_slice(&config.graphviz.fonts);
-        fonts.extend_from_slice(&config.plantuml.fonts);
-        fonts.extend_from_slice(&config.excalidraw.fonts);
-
+        let fonts = config.all_fonts();
         output_bytes = if base_format == "png" {
             image_converter::png_to_webp(&output_bytes, image_converter::WebpQuality::Lossless)
                 .await
@@ -110,7 +101,7 @@ pub async fn convert(
     }
 
     // Write to cache
-    if let Some(cache_path) = &cache_dir {
+    if let Some(cache_path) = cache_dir {
         let cached_file = cache_path.join(format!("{}.{}", hash, format));
         if let Err(e) = fs::write(&cached_file, &output_bytes).await {
             tracing::warn!("Failed to write to cache: {}", e);
@@ -119,17 +110,33 @@ pub async fn convert(
         }
     }
 
-    // For now write to stdout, or maybe derive output filename
-    // Just writing to stdout for this simple CLI
+    Ok(output_bytes)
+}
+
+pub async fn convert(
+    type_: String,
+    format: String,
+    input: PathBuf,
+    config: Config,
+    cache_dir: Option<PathBuf>,
+) -> Result<()> {
+    let capabilities = Capabilities::discover(&config);
+    let registry = DiagramRegistry::new(&capabilities, &config);
+    let cache_dir = Config::resolve_cache_dir(cache_dir);
+
+    let source = fs::read_to_string(&input)
+        .await
+        .context(format!("Failed to read input file '{}'", input.display()))?;
+
+    let output_bytes =
+        generate_diagram(&source, &type_, &format, &config, &registry, &cache_dir).await?;
+
     let mut stdout = tokio::io::stdout();
     stdout.write_all(&output_bytes).await?;
     stdout.flush().await?;
 
     Ok(())
 }
-
-use std::sync::Arc;
-use walkdir::WalkDir;
 
 pub async fn batch(
     format: String,
@@ -152,16 +159,18 @@ pub async fn batch(
 
     tracing::info!("Found {} files in {}", files.len(), input_dir.display());
 
+    let capabilities = Capabilities::discover(&config);
+    let registry = Arc::new(DiagramRegistry::new(&capabilities, &config));
     let config = Arc::new(config);
-    let cache_dir = Arc::new(cache_dir);
+    let cache_dir = Arc::new(Config::resolve_cache_dir(cache_dir));
     let format = Arc::new(format);
     let type_override = Arc::new(type_override);
     let out_dir = Arc::new(out_dir);
 
     let mut tasks = Vec::new();
+    let failure_count = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
 
     for file_path in files {
-        // Simple heuristic for file extension
         let extension = file_path
             .extension()
             .and_then(|e| e.to_str())
@@ -176,20 +185,11 @@ pub async fn batch(
                 "dot" | "gv" => Some("graphviz".to_string()),
                 "mmd" | "mermaid" => Some("mermaid".to_string()),
                 "puml" | "plantuml" => Some("plantuml".to_string()),
-                "excalidraw" | "json" => {
-                    // .json is ambiguous, but if it has "type": "excalidraw" inside...
-                    // For now assuming excalidraw extension or user override
-                    if extension == "excalidraw" {
-                        Some("excalidraw".to_string())
-                    } else {
-                        None
-                    }
-                }
+                "excalidraw" => Some("excalidraw".to_string()),
                 "bpmn" => Some("bpmn".to_string()),
                 "vega" => Some("vega".to_string()),
-                "vl" => Some("vegalite".to_string()), // .vl.json handled below?
+                "vl" => Some("vegalite".to_string()),
                 _ => {
-                    // Check for .vl.json
                     if file_path.to_string_lossy().ends_with(".vl.json") {
                         Some("vegalite".to_string())
                     } else {
@@ -201,56 +201,51 @@ pub async fn batch(
 
         if let Some(t) = type_ {
             let config = config.clone();
+            let registry = registry.clone();
             let cache_dir = cache_dir.clone();
             let format = format.clone();
             let out_dir = out_dir.clone();
             let input_dir = input_dir.clone();
+            let failure_count = failure_count.clone();
 
             tasks.push(tokio::spawn(async move {
-                // Determine output path
                 let relative_path = file_path.strip_prefix(&input_dir).unwrap_or(&file_path);
                 let mut output_path = if let Some(out) = out_dir.as_ref() {
                     out.join(relative_path)
                 } else {
                     file_path.clone()
                 };
-
                 output_path.set_extension(format.as_str());
 
-                // Ensure parent dir exists
                 if let Some(parent) = output_path.parent() {
                     fs::create_dir_all(parent).await.ok();
                 }
 
-                // Call convert_file (refactored from convert)
-                // Since convert writes to stdout, we should refactor convert to write to file or return bytes.
-                // Refactoring convert to return bytes would be best.
-                // BUT `convert` currently does IO.
-                // Let's copy-paste logic for now or call `convert_to_file`.
+                let source = match fs::read_to_string(&file_path).await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        tracing::error!("Failed to read {}: {}", file_path.display(), e);
+                        failure_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        return;
+                    }
+                };
 
-                // Let's duplicate logic for speed, but ideally refactor.
-                // Or better: Refactor `convert` to `convert_internal` returning bytes, and `convert` CLI just writes to stdout.
-
-                // Actually, let's just make a private helper `convert_one`
-                match convert_to_file(
-                    t,
-                    format.to_string(),
-                    file_path.clone(),
-                    output_path.clone(),
-                    (*config).clone(),
-                    (*cache_dir).clone(),
-                )
-                .await
-                {
-                    Ok(_) => {
-                        tracing::info!(
-                            "Converted: {} -> {}",
-                            file_path.display(),
-                            output_path.display()
-                        );
+                match generate_diagram(&source, &t, &format, &config, &registry, &cache_dir).await {
+                    Ok(bytes) => {
+                        if let Err(e) = fs::write(&output_path, &bytes).await {
+                            tracing::error!("Failed to write {}: {}", output_path.display(), e);
+                            failure_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        } else {
+                            tracing::info!(
+                                "Converted: {} -> {}",
+                                file_path.display(),
+                                output_path.display()
+                            );
+                        }
                     }
                     Err(e) => {
                         tracing::error!("Failed to convert {}: {}", file_path.display(), e);
+                        failure_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     }
                 }
             }));
@@ -261,105 +256,10 @@ pub async fn batch(
         task.await?;
     }
 
-    Ok(())
-}
-
-async fn convert_to_file(
-    type_: String,
-    format: String,
-    input: PathBuf,
-    output: PathBuf,
-    config: Config,
-    cache_dir: Option<PathBuf>,
-) -> Result<()> {
-    let capabilities = Capabilities::discover(&config);
-    let registry = DiagramRegistry::new(&capabilities, &config);
-
-    let provider = registry.get(&type_).context(format!(
-        "Diagram type '{}' not supported or tool not found",
-        type_
-    ))?;
-
-    let source = fs::read_to_string(&input)
-        .await
-        .context(format!("Failed to read input file '{}'", input.display()))?;
-
-    // Caching Logic
-    let mut hasher = Sha256::new();
-    hasher.update(&type_);
-    hasher.update(&format);
-    hasher.update(&source);
-    let hash = hex::encode(hasher.finalize());
-
-    let cache_dir = if let Some(d) = cache_dir {
-        Some(d)
-    } else if let Ok(d) = std::env::var("KROKI_CACHE_DIR") {
-        Some(PathBuf::from(d))
-    } else {
-        dirs::cache_dir().map(|d| d.join("kroki-rs"))
-    };
-
-    if let Some(cache_path) = &cache_dir {
-        if !cache_path.exists() {
-            fs::create_dir_all(cache_path).await.ok();
-        }
-        let cached_file = cache_path.join(format!("{}.{}", hash, format));
-        if cached_file.exists() {
-            if let Ok(content) = fs::read(&cached_file).await {
-                fs::write(&output, content).await?;
-                return Ok(());
-            }
-        }
+    let failures = failure_count.load(std::sync::atomic::Ordering::Relaxed);
+    if failures > 0 {
+        anyhow::bail!("{} file(s) failed to convert", failures);
     }
 
-    provider
-        .validate(&source)
-        .context("Source validation failed")?;
-
-    let is_webp = format.to_lowercase() == "webp";
-    let base_format = if is_webp {
-        if type_.to_lowercase() == "ditaa" {
-            "png"
-        } else {
-            "svg"
-        }
-    } else {
-        &format
-    };
-
-    let mut output_bytes = provider
-        .generate(&source, base_format)
-        .await
-        .context("Diagram generation failed")?;
-
-    if is_webp {
-        let mut fonts = Vec::new();
-        fonts.extend_from_slice(&config.mermaid.fonts);
-        fonts.extend_from_slice(&config.graphviz.fonts);
-        fonts.extend_from_slice(&config.plantuml.fonts);
-        fonts.extend_from_slice(&config.excalidraw.fonts);
-
-        output_bytes = if base_format == "png" {
-            image_converter::png_to_webp(&output_bytes, image_converter::WebpQuality::Lossless)
-                .await
-                .context("Failed to convert PNG to WebP")?
-        } else {
-            image_converter::svg_to_webp(
-                &output_bytes,
-                image_converter::WebpQuality::Lossless,
-                &fonts,
-                cache_dir.as_deref(),
-            )
-            .await
-            .context("Failed to convert SVG to WebP")?
-        };
-    }
-
-    if let Some(cache_path) = &cache_dir {
-        let cached_file = cache_path.join(format!("{}.{}", hash, format));
-        fs::write(&cached_file, &output_bytes).await.ok();
-    }
-
-    fs::write(&output, &output_bytes).await?;
     Ok(())
 }
