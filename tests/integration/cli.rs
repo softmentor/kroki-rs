@@ -90,7 +90,11 @@ fn test_batch_conversion() {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        panic!("Batch conversion failed: {}", stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        panic!(
+            "Batch conversion failed:\nSTDOUT:\n{}\nSTDERR:\n{}",
+            stdout, stderr
+        );
     }
 
     let entries: Vec<_> = fs::read_dir(output_path)
