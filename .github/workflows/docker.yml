@@ -45,6 +45,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
       - name: Install dependencies
         run: npm install
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
       - run: make test
 
   smoke-test:
