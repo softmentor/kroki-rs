@@ -138,7 +138,7 @@ jobs:
 
   docker:
     name: Build & Push Docker Image
-    needs: release
+    needs: [release, publish]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
