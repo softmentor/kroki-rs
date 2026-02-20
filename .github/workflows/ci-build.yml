@@ -36,7 +36,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -47,7 +50,8 @@ jobs:
         run: npm install
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
-      - run: make test
+      - name: Run tests with nextest
+        run: cargo nextest run --locked
 
   smoke-test:
     name: smoke-test
@@ -117,4 +121,3 @@ jobs:
           
           docker stop kroki-test
           echo "✅ Smoke test passed!"
-

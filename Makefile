@@ -29,6 +29,11 @@ release:
 test:
 	cargo test --release
 
+# Fast CI tests using nextest (debug profile, parallel execution)
+.PHONY: test-ci
+test-ci:
+	cargo nextest run --locked
+
 # Run tests with output
 .PHONY: test-v
 test-v:
