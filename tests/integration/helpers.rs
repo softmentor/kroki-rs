@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 #[allow(dead_code)]
-pub fn create_test_files(dir: &PathBuf) {
+pub fn create_test_files(dir: &std::path::Path) {
     fs::write(dir.join("test.d2"), "x -> y").unwrap();
     fs::write(dir.join("test.excalidraw"), "{\"type\":\"excalidraw\"}").unwrap();
     fs::write(dir.join("skip.txt"), "ignored").unwrap();

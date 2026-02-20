@@ -12,6 +12,7 @@ In this section, you will find:
 - **[How to build and contribute](#kroki-rs.developer-guide.build-contribute)**: Deep dive into the Provider Pattern, project structure, and guidelines for adding new providers.
 - **[How to package, release, deploy and operate](#kroki-rs.developer-guide.release-deploy)**: Instructions for building, packaging, and distributing release artifacts.
 - **[Coding Patterns](#kroki-rs.developer-guide.coding-patterns)**: Established coding conventions — process execution, provider implementation, error handling, async I/O, and configuration.
+- **[Development Protocol](#kroki-rs.developer-guide.protocol)**: Strict rules for branching, PRs, and atomic releases (Kroki-Flow).
 - **[Docker Guide](#kroki-rs.developer-guide.docker)**: Build, test, debug, and operate Kroki-rs in OCI containers.
 - **[CI/CD Infrastructure](#kroki-rs.developer-guide.ci-cd)**: High-performance pipeline for verification and atomic releases.
 - **[Tech Debt Tracking](#kroki-rs.developer-guide.tech-debt-tracking)**: How we track, prioritize, and remediate technical debt across releases.

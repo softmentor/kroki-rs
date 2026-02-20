@@ -1,76 +1,105 @@
-# Docker CI (Verification Only)
-# This workflow performs fast verification of the Docker image on every push to main or PR.
-# It leverages the pre-built 'base' image to achieve sub-minute run times.
-# Note: This workflow does NOT push images to the registry. Distribution is handled by release.yml.
-name: Docker CI
+# Continuous Integration (PR-Gate)
+# Performs fast verification on every PR to ensure main stability.
+name: Continuous Integration
 
 on:
   push:
-    branches: [ "main" ] # Only verify on main for stability checks
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ] # Verify PRs before they are merged
+    branches: [ "main" ]
 
 jobs:
-  build-and-test-image:
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: make test
+
+  smoke-test:
+    name: smoke-test
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write # Required for pulling from private/internal registries
+      packages: read
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      
+      - name: Check for base image dependency changes
+        id: base-changes
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            Dockerfile
+            package.json
+            package-lock.json
+
+      - name: Determine BASE_IMAGE
+        id: determine-base
+        run: |
+          if [ "${{ steps.base-changes.outputs.any_changed }}" == "true" ]; then
+            echo "Base dependencies changed. Will build base from scratch."
+            echo "base_img=base" >> $GITHUB_OUTPUT
+          else
+            echo "No base dependencies changed. Utilizing pre-built GHCR base image."
+            echo "base_img=ghcr.io/${{ github.repository }}-base:latest" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Load Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          # Leverage the pre-built base image for extreme speed (< 30s build)
           build-args: |
-            BASE_IMAGE=ghcr.io/${{ github.repository }}-base:latest
-          load: true # Ensures image is placed into local Docker daemon for testing
+            BASE_IMAGE=${{ steps.determine-base.outputs.base_img }}
+          load: true 
           tags: kroki-rs:ci-test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Verify Image and Admin Health Endpoint
+      - name: Verify API and Rendering
         run: |
-          # 1. Start the container in the background
+          # 1. Start the container
           docker run -d --name kroki-test -p 8000:8000 -p 8081:8081 kroki-rs:ci-test
-          
-          # 2. Wait for server startup
           sleep 5
           
-          # 3. Test Health Check API (Admin Port)
-          echo "Testing Health Endpoint..."
-          curl --fail -s http://localhost:8081/health > result.json
-          cat result.json
-          if ! grep -q '"status":"ok"' result.json; then
-            echo "Health check failed!"
-            docker logs kroki-test
-            exit 1
-          fi
+          # 2. Test Health Check API (Admin Port)
+          curl --fail -s http://localhost:8081/health | grep '"status":"ok"'
           
-          # 4. Test Mermaid Rendering (Main API Port)
-          # Uses a properly compressed/encoded "graph TD; A-->B;" payload
-          echo "Testing Playwright/Mermaid Integration..."
-          HTTP_CODE=$(curl -s -o mermaid.svg -w "%{http_code}" http://localhost:8000/mermaid/svg/eJxLL0osyFAIcbHmUnDU1bVzsgYALroEhg)
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "Mermaid rendering failed with HTTP $HTTP_CODE"
-            cat mermaid.svg || true
-            docker logs kroki-test
-            exit 1
-          fi
+          # 3. Test Mermaid Rendering (Main API Port)
+          curl -s -f -o mermaid.svg http://localhost:8000/mermaid/svg/eJxLL0osyFAIcbHmUnDU1bVzsgYALroEhg
+          grep -q "<svg" mermaid.svg
           
-          # 5. Verify the SVG output is valid
-          if ! grep -q "<svg" mermaid.svg; then
-            echo "Invalid SVG output!"
-            cat mermaid.svg
-            docker logs kroki-test
-            exit 1
-          fi
-          
-          echo "Container is healthy!"
-          docker logs kroki-test
           docker stop kroki-test
+          echo "✅ Smoke test passed!"
 

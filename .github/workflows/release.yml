@@ -31,6 +31,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Verify Version Synchronicity
+        run: |
+          chmod +x scripts/verify-version.sh
+          ./scripts/verify-version.sh
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -142,6 +147,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and Push Base Image for Release
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          BASE_IMG="ghcr.io/${{ github.repository }}-base"
+          # We don't need to pull/build, we can use 'docker manifest' or 'regctl' but
+          # 'docker buildx imagetools' is the easiest way to alias a multi-arch image
+          docker buildx imagetools create \
+            --tag "${BASE_IMG}:${VERSION}" \
+            "${BASE_IMG}:latest"
+          echo "✅ Tagged ${BASE_IMG}:latest as ${BASE_IMG}:${VERSION}"
+
       - name: Download Linux AMD64 Binary
         uses: actions/download-artifact@v4
         with:
@@ -168,13 +191,6 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Load (Local Verification)
         uses: docker/build-push-action@v5
