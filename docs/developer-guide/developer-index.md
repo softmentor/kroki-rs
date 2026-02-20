@@ -11,6 +11,8 @@ This guide is for developers who want to contribute to **Kroki-rs** or understan
 In this section, you will find:
 - **[How to build and contribute](kroki-rs.developer-guide.build-contribute)**: Deep dive into the Provider Pattern, project structure, and guidelines for adding new providers.
 - **[How to package, release, deploy and operate](kroki-rs.developer-guide.release-deploy)**: Instructions for building, packaging, and distributing release artifacts.
+- **[Coding Patterns](kroki-rs.developer-guide.coding-patterns)**: Established coding conventions — process execution, provider implementation, error handling, async I/O, and configuration.
+- **[Tech Debt Tracking](kroki-rs.developer-guide.tech-debt-tracking)**: How we track, prioritize, and remediate technical debt across releases.
 - **[Roadmap](kroki-rs.roadmap)**: Future plans and scheduled features for Kroki-rs.
 - **[Contributing](kroki-rs.contributing)**: Guidelines on how to successfully propose changes and submit PRs.
 

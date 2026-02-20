@@ -10,7 +10,10 @@ crate::diagrams::define_provider!(ExcalidrawProvider);
 
 #[async_trait]
 impl DiagramProvider for ExcalidrawProvider {
-    fn validate(&self, _source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> Result<()> {
+        if source.trim().is_empty() {
+            return Err(anyhow::anyhow!("Diagram source is empty"));
+        }
         Ok(())
     }
 

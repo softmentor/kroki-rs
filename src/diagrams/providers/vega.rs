@@ -9,7 +9,10 @@ crate::diagrams::define_provider!(VegaProvider);
 
 #[async_trait]
 impl DiagramProvider for VegaProvider {
-    fn validate(&self, _source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> Result<()> {
+        if source.trim().is_empty() {
+            return Err(anyhow::anyhow!("Diagram source is empty"));
+        }
         Ok(())
     }
 
@@ -67,7 +70,10 @@ impl VegaLiteProvider {
 
 #[async_trait]
 impl DiagramProvider for VegaLiteProvider {
-    fn validate(&self, _source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> Result<()> {
+        if source.trim().is_empty() {
+            return Err(anyhow::anyhow!("Diagram source is empty"));
+        }
         Ok(())
     }
 

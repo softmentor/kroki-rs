@@ -8,7 +8,10 @@ crate::diagrams::define_provider!(D2Provider);
 
 #[async_trait]
 impl DiagramProvider for D2Provider {
-    fn validate(&self, _source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> Result<()> {
+        if source.trim().is_empty() {
+            return Err(anyhow::anyhow!("Diagram source is empty"));
+        }
         Ok(())
     }
 

@@ -17,6 +17,8 @@ project:
       children:
         - file: developer-guide/development.md
         - file: developer-guide/distribution.md
+        - file: developer-guide/coding-patterns.md
+        - file: developer-guide/tech-debt-tracking.md
         - file: ../ROADMAP.md
         - file: ../CONTRIBUTING.md
     - title: Reference

@@ -8,8 +8,11 @@ crate::diagrams::define_provider!(CommandProvider);
 
 #[async_trait]
 impl DiagramProvider for CommandProvider {
-    fn validate(&self, _source: &str) -> Result<()> {
-        Ok(()) // Todo: implement validation logic
+    fn validate(&self, source: &str) -> Result<()> {
+        if source.trim().is_empty() {
+            return Err(anyhow::anyhow!("Diagram source is empty"));
+        }
+        Ok(())
     }
 
     async fn generate(&self, source: &str, _format: &str) -> Result<Vec<u8>> {
