@@ -13,12 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI Utilities**: Added a new `batch` command (`kroki-rs batch`) to recursively discover and convert all diagrams in a directory concurrently.
 - **Supported Providers**: Added support for Excalidraw diagrams via the `excalidraw-to-svg` tool.
 - **Testing**: Added dedicated integration tests for each individual provider to ensure reliable conversions.
+- **Custom Font Loading**: Added the `--font` CLI argument and `fonts` configuration array to dynamically download and load external `.ttf` URLs for high-fidelity WebP and SVG rasterizations.
 
 ### Changed
 - **CI/CD Optimization**: Integrated `Swatinem/rust-cache@v2` into GitHub Actions to eliminate redundant compilation of the new image dependencies, keeping build times low.
-- **Testing**: Refactored the integration test suite for better isolation, parallel execution, and targeted provider verification.
-
-### Changed
 - **Testing**: Refactored the integration test suite for better isolation, parallel execution, and targeted provider verification.
 
 ## [0.0.1] - 2026-02-19

@@ -16,6 +16,7 @@ kroki-rs convert --type <DIAGRAM_TYPE> --format <OUTPUT_FORMAT> <INPUT_FILE>
 -   `-f, --format`: The output format (`svg`, `png`, `pdf`, `webp`). *Note: SVG provides the best vector fidelity, but WebP is supported natively by kroki-rs via high-quality lossless rasterization.*
 -   `<INPUT_FILE>`: Path to the file containing the diagram description.
 -   `--cache-dir <DIR>`: (Optional) Path to enable local SVG/WebP caching to skip redundant conversions.
+-   `--font <URL>`: (Optional) HTTP URL to a `.ttf` or `.otf` font file. Kroki-rs will download, cache, and automatically load this font into the rendering context (especially useful for achieving perfect WebP output fidelity for web-based tools like Mermaid). You can specify multiple `--font` flags.
 
 ### Batch Conversion
 

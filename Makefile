@@ -8,6 +8,11 @@ ARCHIVE_NAME=$(BINARY_NAME)-$(PLATFORM).tar.gz
 .PHONY: all
 all: deps clean fmt verify doc
 
+# Check for sccache and configure it if available (speeds up local builds)
+ifneq (, $(shell which sccache))
+export RUSTC_WRAPPER=sccache
+endif
+
 # Build in debug mode
 .PHONY: build
 build:

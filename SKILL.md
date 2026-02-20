@@ -8,17 +8,18 @@ description: Integration guide for tools and LLMs to consume Kroki-rs for diagra
 This guide helps AI agents and developers integrate **Kroki-rs** into their workflows.
 
 ## Overview
-Kroki-rs converts text-based diagram descriptions (Mermaid, Graphviz, D2, etc.) into images (SVG, PNG). It is a drop-in replacement for the original Kroki service.
+Kroki-rs converts text-based diagram descriptions (Mermaid, Graphviz, D2, etc.) into images (SVG, PNG, WebP). It is a drop-in replacement for the original Kroki service.
 
 ## Usage Modes
 
 ### 1. CLI Usage
 Ideal for one-off conversions or build scripts.
 ```bash
-kroki-rs convert --type <TYPE> --format <FORMAT> <INPUT_FILE>
+kroki-rs convert --type <TYPE> --format <FORMAT> [--font <TTF_URL>] <INPUT_FILE>
 ```
 - **Inputs**: File path or stdin.
 - **Outputs**: Stdout (redirect to file).
+- **Optional**: `--font` URL to dynamically download and embed a `.ttf` file.
 
 ### 2. Server (HTTP API)
 Kroki-rs provides a REST API compatible with the [Kroki specification](https://docs.kroki.io/kroki/setup/http-api/).
