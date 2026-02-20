@@ -228,3 +228,56 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Job 4: Deploy documentation only after all artifacts are published
+  pages:
+    name: Deploy Documentation
+    needs: [publish, docker]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Rustdoc
+        run: make doc
+
+      - name: Setup MyST
+        run: npm install -g mystmd
+
+      - name: Build MyST
+        run: myst build --html
+        working-directory: docs
+        env:
+          BASE_URL: "/kroki-rs"
+
+      - name: Merge Docs
+        run: |
+          mkdir -p docs/_build/html/rustdoc
+          cp -r target/doc/* docs/_build/html/rustdoc/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build/html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

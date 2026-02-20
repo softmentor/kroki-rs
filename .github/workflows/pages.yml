@@ -1,13 +1,10 @@
-# Doc Deployment (Tags Only)
-# This workflow builds and deploys the project documentation (Rustdoc + MyST) to GitHub Pages.
-# It is synchronized with releases to ensure documentation reflects the currently released version.
-name: Doc Deployment (Tags Only)
+# Documentation Deployment (Manual Only)
+# Use this workflow to rebuild and deploy documentation without a full release.
+# For tagged releases, docs are deployed atomically via release.yml.
+name: Doc Deployment (Manual)
 
 on:
-  push:
-    tags:
-      - 'v*' # Trigger on any version tag (e.g., v0.0.3)
-  workflow_dispatch: # Allows manual trigger from UI
+  workflow_dispatch: # Manual trigger only
 
 permissions:
   contents: read
