@@ -12,10 +12,10 @@
         "required_status_checks": {
             "strict": true,
             "contexts": [
-                "Continuous Integration / clippy",
-                "Continuous Integration / fmt",
-                "Continuous Integration / test",
-                "Continuous Integration / smoke-test"
+                "CI-Build / clippy",
+                "CI-Build / fmt",
+                "CI-Build / test",
+                "CI-Build / smoke-test"
             ]
         },
         "enforce_admins": true,
