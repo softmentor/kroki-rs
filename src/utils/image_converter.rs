@@ -23,7 +23,7 @@ pub async fn svg_to_webp(
     if !fonts.is_empty() {
         let font_mgr = crate::utils::font_manager::FontManager::new(cache_dir)?;
         let downloaded_dir = font_mgr.prepare_fonts(fonts).await?;
-        opt.fontdb_mut().load_font_dir(&downloaded_dir);
+        opt.fontdb_mut().load_fonts_dir(&downloaded_dir);
     }
 
     let tree = usvg::Tree::from_data(svg_bytes, &opt)
