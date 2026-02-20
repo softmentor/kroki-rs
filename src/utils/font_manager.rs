@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use reqwest::Client;
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -40,7 +40,7 @@ impl FontManager {
 
         for url in urls {
             // Very simple file naming based on the URL's trailing segment or a hash
-            let file_name = url.split('/').last().unwrap_or("custom_font.ttf");
+            let file_name = url.split('/').next_back().unwrap_or("custom_font.ttf");
             let local_path = self.cache_dir.join(file_name);
 
             if !local_path.exists() {
