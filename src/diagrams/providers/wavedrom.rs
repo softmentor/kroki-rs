@@ -1,26 +1,19 @@
 use crate::diagrams::DiagramProvider;
 use anyhow::{Context, Result};
-use std::io::{Read, Write};
-use std::path::PathBuf;
-use std::process::Command;
+use async_trait::async_trait;
+use std::io::Write;
 use tempfile::NamedTempFile;
+use tokio::process::Command;
 
-pub struct WavedromProvider {
-    pub bin_path: PathBuf,
-}
+crate::diagrams::define_provider!(WavedromProvider);
 
-impl WavedromProvider {
-    pub fn new(bin_path: PathBuf) -> Self {
-        Self { bin_path }
-    }
-}
-
+#[async_trait]
 impl DiagramProvider for WavedromProvider {
     fn validate(&self, _source: &str) -> Result<()> {
         Ok(())
     }
 
-    fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
         // Wavedrom CLI: wavedrom-cli -i input.json -s output.svg
         // Does not support stdin/stdout well in all versions.
 
@@ -57,7 +50,9 @@ impl DiagramProvider for WavedromProvider {
             }
         }
 
-        let output = cmd.output().context("Failed to execute wavedrom-cli")?;
+        let output =
+            crate::diagrams::run_process_with_timeout(cmd, None, self.timeout_ms, source.len())
+                .await?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -67,8 +62,7 @@ impl DiagramProvider for WavedromProvider {
         // Read output file
         let mut result = Vec::new();
         let mut file = std::fs::File::open(&output_path).context("Failed to open output file")?;
-        file.read_to_end(&mut result)
-            .context("Failed to read output file")?;
+        std::io::Read::read_to_end(&mut file, &mut result).context("Failed to read output file")?;
 
         Ok(result)
     }

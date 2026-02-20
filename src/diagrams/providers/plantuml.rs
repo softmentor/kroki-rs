@@ -1,30 +1,23 @@
 use crate::diagrams::DiagramProvider;
-use anyhow::{Context, Result};
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use anyhow::Result;
+use async_trait::async_trait;
+use std::process::Stdio;
+use tokio::process::Command;
 
-pub struct PlantUmlProvider {
-    pub bin_path: PathBuf,
-}
+crate::diagrams::define_provider!(PlantUmlProvider);
 
-impl PlantUmlProvider {
-    pub fn new(bin_path: PathBuf) -> Self {
-        Self { bin_path }
-    }
-}
-
+#[async_trait]
 impl DiagramProvider for PlantUmlProvider {
     fn validate(&self, _source: &str) -> Result<()> {
         Ok(())
     }
 
-    fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
         // PlantUML CLI: java -jar plantuml.jar -pipe -tsvg
         // Or if installed via brew: plantuml -pipe -tsvg
 
-        let mut child = Command::new(&self.bin_path)
-            .arg("-pipe")
+        let mut cmd = Command::new(&self.bin_path);
+        cmd.arg("-pipe")
             .arg(match format {
                 "svg" => "-tsvg",
                 "png" => "-tpng",
@@ -33,15 +26,15 @@ impl DiagramProvider for PlantUmlProvider {
             })
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .context("Failed to spawn plantuml")?;
+            .stderr(Stdio::piped());
 
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(source.as_bytes())?;
-        }
-
-        let output = child.wait_with_output()?;
+        let output = crate::diagrams::run_process_with_timeout(
+            cmd,
+            Some(source.as_bytes()),
+            self.timeout_ms,
+            source.len(),
+        )
+        .await?;
 
         if output.status.success() {
             Ok(output.stdout)

@@ -1,26 +1,19 @@
 use crate::diagrams::DiagramProvider;
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use std::io::Write;
-use std::path::PathBuf;
-use std::process::Command;
 use tempfile::NamedTempFile;
+use tokio::process::Command;
 
-pub struct DitaaProvider {
-    pub bin_path: PathBuf,
-}
+crate::diagrams::define_provider!(DitaaProvider);
 
-impl DitaaProvider {
-    pub fn new(bin_path: PathBuf) -> Self {
-        Self { bin_path }
-    }
-}
-
+#[async_trait]
 impl DiagramProvider for DitaaProvider {
     fn validate(&self, _source: &str) -> Result<()> {
         Ok(())
     }
 
-    fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
         // ditaa -jar ditaa.jar input output
         // OR ditaa input output if it's a wrapper script
         // Config bin_path points to the executable.
@@ -64,7 +57,9 @@ impl DiagramProvider for DitaaProvider {
 
         // ditaa options?
 
-        let output = cmd.output().context("Failed to execute ditaa")?;
+        let output =
+            crate::diagrams::run_process_with_timeout(cmd, None, self.timeout_ms, source.len())
+                .await?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);

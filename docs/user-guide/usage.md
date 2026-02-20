@@ -1,3 +1,7 @@
+---
+title: Usage Guide
+label: kroki-rs.user-guide.usage
+---
 # Usage Guide
 
 Kroki-rs can be used in two modes: **CLI** (Command Line Interface) and **Server** (HTTP API).

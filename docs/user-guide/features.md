@@ -1,3 +1,7 @@
+---
+title: Advanced Features
+label: kroki-rs.user-guide.features
+---
 # Features
 
 Kroki-rs is packed with features designed for speed, reliability, and ease of use.

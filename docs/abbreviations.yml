@@ -1,0 +1,12 @@
+version: 1
+project:
+  # All project abbreviations
+  abbreviations:
+    ADR: Architecture Decision Record.
+    API: Application Programming Interface.
+    CLI: Command Line Interface.
+    HTTP: Hypertext Transfer Protocol.
+    RFC: Request for Comments.
+    SVG: Scalable Vector Graphics.
+    PNG: Portable Network Graphics.
+    WebP: Web Picture format.

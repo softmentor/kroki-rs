@@ -1,4 +1,8 @@
-# Distribution Guide
+---
+title: How to package, release, deploy and operate
+label: kroki-rs.developer-guide.release-deploy
+---
+# Release & Deploy
 
 This guide outlines the recommended options for distributing **Kroki-rs** to users.
 

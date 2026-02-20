@@ -16,7 +16,7 @@ pub async fn convert(
     cache_dir: Option<PathBuf>,
 ) -> Result<()> {
     let capabilities = Capabilities::discover(&config);
-    let registry = DiagramRegistry::new(&capabilities);
+    let registry = DiagramRegistry::new(&capabilities, &config);
 
     let provider = registry.get(&type_).context(format!(
         "Diagram type '{}' not supported or tool not found",
@@ -83,6 +83,7 @@ pub async fn convert(
 
     let mut output_bytes = provider
         .generate(&source, base_format)
+        .await
         .context("Diagram generation failed")?;
 
     if is_webp {
@@ -272,7 +273,7 @@ async fn convert_to_file(
     cache_dir: Option<PathBuf>,
 ) -> Result<()> {
     let capabilities = Capabilities::discover(&config);
-    let registry = DiagramRegistry::new(&capabilities);
+    let registry = DiagramRegistry::new(&capabilities, &config);
 
     let provider = registry.get(&type_).context(format!(
         "Diagram type '{}' not supported or tool not found",
@@ -328,6 +329,7 @@ async fn convert_to_file(
 
     let mut output_bytes = provider
         .generate(&source, base_format)
+        .await
         .context("Diagram generation failed")?;
 
     if is_webp {

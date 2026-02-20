@@ -1,33 +1,21 @@
 use crate::diagrams::DiagramProvider;
-use anyhow::{Context, Result};
+use anyhow::Result;
+use async_trait::async_trait;
 use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use tempfile::NamedTempFile;
+use tokio::process::Command;
 
-/// Provider for converting Excalidraw diagrams to SVG.
-///
-/// This provider uses the `excalidraw-to-svg` CLI tool to perform the conversion.
-#[derive(Debug)]
-pub struct ExcalidrawProvider {
-    /// Path to the `excalidraw-to-svg` executable.
-    pub bin_path: PathBuf,
-}
+crate::diagrams::define_provider!(ExcalidrawProvider);
 
-impl ExcalidrawProvider {
-    /// Creates a new `ExcalidrawProvider` with the given binary path.
-    pub fn new(bin_path: PathBuf) -> Self {
-        Self { bin_path }
-    }
-}
-
+#[async_trait]
 impl DiagramProvider for ExcalidrawProvider {
     fn validate(&self, _source: &str) -> Result<()> {
         // Validation could check if it's valid JSON
         Ok(())
     }
 
-    fn generate(&self, source: &str, _format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, _format: &str) -> Result<Vec<u8>> {
         // excalidraw-to-svg usually expects a file input.
         // We'll write source to a temp file.
         let mut temp_input = NamedTempFile::new()?;
@@ -38,12 +26,14 @@ impl DiagramProvider for ExcalidrawProvider {
         // Let's try capturing stdout first.
         // Usage might be: excalidraw-to-svg <input>
 
-        let output = Command::new(&self.bin_path)
-            .arg(&input_path)
+        let mut cmd = Command::new(&self.bin_path);
+        cmd.arg(&input_path)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .context("Failed to execute excalidraw-to-svg")?;
+            .stderr(Stdio::piped());
+
+        let output =
+            crate::diagrams::run_process_with_timeout(cmd, None, self.timeout_ms, source.len())
+                .await?;
 
         if output.status.success() {
             if output.stdout.is_empty() {

@@ -1,3 +1,7 @@
+---
+title: Configuration Reference
+label: kroki-rs.user-guide.configuration
+---
 # Configuration
 
 Kroki-rs is designed to work out-of-the-box with auto-discovery, but you can customize it using a `kroki.toml` file in the working directory.

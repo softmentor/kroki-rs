@@ -1,3 +1,7 @@
+---
+title: Supported Diagram Types
+label: kroki-rs.user-guide.supported-diagrams
+---
 # Supported Diagram Types
 
 Kroki-rs supports a wide variety of diagram types by leveraging existing CLI tools. Below is a list of supported types and their primary delivery format.

@@ -1,3 +1,7 @@
+---
+title: Getting Started with Kroki-rs
+label: kroki-rs.user-guide.getting-started
+---
 # Getting Started with Kroki-rs
 
 ## Prerequisites
@@ -8,7 +12,7 @@ Kroki-rs is highly modular and relies on external tools to render specific diagr
 - **Node.js**: Required for Mermaid, Vega, and Wavedrom.
 - **D2**: For modern, data-driven diagrams.
 
-See the [**Supported Diagrams**](supported-diagrams.md) page for details on tool requirements.
+See the [**Supported Diagrams**](kroki-rs.user-guide.supported-diagrams) page for details on tool requirements.
 
 ## Installation
 
@@ -81,5 +85,5 @@ curl http://localhost:8000/graphviz/svg/eNpLyUwvSizm5TIGAAWDAY0=
 ```
 
 ## Next Steps
-- Explore [**Usage Details**](usage.md) for advanced CLI flags.
-- Check [**Supported Diagrams**](supported-diagrams.md) to see what you can build.
+- Explore [**Usage Details**](kroki-rs.user-guide.usage) for advanced CLI flags.
+- Check [**Supported Diagrams**](kroki-rs.user-guide.supported-diagrams) to see what you can build.

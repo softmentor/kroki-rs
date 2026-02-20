@@ -40,7 +40,7 @@ pub async fn get_diagram(
 
     // 2. Discover capabilities
     let capabilities = Capabilities::discover(&config);
-    let registry = DiagramRegistry::new(&capabilities);
+    let registry = DiagramRegistry::new(&capabilities, &config);
 
     // 3. Find provider
     let provider = match registry.get(&type_) {
@@ -67,7 +67,7 @@ pub async fn get_diagram(
     };
 
     // 4. Generate
-    match provider.generate(&source, base_format) {
+    match provider.generate(&source, base_format).await {
         Ok(mut bytes) => {
             if is_webp {
                 // Fallback to empty fonts slice if the tool isn't specifically defined, or try to extract from tool config

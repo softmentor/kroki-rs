@@ -107,6 +107,7 @@ pub struct ToolConfig {
     pub config_path: Option<String>,
     #[serde(default)]
     pub fonts: Vec<String>,
+    pub timeout_ms: Option<u64>,
 }
 
 impl Config {

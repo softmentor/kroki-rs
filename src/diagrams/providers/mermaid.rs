@@ -1,27 +1,18 @@
 use crate::diagrams::DiagramProvider;
-use anyhow::{Context, Result};
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use anyhow::Result;
+use async_trait::async_trait;
+use std::process::Stdio;
+use tokio::process::Command;
 
-/// A provider for Mermaid diagrams using the `mmdc` CLI tool.
-pub struct MermaidProvider {
-    /// The path to the `mmdc` binary.
-    pub bin_path: PathBuf,
-}
+crate::diagrams::define_provider!(MermaidProvider);
 
-impl MermaidProvider {
-    pub fn new(bin_path: PathBuf) -> Self {
-        Self { bin_path }
-    }
-}
-
+#[async_trait]
 impl DiagramProvider for MermaidProvider {
     fn validate(&self, _source: &str) -> Result<()> {
         Ok(()) // Todo: implement validation logic
     }
 
-    fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
         // mmdc requires an input file or stdin, and output file.
         // It's less stream-friendly than dot.
         // We'll use a temporary file for output if needed, or see if it supports stdout.
@@ -32,8 +23,8 @@ impl DiagramProvider for MermaidProvider {
         // Create a temporary input file because passing via stdin to mmdc can be flaky with some shells?
         // Actually, let's try stdin first with `-i -`
 
-        let mut child = Command::new(&self.bin_path)
-            .args(["-i", "-", "-o", "-"]) // Output to stdout
+        let mut cmd = Command::new(&self.bin_path);
+        cmd.args(["-i", "-", "-o", "-"]) // Output to stdout
             .arg(match format {
                 "svg" => "--outputFormat=svg",
                 "png" => "--outputFormat=png",
@@ -43,15 +34,15 @@ impl DiagramProvider for MermaidProvider {
             // .arg("--puppeteerConfigFile=...") // TODO: Support config
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .context("Failed to spawn mmdc")?;
+            .stderr(Stdio::piped());
 
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(source.as_bytes())?;
-        }
-
-        let output = child.wait_with_output()?;
+        let output = crate::diagrams::run_process_with_timeout(
+            cmd,
+            Some(source.as_bytes()),
+            self.timeout_ms,
+            source.len(),
+        )
+        .await?;
 
         if output.status.success() {
             if output.stdout.is_empty() {

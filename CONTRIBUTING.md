@@ -1,3 +1,7 @@
+---
+title: Contributing to Kroki-rs
+label: kroki-rs.contributing
+---
 # Contributing to Kroki-rs
 
 Thank you for your interest in contributing to **Kroki-rs**! We welcome contributions from everyone.

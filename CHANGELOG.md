@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported Providers**: Added support for Excalidraw diagrams via the `excalidraw-to-svg` tool.
 - **Testing**: Added dedicated integration tests for each individual provider to ensure reliable conversions.
 - **Custom Font Loading**: Added the `--font` CLI argument and `fonts` configuration array to dynamically download and load external `.ttf` URLs for high-fidelity WebP and SVG rasterizations.
+- **Async Execution**: Fully refactored the internal provider architecture to use `tokio::process` and `async-trait` for high-concurrency, non-blocking diagram generation (ADR 0003).
+- **Adaptive Timeouts**: Implemented a dynamic timeout strategy that scales with payload size to protect against ReDoS and hung subprocesses.
+- **Developer Experience**: Introduced the `define_provider!` macro and `run_process_with_timeout` helper to eliminate provider boilerplate and standardize error handling.
+- **Documentation**: Standardized all documentation with MyST frontmatter, unique labels, and path-independent cross-references. Added site navigation for quick access to documentation sections.
+- **Reference**: Added a project-wide Glossary and Abbreviations system.
 
 ### Changed
 - **CI/CD Optimization**: Integrated `Swatinem/rust-cache@v2` into GitHub Actions to eliminate redundant compilation of the new image dependencies, keeping build times low.

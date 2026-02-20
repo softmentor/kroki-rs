@@ -1,6 +1,10 @@
-# Developer Guide
+---
+title: How to build and contribute
+label: kroki-rs.developer-guide.build-contribute
+---
+# Build & Contribute
 
-This guide is for developers who want to contribute to **Kroki-rs** or understand its internal architecture.
+This page provides a deep dive into the internal design of **Kroki-rs**, its project structure, and guidelines for adding new diagram providers.
 
 ## Architecture Overview
 
@@ -42,8 +46,9 @@ Kroki-rs is built as a modular system using the **Provider Pattern**. This decou
 To add support for a new diagram type:
 
 1.  **Define the Provider**: Create a new file in `src/diagrams/providers/your_thing.rs`.
-    -   Implement the `DiagramProvider` trait.
-    -   Handle input (stdin/file) and capture output (stdout/file).
+    -   Use the `crate::diagrams::define_provider!(YourThingProvider);` macro to generate the boilerplate struct and `new` method.
+    -   Implement the `#[async_trait] DiagramProvider` trait.
+    -   Use the `crate::diagrams::run_process_with_timeout` helper to safely execute the external binary. This automatically protects against infinite loops and ReDoS using adaptive timeouts based on payload size.
 
 2.  **Expose the Module**: Add `pub mod your_thing;` to `src/diagrams/providers/mod.rs` (if it exists) or `src/diagrams/mod.rs`.
 
@@ -66,7 +71,7 @@ cargo install sccache
 # Or on macOS: brew install sccache
 ```
 
-The repository's `Makefile` is configured to automatically detect if `sccache` is available in your `PATH` and set `RUSTC_WRAPPER`. Subsequent `make all` iterations will then aggressively cache and skip recompilation of unchanged crates.
+The repository's `Makefile` is configured to automatically detect if `sccache` is available in your `PATH` and set `RUST_LOG=debug`. Subsequent `make all` iterations will then aggressively cache and skip recompilation of unchanged crates.
 
 ## Testing
 
@@ -118,3 +123,38 @@ The Makefile targets also respect `RUST_LOG`:
 ```bash
 RUST_LOG=debug make test
 ```
+
+## Documentation Standards
+
+Kroki-rs uses MyST Markdown for documentation. To maintain a robust and path-independent documentation structure, all contributors must follow these standards:
+
+### 1. Mandatory Frontmatter
+Every `.md` file in the `docs/` directory (and root documentation like `ROADMAP.md`) must include a frontmatter block at the very top:
+
+```yaml
+---
+title: Descriptive Page Title
+label: kroki-rs.[category].[page-name]
+---
+```
+
+### 2. Label Naming Convention
+Labels are the "Source of Truth" for linking. They must follow a hierarchical dot-notation:
+- **Core Reference**: `kroki-rs.glossary`, `kroki-rs.reference`
+- **User Guide**: `kroki-rs.user-guide.[page-name]`
+- **Developer Guide**: `kroki-rs.developer-guide.[page-name]`
+- **ADRs**: `kroki-rs.adr.[number]`
+
+### 3. Path-Independent Linking
+**Never** use hard-coded file paths (e.g., `usage.md` or `../user-guide/usage.md`) for internal links. Always use the MyST label.
+
+**Why are semantic labels better?**
+- **Refactor Resilience**: If a file is moved across the directory structure, all links using its label remain valid. You only need to update the file's location in the Table of Contents (`toc.yml`).
+- **Rename Safety**: Labels remain constant even if the underlying filename changes (as we did with `development.md` and `user-index.md`).
+- **Global Scope**: Labels provide a unique, project-wide identifier, eliminating the cognitive load of calculating relative paths (`../../`) between deeply nested folders.
+- **Improved Tooling**: Documentation parsers can validate label existence at build time, preventing "404 Not Found" errors far more reliably than static path strings.
+
+- **Incorrect**: `[Usage](usage.md)` or `[Usage](../user-guide/usage.md)`
+- **Correct**: `[Usage](kroki-rs.user-guide.usage)`
+
+This ensures that moving or renaming a file does not break incoming links across the documentation set.

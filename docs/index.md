@@ -4,6 +4,7 @@ site:
   hide_outline: true
   hide_toc: true
   hide_title_block: true
+label: kroki-rs.index
 ---
 
 +++ { "kind": "split-image" }
@@ -22,7 +23,7 @@ Kroki-rs brings the simplicity of the unified Kroki API to the speed and safety 
 :class: only-dark
 ```
 
-{button}`🚀 Get Started </user-guide/getting-started>`
+{button}`🚀 Get Started <kroki-rs.user-guide.getting-started>`
 
 +++ { "kind": "justified" }
 
@@ -43,10 +44,10 @@ By leveraging native CLI tools and the safety of Rust, we've created a drop-in r
 
 This guide is designed to get you from zero to production quickly:
 
-- **[Discover](./user-guide/features.md)**: Why Kroki-rs is the right choice for your stack.
-- **[Understand](./user-guide/supported-diagrams.md)**: Explore the supported engines and tool requirements.
-- **[Apply](./user-guide/usage.md)**: Practical patterns for CLI and Server usage.
-- **[Reflect](./developer-guide/index.md)**: Deep dive into the rust-native architecture.
+- **[Discover](kroki-rs.user-guide.features)**: Why Kroki-rs is the right choice for your stack.
+- **[Understand](kroki-rs.user-guide.supported-diagrams)**: Explore the supported engines and tool requirements.
+- **[Apply](kroki-rs.user-guide.usage)**: Practical patterns for CLI and Server usage.
+- **[Reflect](kroki-rs.developer-guide.developer-index)**: Deep dive into the rust-native architecture.
 
 > **Information is visual. Rendering should be effortless.**
 

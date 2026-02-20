@@ -1,25 +1,18 @@
 use crate::diagrams::DiagramProvider;
-use anyhow::{Context, Result};
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use anyhow::Result;
+use async_trait::async_trait;
+use std::process::Stdio;
+use tokio::process::Command;
 
-pub struct D2Provider {
-    pub bin_path: PathBuf,
-}
+crate::diagrams::define_provider!(D2Provider);
 
-impl D2Provider {
-    pub fn new(bin_path: PathBuf) -> Self {
-        Self { bin_path }
-    }
-}
-
+#[async_trait]
 impl DiagramProvider for D2Provider {
     fn validate(&self, _source: &str) -> Result<()> {
         Ok(())
     }
 
-    fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
         // d2 - - reads from stdin and writes to stdout
         // But only if format is svg?
         // d2 supports --stdout-format json|svg|png|...
@@ -81,13 +74,13 @@ impl DiagramProvider for D2Provider {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        let mut child = cmd.spawn().context("Failed to spawn d2")?;
-
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(source.as_bytes())?;
-        }
-
-        let output = child.wait_with_output()?;
+        let output = crate::diagrams::run_process_with_timeout(
+            cmd,
+            Some(source.as_bytes()),
+            self.timeout_ms,
+            source.len(),
+        )
+        .await?;
 
         if output.status.success() {
             if output.stdout.is_empty() {

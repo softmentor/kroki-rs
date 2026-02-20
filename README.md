@@ -52,10 +52,10 @@ curl http://localhost:8000/graphviz/svg/eNpLyUwvSizm5TIGAAWDAY0=
 
 Full documentation is available in the [`docs/`](docs/) directory and served on GitHub Pages.
 
--   [Getting Started](docs/getting-started.md)
--   [Supported Diagrams](docs/supported-diagrams.md)
--   [Configuration](docs/configuration.md)
--   [Developer Guide](docs/developer-guide.md)
+-   [Getting Started](docs/user-guide/getting-started.md)
+-   [Supported Diagrams](docs/user-guide/supported-diagrams.md)
+-   [Configuration](docs/user-guide/configuration.md)
+-   [Developer Guide](docs/developer-guide/developer-index.md)
 
 ## License
 

@@ -1,26 +1,19 @@
 use crate::diagrams::DiagramProvider;
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use std::io::{Read, Write};
-use std::path::PathBuf;
-use std::process::Command;
 use tempfile::NamedTempFile;
+use tokio::process::Command;
 
-pub struct BpmnProvider {
-    pub bin_path: PathBuf,
-}
+crate::diagrams::define_provider!(BpmnProvider);
 
-impl BpmnProvider {
-    pub fn new(bin_path: PathBuf) -> Self {
-        Self { bin_path }
-    }
-}
-
+#[async_trait]
 impl DiagramProvider for BpmnProvider {
     fn validate(&self, _source: &str) -> Result<()> {
         Ok(())
     }
 
-    fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
         // bpmn-to-image input.bpmn:output.png
 
         let mut input_file =
@@ -53,7 +46,9 @@ impl DiagramProvider for BpmnProvider {
 
         // Add min-dimensions or other defaults?
 
-        let output = cmd.output().context("Failed to execute bpmn-to-image")?;
+        let output =
+            crate::diagrams::run_process_with_timeout(cmd, None, self.timeout_ms, source.len())
+                .await?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
