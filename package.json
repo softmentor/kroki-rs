@@ -4,10 +4,10 @@
     "description": "Dependencies for kroki-rs",
     "dependencies": {
         "@mermaid-js/mermaid-cli": "^11.4.2",
-        "vega-cli": "^5.27.0",
-        "vega-lite": "^5.23.0",
-        "wavedrom-cli": "^2.0.0",
-        "bpmn-to-image": "^0.6.0"
+        "bpmn-to-image": "^0.6.0",
+        "vega-cli": "^6.2.0",
+        "vega-lite": "^6.4.2",
+        "wavedrom-cli": "^2.0.0"
     },
     "scripts": {
         "postinstall": "echo 'Dependencies installed. Ensure node_modules/.bin is in your path or configure kroki.toml'"
