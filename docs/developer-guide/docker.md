@@ -158,7 +158,7 @@ The image exposes a dedicated Admin server on port `8081`.
 
 ### CI/CD Pipeline
 The project uses a high-performance 3-tier pipeline:
-- **Verification ([docker.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/docker.yml))**: Extremely fast (sub-minute) smoke tests on PRs using the pre-built base image.
+- **Verification ([ci-build.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/ci-build.yml))**: Extremely fast (sub-minute) smoke tests on PRs using the pre-built base image.
 - **Base Image ([base-image.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/base-image.yml))**: Automated dependency management.
 - **Distribution ([release.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/release.yml))**: Atomic release of multi-platform binaries and verified multi-arch Docker images on version tags.
 

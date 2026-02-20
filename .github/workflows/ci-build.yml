@@ -1,6 +1,6 @@
 # Continuous Integration (PR-Gate)
 # Performs fast verification on every PR to ensure main stability.
-name: Continuous Integration
+name: CI-Build
 
 on:
   push:

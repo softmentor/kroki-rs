@@ -170,7 +170,7 @@ docker-clean:
 ci-local:
 	@echo "Running GitHub Actions locally for Docker workflow..."
 	@export DOCKER_HOST=unix://$(shell podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' 2>/dev/null || echo "/var/run/docker.sock") && \
-	act -W .github/workflows/docker.yml -s GITHUB_TOKEN=$${CR_PAT:-$${GITHUB_TOKEN}}
+	act -W .github/workflows/ci-build.yml -s GITHUB_TOKEN=$${CR_PAT:-$${GITHUB_TOKEN}}
 
 # Complete Docker Lifecycle: Build, Test, and Local CI Verification
 .PHONY: docker-all

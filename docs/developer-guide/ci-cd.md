@@ -7,7 +7,7 @@ This document outlines the high-performance CI/CD pipeline for **kroki-rs**, des
 The pipeline is split into three distinct functional areas to optimize for developer feedback speed and release reliability.
 
 ### 1. Continuous Integration (CI)
-**File**: [.github/workflows/docker.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/docker.yml)
+**File**: [.github/workflows/ci-build.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/ci-build.yml)
 
 - **Triggers**: Every `push` to `main` and every `pull_request`.
 - **Goal**: Rapidly verify that changes don't break the application or the container environment.
@@ -56,7 +56,7 @@ graph TD
     C -- make docker-test --> D[Pull main & Resolve Conflicts]
     D --> E[Submit PR]
     E --> F{Main CI Run}
-    F -- docker.yml --x E
+    F -- ci-build.yml --x E
     F -- Success --> G[Squash/FF Merge to Main]
     G --> H[Tag Release vX.Y.Z]
     H --> I{CD Release Run}
@@ -93,7 +93,7 @@ git merge main # Or git rebase main
 
 ### Stage 3: Pull Request & Merge
 1.  **Submit**: Push your branch and create a PR.
-2.  **CI Verification**: The `docker.yml` workflow will automatically run the smoke tests in **< 1 minute**.
+2.  **CI Verification**: The `ci-build.yml` workflow will automatically run the smoke tests in **< 1 minute**.
 3.  **Merge**: Once approved and CI is green, we prefer **Squash and Merge** or **Fast-Forward Merge** to keep a linear and clean history.
 
 ### Stage 4: Release & Distribution

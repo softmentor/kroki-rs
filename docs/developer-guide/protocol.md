@@ -63,7 +63,7 @@ This phase officially moves verified code to production and triggers distributio
 To balance speed and reproducibility, we use a "Build on Change, Tag on Release" model:
 
 - **Build on Change**: The base image is only physically rebuilt when `Dockerfile` or `package-lock.json` changes.
-- **CI Usage**: Standard CI (`docker.yml`) uses `base:latest` for sub-minute builds.
+- **CI Usage**: Standard CI (`ci-build.yml`) uses `base:latest` for sub-minute builds.
 - **Release Pinning**: On every official release (e.g., `v0.0.3`), the release workflow tags the current base image with that version (e.g., `:base-v0.0.3`). This ensures that if you need to patch an old release, you have the exact environment it was built in.
 
 ### 5. Hotfix & Emergency Patching Protocol
@@ -93,7 +93,7 @@ To enforce the "Kroki-Flow" on GitHub, we use automated settings and branch prot
 ### Required GitHub Settings
 - **Merge Button**: Only "Create a merge commit" and "Squash merging" are allowed.
 - **Branch Protection (`main`)**:
-    - **Required Status Checks**: `clippy`, `fmt`, `test`, `smoke-test` (all from `docker.yml`).
+    - **Required Status Checks**: `clippy`, `fmt`, `test`, `smoke-test` (all from `ci-build.yml`).
     - **Require Pull Request Reviews**: At least 1 approval.
     - **No Force Pushes**: Ensures history stability.
     - **Merge Commits Allowed**: To preserve release history.
