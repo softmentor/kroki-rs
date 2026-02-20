@@ -3,6 +3,8 @@ use base64::prelude::*;
 use flate2::read::ZlibDecoder;
 use std::io::Read;
 
+pub mod image_converter;
+
 pub fn decode(encoded: &str) -> Result<String> {
     let decoded_bytes = BASE64_URL_SAFE
         .decode(encoded)
