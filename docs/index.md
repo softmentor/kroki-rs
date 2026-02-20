@@ -23,7 +23,7 @@ Kroki-rs brings the simplicity of the unified Kroki API to the speed and safety 
 :class: only-dark
 ```
 
-{button}`🚀 Get Started <kroki-rs.user-guide.getting-started>`
+{button}`🚀 Get Started <#kroki-rs.user-guide.getting-started>`
 
 +++ { "kind": "justified" }
 

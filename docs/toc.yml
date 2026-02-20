@@ -19,6 +19,9 @@ project:
         - file: developer-guide/distribution.md
         - file: developer-guide/coding-patterns.md
         - file: developer-guide/tech-debt-tracking.md
+        - file: developer-guide/design-decisions/0001-native-webp-conversion.md
+        - file: developer-guide/design-decisions/0002-dynamic-font-loading.md
+        - file: developer-guide/design-decisions/0003-async-subprocess-timeouts.md
         - file: ../ROADMAP.md
         - file: ../CONTRIBUTING.md
     - title: Reference

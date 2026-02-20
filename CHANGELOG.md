@@ -8,21 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **WebP Output Support**: Added high-quality, centralized compilation of SVGs and PNGs into the WebP format (`-f webp`), capable of perfect lossless vector rasterization.
-- **WebP Configuration**: The ability to configure the WebP quality profile (`lossless`, `high`, `medium`, `low`, or `0-100`) via `kroki.toml` or the `--webp-quality` CLI flag.
+- **WebP Configuration**: Configure the WebP quality profile (`lossless`, `high`, `medium`, `low`, or `0-100`) via `kroki.toml` or the `--webp-quality` CLI flag. (TD-08)
 - **Performance**: Introduced a local filesystem caching layer to instantly serve previously rendered diagrams (SHA-256 content-based hashing).
-- **CLI Utilities**: Added a new `batch` command (`kroki-rs batch`) to recursively discover and convert all diagrams in a directory concurrently.
-- **Supported Providers**: Added support for Excalidraw diagrams via the `excalidraw-to-svg` tool.
-- **Testing**: Added dedicated integration tests for each individual provider to ensure reliable conversions.
-- **Custom Font Loading**: Added the `--font` CLI argument and `fonts` configuration array to dynamically download and load external `.ttf` URLs for high-fidelity WebP and SVG rasterizations.
-- **Async Execution**: Fully refactored the internal provider architecture to use `tokio::process` and `async-trait` for high-concurrency, non-blocking diagram generation (ADR 0003).
-- **Adaptive Timeouts**: Implemented a dynamic timeout strategy that scales with payload size to protect against ReDoS and hung subprocesses.
-- **Developer Experience**: Introduced the `define_provider!` macro and `run_process_with_timeout` helper to eliminate provider boilerplate and standardize error handling.
-- **Documentation**: Standardized all documentation with MyST frontmatter, unique labels, and path-independent cross-references. Added site navigation for quick access to documentation sections.
-- **Reference**: Added a project-wide Glossary and Abbreviations system.
+- **CLI Utilities**: Added a new `batch` command (`kroki-rs batch`) to recursively discover and convert all diagrams in a directory concurrently. (TD-27)
+- **Supported Providers**: Added support for Excalidraw diagrams via the `excalidraw-to-svg` tool. (TD-24)
+- **Custom Font Loading**: Added the `--font` CLI argument and `fonts` configuration array to dynamically download and load external `.ttf` URLs (ADR 0002).
+- **Async Execution**: Refactored internal architecture to use `tokio::process` and `async-trait` for non-blocking diagram generation (ADR 0003). (TD-25)
+- **Adaptive Timeouts**: Dynamic subprocess management scaling with payload size to protect against ReDoS and hung processes. (TD-13)
+- **Robustness & Validation**:
+    - **Input/Output Limits**: Enforce `max_input_size` (1MB) and `max_output_size` (50MB) to protect server resources. (TD-19, TD-20)
+    - **Provider Validation**: All 10 providers now perform source input validation before execution. (TD-11)
+    - **Format Whitelist**: Strict enforcement of supported formats (`svg`, `png`, `pdf`, `webp`, `txt`). (TD-21, TD-26)
+- **Error Reporting**:
+    - **Granular Decoding**: Detailed errors for Base64 decoding, Zlib/Deflate decompression, and UTF-8 validation. (TD-23)
+    - **Tool Discovery**: Improved error messages distinguishing between "unknown diagram type" and "tool not installed". (TD-22)
+    - **Contextual Failures**: Errors now include tool names and contextual hints for resolution. (TD-14)
+- **Developer Experience**:
+    - **Coding Patterns**: New guide documenting best practices for process execution, providers, and logging.
+    - **Tech Debt Tracking**: Formalized remediation process with 28 of 30 items resolved in this release.
+    - **Logging**: Consolidated and structured capability discovery logs. (TD-12)
+- **Documentation**: Standardized all documentation with MyST frontmatter, unique labels, and path-independent cross-references.
 
 ### Changed
-- **CI/CD Optimization**: Integrated `Swatinem/rust-cache@v2` into GitHub Actions to eliminate redundant compilation of the new image dependencies, keeping build times low.
-- **Testing**: Refactored the integration test suite for better isolation, parallel execution, and targeted provider verification.
+- **CI/CD**: Integrated `Swatinem/rust-cache@v2` into GitHub Actions.
+- **Integration Tests**: Refactor for better isolation and parallel execution. Added assertions to previously debug-only tests. (TD-29)
+- **CLI Deduplication**: Centralized diagram generation logic to eliminate duplication between `convert` and `batch` commands. (TD-01, TD-02, TD-03, TD-09)
+- **Server Health**: Replaced all `println!` calls with structured `tracing` logs. (TD-05, TD-06, TD-16)
 
 ## [0.0.1] - 2026-02-19
 

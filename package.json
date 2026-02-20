@@ -1,6 +1,6 @@
 {
     "name": "kroki-rs-deps",
-    "version": "1.0.0",
+    "version": "0.0.2",
     "description": "Dependencies for kroki-rs",
     "dependencies": {
         "@mermaid-js/mermaid-cli": "^11.4.2",

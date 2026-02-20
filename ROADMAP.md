@@ -11,7 +11,7 @@ This document outlines the planned internal improvements and future features for
 - [x] CLI and Server modes
 - [x] Major diagram providers (Graphviz, Mermaid, PlantUML, D2, BPMN, Wavedrom, Vega, Ditaa)
 
-## � v0.0.2: Performance & Expansion (Completed)
+## 🟢 v0.0.2: Performance & Expansion (Completed)
 - [x] **Excalidraw Support**: Implement the remaining major provider.
 - [x] **Local Caching Layer**: Add optional filesystem-based caching of rendered SVGs.
 - [x] **Parallel Batch Conversion**: CLI support for converting entire directories.
@@ -19,13 +19,16 @@ This document outlines the planned internal improvements and future features for
 - [x] **Just-in-Time Font Loading**: Hashed font caching for high-fidelity rasterization (ADR 0002).
 - [x] **Async Refactoring**: Fully non-blocking subprocess execution via Tokio (ADR 0003).
 - [x] **Adaptive Timeouts**: Dynamic subprocess management to mitigate ReDoS and hangs.
+- [x] **Custom Path Configuration**: Support setting tool paths via `kroki.toml` or CLI overrides.
+- [x] **Enhanced Error Messaging**: Captured STDERR on timeout and improved decode error granularity.
 - [x] **Documentation Standardization**: Full MyST label system and path-independent navigation.
+- [x] **Tech Debt Remediation**: Resolved 28 identified code quality and robustness items.
 
-## � v0.0.3: Stability & Core Polish (Current)
-- [ ] **Custom Path Configuration**: Allow setting tool paths (like `dot` or `mmdc`) via a centralized `kroki.toml`.
-- [ ] **Enhanced Error Messaging**: Return more descriptive rendering errors (STDERR capture) to the client.
+## 🔵 v0.0.3: Stability & Production Polish (Current)
+- [ ] **Structured DiagramError Enum**: Implement a typed error system across all providers (TD-15).
 - [ ] **Production Multi-arch Images**: Provide OCI-compliant, streamlined Docker images.
 - [ ] **Health Check API**: Endpoint for container orchestration and uptime monitoring.
+- [ ] **Configuration Priority Pattern**: Establish a clear hierarchy for global vs. local settings (TD-07).
 
 ## 🟠 v0.0.4: Server Features & Observability
 - [ ] **API Key Authentication**: Simple token-based security for the `serve` endpoint.

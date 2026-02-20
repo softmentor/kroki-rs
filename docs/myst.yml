@@ -12,18 +12,18 @@ project:
   github: https://github.com/softmentor/kroki-rs
 
 site:
-  url: https://softmentor.github.io/kroki-rs/
   template: book-theme
   nav:
     - title: Home
       url: /index
     - title: User Guide
-      url: /user-guide/user-index
+      url: /user-index
     - title: Developer Guide
-      url: /developer-guide/developer-index
+      url: /developer-index
     - title: Source Documentation
       url: https://softmentor.github.io/kroki-rs/rustdoc/kroki_rs/index.html
   options:
+    url: https://softmentor.github.io/kroki-rs/
     folders: false
     hide_authors: true
     logo: assets/images/k-rs-icon.png
