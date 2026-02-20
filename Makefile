@@ -172,11 +172,12 @@ docker-clean:
 
 # Run Local CI (GitHub Actions via act)
 # Mimics the GitHub Actions environment: Build, Load, and Smoke Test
+# --container-daemon-socket - : prevents act from mounting the Docker socket (fixes Podman on macOS)
 .PHONY: ci-local
 ci-local:
-	@echo "Running GitHub Actions locally for Docker workflow..."
+	@echo "Running GitHub Actions locally for CI-Build workflow..."
 	@export DOCKER_HOST=unix://$(shell podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' 2>/dev/null || echo "/var/run/docker.sock") && \
-	act -W .github/workflows/ci-build.yml -s GITHUB_TOKEN=$${CR_PAT:-$${GITHUB_TOKEN}}
+	act -W .github/workflows/ci-build.yml --container-daemon-socket - -s GITHUB_TOKEN=$${CR_PAT:-$${GITHUB_TOKEN}}
 
 # Complete Docker Lifecycle: Build, Test, and Local CI Verification
 .PHONY: docker-all
