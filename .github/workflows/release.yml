@@ -28,12 +28,17 @@ jobs:
       - name: Install System Dependencies (macOS)
         run: |
           brew install pkg-config cairo pango libpng jpeg-turbo giflib librsvg graphviz d2
+          brew install --cask chromium
           
           # Set environment variables for keg-only jpeg-turbo and other dependencies
           echo "PKG_CONFIG_PATH=$(brew --prefix jpeg-turbo)/lib/pkgconfig:$(brew --prefix libpng)/lib/pkgconfig:$(brew --prefix zlib)/lib/pkgconfig" >> $GITHUB_ENV
           echo "LDFLAGS=-L$(brew --prefix jpeg-turbo)/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I$(brew --prefix jpeg-turbo)/include" >> $GITHUB_ENV
           echo "$(brew --prefix jpeg-turbo)/bin" >> $GITHUB_PATH
+          
+          # Force Puppeteer to use the Homebrew Chromium to avoid sandbox hangs
+          echo "PUPPETEER_EXECUTABLE_PATH=/Applications/Chromium.app/Contents/MacOS/Chromium" >> $GITHUB_ENV
+          echo "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: npm install
