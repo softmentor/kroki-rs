@@ -19,8 +19,8 @@ which = "7.0"
 base64 = "0.22"
 flate2 = "1.0"
 toml = "0.8"
-reqwest = { version = "0.12", features = ["json"] }
-tempfile = "3.25.0"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tempfile = "3.10"
 dirs = "4.0"
 sha2 = "0.10"
 hex = "0.4"

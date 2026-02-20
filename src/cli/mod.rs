@@ -86,26 +86,25 @@ pub async fn convert(
         .context("Diagram generation failed")?;
 
     if is_webp {
-        let quality = match config.webp.quality.to_lowercase().as_str() {
-            "lossless" => image_converter::WebpQuality::Lossless,
-            "high" => image_converter::WebpQuality::Lossy(90),
-            "medium" => image_converter::WebpQuality::Lossy(75),
-            "low" => image_converter::WebpQuality::Lossy(50),
-            q => {
-                if let Ok(num) = q.parse::<u8>() {
-                    image_converter::WebpQuality::Lossy(num.clamp(0, 100))
-                } else {
-                    image_converter::WebpQuality::Lossless
-                }
-            }
-        };
+        let mut fonts = Vec::new();
+        fonts.extend_from_slice(&config.mermaid.fonts);
+        fonts.extend_from_slice(&config.graphviz.fonts);
+        fonts.extend_from_slice(&config.plantuml.fonts);
+        fonts.extend_from_slice(&config.excalidraw.fonts);
 
         output_bytes = if base_format == "png" {
-            image_converter::png_to_webp(&output_bytes, quality)
+            image_converter::png_to_webp(&output_bytes, image_converter::WebpQuality::Lossless)
+                .await
                 .context("Failed to convert PNG to WebP")?
         } else {
-            image_converter::svg_to_webp(&output_bytes, quality)
-                .context("Failed to convert SVG to WebP")?
+            image_converter::svg_to_webp(
+                &output_bytes,
+                image_converter::WebpQuality::Lossless,
+                &fonts,
+                cache_dir.as_deref(),
+            )
+            .await
+            .context("Failed to convert SVG to WebP")?
         };
     }
 
@@ -331,26 +330,25 @@ async fn convert_to_file(
         .context("Diagram generation failed")?;
 
     if is_webp {
-        let quality = match config.webp.quality.to_lowercase().as_str() {
-            "lossless" => image_converter::WebpQuality::Lossless,
-            "high" => image_converter::WebpQuality::Lossy(90),
-            "medium" => image_converter::WebpQuality::Lossy(75),
-            "low" => image_converter::WebpQuality::Lossy(50),
-            q => {
-                if let Ok(num) = q.parse::<u8>() {
-                    image_converter::WebpQuality::Lossy(num.clamp(0, 100))
-                } else {
-                    image_converter::WebpQuality::Lossless
-                }
-            }
-        };
+        let mut fonts = Vec::new();
+        fonts.extend_from_slice(&config.mermaid.fonts);
+        fonts.extend_from_slice(&config.graphviz.fonts);
+        fonts.extend_from_slice(&config.plantuml.fonts);
+        fonts.extend_from_slice(&config.excalidraw.fonts);
 
         output_bytes = if base_format == "png" {
-            image_converter::png_to_webp(&output_bytes, quality)
+            image_converter::png_to_webp(&output_bytes, image_converter::WebpQuality::Lossless)
+                .await
                 .context("Failed to convert PNG to WebP")?
         } else {
-            image_converter::svg_to_webp(&output_bytes, quality)
-                .context("Failed to convert SVG to WebP")?
+            image_converter::svg_to_webp(
+                &output_bytes,
+                image_converter::WebpQuality::Lossless,
+                &fonts,
+                cache_dir.as_deref(),
+            )
+            .await
+            .context("Failed to convert SVG to WebP")?
         };
     }
 

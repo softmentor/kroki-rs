@@ -105,6 +105,8 @@ fn default_timeout() -> u64 {
 pub struct ToolConfig {
     pub bin_path: Option<String>,
     pub config_path: Option<String>,
+    #[serde(default)]
+    pub fonts: Vec<String>,
 }
 
 impl Config {

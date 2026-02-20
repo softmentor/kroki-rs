@@ -17,7 +17,7 @@ This document outlines the planned internal improvements and future features for
 
 ## 🟠 v0.0.3: Stability & Core Polish
 - [ ] **Custom Path Configuration**: Allow setting tool paths (like `dot` or `mmdc`) via a centralized `kroki.toml`.
-- [ ] **Custom Font Loading**: Provide configurations to load specific `.ttf` files (like Google Fonts) into the local `fontdb` context for high-fidelity WebP and SVG rasterizations.
+- [x] **Custom Font Loading**: Provide configurations to load specific `.ttf` files (like Google Fonts) into the local `fontdb` context for high-fidelity WebP and SVG rasterizations.
 - [ ] **Enhanced Error Messaging**: Return more descriptive rendering errors (STDERR capture) to the client.
 - [ ] **Optional Production Targets**: Provide OCI-compliant, streamlined Docker/Distroless images for containerized environments (K8s, ECS).
 

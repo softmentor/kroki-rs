@@ -70,10 +70,26 @@ pub async fn get_diagram(
     match provider.generate(&source, base_format) {
         Ok(mut bytes) => {
             if is_webp {
+                // Fallback to empty fonts slice if the tool isn't specifically defined, or try to extract from tool config
+                // Wait, we can just aggregate all fonts for simplicity or use a generic list. Let's extract from the specific tool config.
+                let mut fonts = Vec::new();
+                // Simple hack: grab all fonts from all tools for the server context since we evaluate them anyway
+                fonts.extend_from_slice(&config.mermaid.fonts);
+                fonts.extend_from_slice(&config.graphviz.fonts);
+                fonts.extend_from_slice(&config.plantuml.fonts);
+                fonts.extend_from_slice(&config.excalidraw.fonts);
+
                 let convert_result = if base_format == "png" {
                     image_converter::png_to_webp(&bytes, image_converter::WebpQuality::Lossless)
+                        .await
                 } else {
-                    image_converter::svg_to_webp(&bytes, image_converter::WebpQuality::Lossless)
+                    image_converter::svg_to_webp(
+                        &bytes,
+                        image_converter::WebpQuality::Lossless,
+                        &fonts,
+                        None,
+                    )
+                    .await
                 };
 
                 match convert_result {

@@ -11,9 +11,20 @@ pub enum WebpQuality {
 }
 
 /// Converts SVG bytes to WebP format.
-pub fn svg_to_webp(svg_bytes: &[u8], _quality: WebpQuality) -> Result<Vec<u8>> {
+pub async fn svg_to_webp(
+    svg_bytes: &[u8],
+    _quality: WebpQuality,
+    fonts: &[String],
+    cache_dir: Option<&std::path::Path>,
+) -> Result<Vec<u8>> {
     let mut opt = usvg::Options::default();
     opt.fontdb_mut().load_system_fonts();
+
+    if !fonts.is_empty() {
+        let font_mgr = crate::utils::font_manager::FontManager::new(cache_dir)?;
+        let downloaded_dir = font_mgr.prepare_fonts(fonts).await?;
+        opt.fontdb_mut().load_font_dir(&downloaded_dir);
+    }
 
     let tree = usvg::Tree::from_data(svg_bytes, &opt)
         .context("Failed to parse SVG for WebP conversion")?;
@@ -38,7 +49,7 @@ pub fn svg_to_webp(svg_bytes: &[u8], _quality: WebpQuality) -> Result<Vec<u8>> {
 }
 
 /// Converts PNG bytes to WebP format (useful for ditaa fallback)
-pub fn png_to_webp(png_bytes: &[u8], _quality: WebpQuality) -> Result<Vec<u8>> {
+pub async fn png_to_webp(png_bytes: &[u8], _quality: WebpQuality) -> Result<Vec<u8>> {
     let img = image::load_from_memory_with_format(png_bytes, image::ImageFormat::Png)
         .context("Failed to decode PNG for WebP conversion")?;
 
