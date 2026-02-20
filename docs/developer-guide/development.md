@@ -155,6 +155,6 @@ Labels are the "Source of Truth" for linking. They must follow a hierarchical do
 - **Improved Tooling**: Documentation parsers can validate label existence at build time, preventing "404 Not Found" errors far more reliably than static path strings.
 
 - **Incorrect**: `[Usage](usage.md)` or `[Usage](../user-guide/usage.md)`
-- **Correct**: `[Usage](kroki-rs.user-guide.usage)`
+- **Correct**: `[Usage](#kroki-rs.user-guide.usage)`
 
 This ensures that moving or renaming a file does not break incoming links across the documentation set.

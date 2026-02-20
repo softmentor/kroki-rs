@@ -9,19 +9,19 @@ This guide is for developers who want to contribute to **Kroki-rs** or understan
 ## What is Covered?
 
 In this section, you will find:
-- **[How to build and contribute](kroki-rs.developer-guide.build-contribute)**: Deep dive into the Provider Pattern, project structure, and guidelines for adding new providers.
-- **[How to package, release, deploy and operate](kroki-rs.developer-guide.release-deploy)**: Instructions for building, packaging, and distributing release artifacts.
-- **[Coding Patterns](kroki-rs.developer-guide.coding-patterns)**: Established coding conventions — process execution, provider implementation, error handling, async I/O, and configuration.
-- **[Tech Debt Tracking](kroki-rs.developer-guide.tech-debt-tracking)**: How we track, prioritize, and remediate technical debt across releases.
-- **[Roadmap](kroki-rs.roadmap)**: Future plans and scheduled features for Kroki-rs.
-- **[Contributing](kroki-rs.contributing)**: Guidelines on how to successfully propose changes and submit PRs.
+- **[How to build and contribute](#kroki-rs.developer-guide.build-contribute)**: Deep dive into the Provider Pattern, project structure, and guidelines for adding new providers.
+- **[How to package, release, deploy and operate](#kroki-rs.developer-guide.release-deploy)**: Instructions for building, packaging, and distributing release artifacts.
+- **[Coding Patterns](#kroki-rs.developer-guide.coding-patterns)**: Established coding conventions — process execution, provider implementation, error handling, async I/O, and configuration.
+- **[Tech Debt Tracking](#kroki-rs.developer-guide.tech-debt-tracking)**: How we track, prioritize, and remediate technical debt across releases.
+- **[Roadmap](#kroki-rs.roadmap)**: Future plans and scheduled features for Kroki-rs.
+- **[Contributing](#kroki-rs.contributing)**: Guidelines on how to successfully propose changes and submit PRs.
 
 ## Architecture Decision Records (ADRs)
 
 Key design decisions and architectural trade-offs are documented using the ADR format. Please review these before proposing major structural changes:
 
-- [ADR 0001: Native WebP Conversion](kroki-rs.adr.0001)
-- [ADR 0002: Dynamic Font Loading](kroki-rs.adr.0002)
-- [ADR 0003: Async Subprocess Execution and Adaptive Timeouts](kroki-rs.adr.0003)
+- [ADR 0001: Native WebP Conversion](#kroki-rs.adr.0001)
+- [ADR 0002: Dynamic Font Loading](#kroki-rs.adr.0002)
+- [ADR 0003: Async Subprocess Execution and Adaptive Timeouts](#kroki-rs.adr.0003)
 
-If you are looking for information on how to use Kroki-rs, please proceed to the [User Guide](kroki-rs.user-guide.user-index).
+If you are looking for information on how to use Kroki-rs, please proceed to the [User Guide](#kroki-rs.user-guide.user-index).

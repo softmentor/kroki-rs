@@ -15,4 +15,4 @@ In this section, you will find:
 - **Configuration**: How to configure runtime options like custom font URL caching and process timeouts via `kroki.toml`.
 - **Security**: Best practices for safely deploying Kroki-rs in a public internet environment.
 
-If you are looking to contribute to the codebase or extend Kroki-rs with new providers, please proceed to the [Developer Guide](kroki-rs.developer-guide.developer-index).
+If you are looking to contribute to the codebase or extend Kroki-rs with new providers, please proceed to the [Developer Guide](#kroki-rs.developer-guide.developer-index).
