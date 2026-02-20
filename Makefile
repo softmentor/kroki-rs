@@ -6,8 +6,9 @@ ARCHIVE_NAME=$(BINARY_NAME)-$(PLATFORM).tar.gz
 VERSION ?= $(shell grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
 
 # Default target: complete project lifecycle
+# Uses nextest for fast parallel testing, then full verify (release build + dist)
 .PHONY: all
-all: deps clean fmt verify test-load doc
+all: deps clean fmt lint test-ci doc verify test-load
 
 # Check for sccache and configure it if available (speeds up local builds)
 ifneq (, $(shell which sccache))
