@@ -11,9 +11,7 @@ pub fn create_test_files(dir: &PathBuf) {
 use std::process::Command;
 
 pub fn get_binary_path() -> PathBuf {
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push("target/debug/kroki-rs");
-    path
+    PathBuf::from(env!("CARGO_BIN_EXE_kroki-rs"))
 }
 
 pub fn run_convert(diagram_type: &str, format: &str, input_file: &str) -> std::process::Output {

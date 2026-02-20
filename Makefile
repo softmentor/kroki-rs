@@ -23,20 +23,20 @@ build:
 release:
 	cargo build --release
 
-# Run unit and integration tests
+# Run unit and integration tests (in release mode to share artifacts with dist)
 .PHONY: test
 test:
-	cargo test
+	cargo test --release
 
 # Run tests with output
 .PHONY: test-v
 test-v:
-	cargo test -- --nocapture
+	cargo test --release -- --nocapture
 
 # Linting
 .PHONY: lint
 lint:
-	cargo clippy -- -D warnings
+	cargo clippy --release -- -D warnings
 	cargo fmt --all -- --check
 
 # Formatting
