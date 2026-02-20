@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use base64::prelude::*;
 use flate2::read::ZlibDecoder;
 use std::io::Read;
 
@@ -10,7 +9,19 @@ pub mod image_converter;
 ///
 /// Attempts Zlib (RFC 1950) first, then falls back to raw Deflate (RFC 1951).
 pub fn decode(encoded: &str) -> Result<String> {
-    let decoded_bytes = BASE64_URL_SAFE
+    use base64::{
+        alphabet,
+        engine::{self, general_purpose},
+        Engine as _,
+    };
+
+    // Use a permissive engine that handles both padded and unpadded Base64URL strings (common in Kroki)
+    let engine = engine::GeneralPurpose::new(
+        &alphabet::URL_SAFE,
+        general_purpose::NO_PAD.with_decode_padding_mode(engine::DecodePaddingMode::Indifferent),
+    );
+
+    let decoded_bytes = engine
         .decode(encoded)
         .context("Base64URL decode failed — input is not valid Base64URL")?;
 
@@ -71,8 +82,9 @@ mod tests {
 
     #[test]
     fn test_decode_not_compressed() {
+        use base64::{engine::general_purpose, Engine as _};
         // Valid base64 but not compressed data
-        let encoded = BASE64_URL_SAFE.encode("hello world");
+        let encoded = general_purpose::URL_SAFE.encode("hello world");
         let result = decode(&encoded);
         // This should fail because "hello world" is not zlib/deflate compressed
         assert!(result.is_err());

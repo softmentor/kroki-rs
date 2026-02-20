@@ -1,3 +1,4 @@
+use crate::browser::BrowserManager;
 use crate::capabilities::Capabilities;
 use crate::diagrams::{
     providers::{
@@ -21,7 +22,11 @@ pub struct DiagramRegistry {
 }
 
 impl DiagramRegistry {
-    pub fn new(capabilities: &Capabilities, config: &crate::config::Config) -> Self {
+    pub fn new(
+        capabilities: &Capabilities,
+        config: &crate::config::Config,
+        browser_manager: Option<Arc<BrowserManager>>,
+    ) -> Self {
         let mut providers: HashMap<String, Arc<dyn DiagramProvider + Send + Sync>> = HashMap::new();
 
         if let Some(path) = &capabilities.graphviz {
@@ -33,9 +38,9 @@ impl DiagramRegistry {
             providers.insert("dot".to_string(), provider);
         }
 
-        if let Some(path) = &capabilities.mermaid {
+        if let (Some(_), Some(browser)) = (&capabilities.mermaid, &browser_manager) {
             let provider = Arc::new(MermaidProvider::new(
-                path.clone(),
+                browser.clone(),
                 config.mermaid.timeout_ms,
             )) as Arc<dyn DiagramProvider + Send + Sync>;
             providers.insert("mermaid".to_string(), provider);
@@ -79,8 +84,8 @@ impl DiagramRegistry {
             providers.insert("wavedrom".to_string(), provider);
         }
 
-        if let Some(path) = &capabilities.bpmn {
-            let provider = Arc::new(BpmnProvider::new(path.clone(), config.bpmn.timeout_ms))
+        if let (Some(_), Some(browser)) = (&capabilities.bpmn, &browser_manager) {
+            let provider = Arc::new(BpmnProvider::new(browser.clone(), config.bpmn.timeout_ms))
                 as Arc<dyn DiagramProvider + Send + Sync>;
             providers.insert("bpmn".to_string(), provider);
         }

@@ -9,9 +9,11 @@ pub mod providers {
     pub mod vega;
     pub mod wavedrom;
 }
+pub mod error;
 pub mod registry;
 
-use anyhow::Result;
+pub use error::{DiagramError, DiagramResult};
+
 use async_trait::async_trait;
 
 /// Computes an adaptive timeout based on input size.
@@ -57,21 +59,25 @@ pub async fn run_process_with_timeout(
     source: Option<&[u8]>,
     timeout_ms: Option<u64>,
     source_len: usize,
-) -> Result<std::process::Output> {
-    use anyhow::Context;
+) -> DiagramResult<std::process::Output> {
     use tokio::io::AsyncWriteExt;
 
     cmd.kill_on_drop(true);
-    let mut child = cmd.spawn().context(format!(
-        "Failed to spawn '{}'. Is the tool installed and in your PATH?",
-        tool_name
-    ))?;
+    let mut child = cmd.spawn().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            DiagramError::ToolNotFound(tool_name.to_string())
+        } else {
+            DiagramError::ProcessFailed(format!("Failed to spawn '{}': {}", tool_name, e))
+        }
+    })?;
 
     if let (Some(mut stdin), Some(src)) = (child.stdin.take(), source) {
-        stdin
-            .write_all(src)
-            .await
-            .context(format!("Failed to write to stdin of '{}'", tool_name))?;
+        stdin.write_all(src).await.map_err(|e| {
+            DiagramError::ProcessFailed(format!(
+                "Failed to write to stdin of '{}': {}",
+                tool_name, e
+            ))
+        })?;
     }
 
     let actual_timeout = std::cmp::min(
@@ -87,18 +93,15 @@ pub async fn run_process_with_timeout(
     .await
     {
         Ok(Ok(out)) => Ok(out),
-        Ok(Err(e)) => anyhow::bail!(
+        Ok(Err(e)) => Err(DiagramError::ProcessFailed(format!(
             "'{}' IO error (input: {} bytes): {}",
-            tool_name,
-            source_len,
-            e
-        ),
-        Err(_) => anyhow::bail!(
-            "'{}' timed out after {}ms (input: {} bytes). Consider increasing the timeout in kroki.toml.",
-            tool_name,
-            actual_timeout,
-            source_len
-        ),
+            tool_name, source_len, e
+        ))),
+        Err(_) => Err(DiagramError::ExecutionTimeout {
+            tool: tool_name.to_string(),
+            timeout_ms: actual_timeout,
+            bytes: source_len,
+        }),
     }
 }
 
@@ -111,7 +114,7 @@ pub trait DiagramProvider {
     /// Validates the diagram source text.
     ///
     /// Returns `Ok(())` if the source is valid, or an error otherwise.
-    fn validate(&self, source: &str) -> Result<()>;
+    fn validate(&self, source: &str) -> DiagramResult<()>;
 
     /// Generates a diagram image from the source text.
     ///
@@ -120,7 +123,7 @@ pub trait DiagramProvider {
     /// * `format` - The desired output format (e.g., "svg", "png").
     ///
     /// Returns a `Vec<u8>` containing the image data.
-    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>>;
+    async fn generate(&self, source: &str, format: &str) -> DiagramResult<Vec<u8>>;
 }
 
 #[cfg(test)]
@@ -138,7 +141,18 @@ mod tests {
 
         // Ensure the function returns an error and it's specifically a timeout
         assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert_eq!(err_msg, "'sleep' timed out after 100ms (input: 0 bytes). Consider increasing the timeout in kroki.toml.");
+        let err = result.unwrap_err();
+        match err {
+            DiagramError::ExecutionTimeout {
+                tool,
+                timeout_ms,
+                bytes,
+            } => {
+                assert_eq!(tool, "sleep");
+                assert_eq!(timeout_ms, 100);
+                assert_eq!(bytes, 0);
+            }
+            _ => panic!("Expected ExecutionTimeout error"),
+        }
     }
 }

@@ -8,6 +8,7 @@ Unlike the original Java-based Kroki which bundles dependencies in Docker, **Kro
 
 -   🚀 **Fast & Lightweight**: Written in Rust, minimal footprint.
 -   🛠️ **Native Execution**: Runs directly on host, using system tools or Node.js versions.
+-   🏊‍♂️ **Browser Instance Pooling**: Employs a Node.js daemon with generic-pool to seamlessly recycle `Playwright` contexts for zero-latency Mermaid and BPMN rendering.
 -   🔄 **Drop-in Compatible**: specific API endpoints match Kroki (`GET /:type/:format/:source`).
 -   🖥️ **CLI Support**: Convert files instantly from the command line, with new **batch processing** capabilities.
 -   ⚡ **Built-in Caching**: Optional filesystem cache using SHA-256 for instant re-rendering of unchanged diagrams.
@@ -36,10 +37,18 @@ echo "digraph G { Hello -> World }" > hello.dot
 
 ### Usage (Server)
 
-Start the server:
+Start the server natively:
 
 ```bash
 ./target/release/kroki-rs serve
+```
+
+### Usage (Docker)
+
+You can run the fully self-contained OCI image, which bundles all necessary tools like Chromium and Node.js:
+
+```bash
+docker run --rm -p 8000:8000 -p 8081:8081 ghcr.io/softmentor/kroki-rs:latest
 ```
 
 Generate a diagram via API:

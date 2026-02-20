@@ -98,6 +98,10 @@ make verify
 ```
 This target runs lints, tests, builds the release binary, creates a tarball, and verifies the binary's functionality.
 
+### Container Testing
+For instructions on building and testing within OCI containers, see the **[Docker Developer Guide](#kroki-rs.developer-guide.docker)**.
+
+
 ## Internal Workflow: Payload Decoding
 
 Kroki-rs implements the standard Kroki encoding scheme:

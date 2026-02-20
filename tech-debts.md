@@ -9,7 +9,7 @@ Identified during pre-release code review. Ordered by impact × effort.
 - [x] **TD-03**: WebP format-routing copy-pasted 3× (`cli`, `handlers`)
 - [x] **TD-13**: Timeout errors lose all context — no tool name, input size, or partial stderr (`diagrams/mod.rs`)
 - [x] **TD-14**: Spawn errors are generic — don't identify which binary failed (`diagrams/mod.rs`)
-- [ ] **TD-15**: Provider errors are opaque strings, not structured (`all providers`) — *deferred to v0.0.3*
+- [x] **TD-15**: Provider errors are opaque strings, not structured (`all providers`)
 - [x] **TD-19**: No input size limits anywhere — unbounded memory risk (`handlers`, `cli`)
 
 ## 🟠 Major
@@ -22,6 +22,20 @@ Identified during pre-release code review. Ordered by impact × effort.
 - [x] **TD-17**: No partial stderr capture on timeout (`diagrams/mod.rs`)
 - [x] **TD-20**: No output size validation (`handlers`, `cli`)
 - [x] **TD-21**: No format whitelist — arbitrary strings reach providers (`handlers.rs`)
+
+## [TD-30] Centralize Temp File Management
+**Description:** Various providers (`bpmn.rs`, `vega.rs`) generate and manage their own temporary files and directories.
+**Impact:** Duplicate logic for cleanup and error handling. Potential for orphaned files if a process forcefully terminates.
+**Remediation:** Create a unified `TempWorkspace` utility that handles lifecycle management, guaranteeing cleanups via `Drop` traits and reducing boiler plate in generation routes.
+
+## [x] [TD-31] Playwright Instance Pooling & Universal Browser Renderer
+**Description:** Subprocess execution of `mermaid-cli` or `bpmn-to-image` currently spins up isolated Puppeteer/Chromium instances for *every* conversion request. This carries an immense overhead that negatively scales memory footprint and latency.
+**Impact:** Launching headless Chromium is notoriously expensive. Doing it dynamically per HTTP request prevents high-throughput diagram rendering and severely heightens the risk of Out-of-Memory (OOM) scenarios or memory leaks on the server.
+**Remediation:**
+1. **Migration to Playwright**: Standardize all browser-reliant generators (Mermaid, BPMN, potentially Excalidraw/Wavedrom) to use a unified Playwright engine instead of outdated puppeteer wrappers.
+2. **Instance Pooling**: Implement an active pool of pre-warmed Playwright `BrowserContext` objects.
+3. **TTL Enforcement**: Enforce a strict Time-To-Live (TTL) or request-limit per browser instance before it is gracefully recycled, eradicating zombie memory leaks.
+4. **Abstracted Evaluation**: Instead of calling CLI binaries, Kroki-rs should natively orchestrate the unified browser pool and execute `page.evaluate(...)` for the respective JS libraries, maximizing performance and eliminating unnecessary disk I/O.
 
 ## 🟡 Moderate
 

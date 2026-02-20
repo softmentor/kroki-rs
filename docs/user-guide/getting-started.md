@@ -40,6 +40,14 @@ If you prefer to build from source:
 
     The binary will be located at `./target/release/kroki-rs`.
 
+### Via Docker
+If you prefer not to manage external dependencies like Chromium, Node, or Graphviz yourself, you can use the official multi-arch Docker image:
+
+```bash
+docker run --rm -p 8000:8000 -p 8081:8081 ghcr.io/softmentor/kroki-rs:latest
+```
+This runs the main API on port `8000` and the Admin dashboard/health checks on port `8081`.
+
 ## Running the Application
 
 ### Setup Capabilities

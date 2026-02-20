@@ -1,5 +1,4 @@
-use crate::diagrams::DiagramProvider;
-use anyhow::Result;
+use crate::diagrams::{DiagramError, DiagramProvider, DiagramResult};
 use async_trait::async_trait;
 use std::process::Stdio;
 use tokio::process::Command;
@@ -8,14 +7,16 @@ crate::diagrams::define_provider!(CommandProvider);
 
 #[async_trait]
 impl DiagramProvider for CommandProvider {
-    fn validate(&self, source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> DiagramResult<()> {
         if source.trim().is_empty() {
-            return Err(anyhow::anyhow!("Diagram source is empty"));
+            return Err(DiagramError::ValidationFailed(
+                "Diagram source is empty".into(),
+            ));
         }
         Ok(())
     }
 
-    async fn generate(&self, source: &str, _format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, _format: &str) -> DiagramResult<Vec<u8>> {
         let mut cmd = Command::new(&self.bin_path);
         cmd.arg(format!("-T{}", _format))
             .stdin(Stdio::piped())
@@ -33,14 +34,17 @@ impl DiagramProvider for CommandProvider {
 
         if output.status.success() {
             if output.stdout.is_empty() {
-                return Err(anyhow::anyhow!(
-                    "Command succeeded but returned empty output"
+                return Err(DiagramError::ProcessFailed(
+                    "Command succeeded but returned empty output".into(),
                 ));
             }
             Ok(output.stdout)
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(anyhow::anyhow!("Command failed: {}", stderr))
+            Err(DiagramError::ProcessFailed(format!(
+                "Command failed: {}",
+                stderr
+            )))
         }
     }
 }

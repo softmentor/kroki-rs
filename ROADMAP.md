@@ -25,14 +25,16 @@ This document outlines the planned internal improvements and future features for
 - [x] **Tech Debt Remediation**: Resolved 28 identified code quality and robustness items.
 
 ## 🔵 v0.0.3: Stability & Production Polish (Current)
-- [ ] **Structured DiagramError Enum**: Implement a typed error system across all providers (TD-15).
-- [ ] **Production Multi-arch Images**: Provide OCI-compliant, streamlined Docker images.
+- [x] **Structured DiagramError Enum**: Implement a typed error system across all providers (TD-15).
+- [x] **Migration to Playwright**: For avoid flaky implementation of bpmn, mmdc etc. which rely on Puppeteer/Chromium. Explore alternatives.
+- [x] **Production Multi-arch Images**: Provide OCI-compliant, streamlined Docker images.
 - [ ] **Health Check API**: Endpoint for container orchestration and uptime monitoring.
 - [ ] **Configuration Priority Pattern**: Establish a clear hierarchy for global vs. local settings (TD-07).
 
 ## 🟠 v0.0.4: Server Features & Observability
 - [ ] **API Key Authentication**: Simple token-based security for the `serve` endpoint.
 - [ ] **Prometheus Metrics**: Export rendering stats (request count, latency per engine, failure rates).
+- [ ] **Admin API and Dashboard**: Admin API and Dashboard for managing the server on different configured port, default 8081. It should have basic health and monitoring dashboard.
 - [ ] **Custom Plugin API**: Allow users to add their own "DiagramProvider".
 - [ ] **CNCF Standards Alignment**: Adopt **CloudEvents** for rendering triggers and **OpenTelemetry** for observability.
 

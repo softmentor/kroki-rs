@@ -1,5 +1,4 @@
-use crate::diagrams::DiagramProvider;
-use anyhow::Result;
+use crate::diagrams::{DiagramError, DiagramProvider, DiagramResult};
 use async_trait::async_trait;
 use std::process::Stdio;
 use tokio::process::Command;
@@ -8,14 +7,16 @@ crate::diagrams::define_provider!(D2Provider);
 
 #[async_trait]
 impl DiagramProvider for D2Provider {
-    fn validate(&self, source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> DiagramResult<()> {
         if source.trim().is_empty() {
-            return Err(anyhow::anyhow!("Diagram source is empty"));
+            return Err(DiagramError::ValidationFailed(
+                "Diagram source is empty".into(),
+            ));
         }
         Ok(())
     }
 
-    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> DiagramResult<Vec<u8>> {
         // d2 - - reads from stdin and writes to stdout
         // But only if format is svg?
         // d2 supports --stdout-format json|svg|png|...
@@ -55,7 +56,12 @@ impl DiagramProvider for D2Provider {
             "svg" | "png" | "pdf" => {
                 // OK
             }
-            _ => return Err(anyhow::anyhow!("Unsupported format for D2: {}", format)),
+            _ => {
+                return Err(DiagramError::UnsupportedFormat {
+                    format: format.into(),
+                    provider: "D2".into(),
+                })
+            }
         }
 
         cmd.arg("--layout=dagre"); // Default layout, maybe make configurable?
@@ -88,14 +94,17 @@ impl DiagramProvider for D2Provider {
 
         if output.status.success() {
             if output.stdout.is_empty() {
-                return Err(anyhow::anyhow!(
-                    "D2 conversion succeeded but output is empty"
+                return Err(DiagramError::ProcessFailed(
+                    "D2 conversion succeeded but output is empty".into(),
                 ));
             }
             Ok(output.stdout)
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(anyhow::anyhow!("D2 conversion failed: {}", stderr))
+            Err(DiagramError::ProcessFailed(format!(
+                "D2 conversion failed: {}",
+                stderr
+            )))
         }
     }
 }

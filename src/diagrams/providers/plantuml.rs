@@ -1,5 +1,4 @@
-use crate::diagrams::DiagramProvider;
-use anyhow::Result;
+use crate::diagrams::{DiagramError, DiagramProvider, DiagramResult};
 use async_trait::async_trait;
 use std::process::Stdio;
 use tokio::process::Command;
@@ -8,14 +7,16 @@ crate::diagrams::define_provider!(PlantUmlProvider);
 
 #[async_trait]
 impl DiagramProvider for PlantUmlProvider {
-    fn validate(&self, source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> DiagramResult<()> {
         if source.trim().is_empty() {
-            return Err(anyhow::anyhow!("Diagram source is empty"));
+            return Err(DiagramError::ValidationFailed(
+                "Diagram source is empty".into(),
+            ));
         }
         Ok(())
     }
 
-    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> DiagramResult<Vec<u8>> {
         // PlantUML CLI: java -jar plantuml.jar -pipe -tsvg
         // Or if installed via brew: plantuml -pipe -tsvg
 
@@ -44,7 +45,10 @@ impl DiagramProvider for PlantUmlProvider {
             Ok(output.stdout)
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(anyhow::anyhow!("PlantUML conversion failed: {}", stderr))
+            Err(DiagramError::ProcessFailed(format!(
+                "PlantUML conversion failed: {}",
+                stderr
+            )))
         }
     }
 }

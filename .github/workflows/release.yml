@@ -1,14 +1,31 @@
+# Project Release (Tags Only)
+# This workflow is the single source of truth for distribution. 
+# It handles Binaries, GitHub Releases, and officially tagged Docker Images.
 name: Project Release (Tags Only)
+
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
+      - 'v*' # Trigger on any version tag (e.g., v0.0.3)
+  workflow_dispatch: # Allows manual trigger if needed
 
 jobs:
+  # Job 1: Build binaries for all supported platforms
   release:
-    name: Release Binary
-    runs-on: macos-latest # Using macos as requested and typical for this project
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: kroki-rs-macos
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: kroki-rs-linux-amd64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: kroki-rs-linux-arm64
+
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
     steps:
@@ -16,81 +33,182 @@ jobs:
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Setup Rust Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Set up QEMU (ARM64 only)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        uses: docker/setup-qemu-action@v3
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install System Dependencies (macOS)
+        if: matrix.os == 'macos-latest'
         run: |
           brew install pkg-config cairo pango libpng jpeg-turbo giflib librsvg graphviz d2
           brew install --cask chromium
-          
-          # Set environment variables for keg-only jpeg-turbo and other dependencies
           echo "PKG_CONFIG_PATH=$(brew --prefix jpeg-turbo)/lib/pkgconfig:$(brew --prefix libpng)/lib/pkgconfig:$(brew --prefix zlib)/lib/pkgconfig" >> $GITHUB_ENV
           echo "LDFLAGS=-L$(brew --prefix jpeg-turbo)/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I$(brew --prefix jpeg-turbo)/include" >> $GITHUB_ENV
           echo "$(brew --prefix jpeg-turbo)/bin" >> $GITHUB_PATH
-          
-          # Force Puppeteer to use the Homebrew Chromium to avoid sandbox hangs
-          echo "PUPPETEER_EXECUTABLE_PATH=/Applications/Chromium.app/Contents/MacOS/Chromium" >> $GITHUB_ENV
-          echo "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_EXECUTABLE_PATH=/Applications/Chromium.app/Contents/MacOS/Chromium" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1" >> $GITHUB_ENV
+
+      - name: Install System Dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev graphviz
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          else
+            # Install Chromium and all system dependencies via Playwright's official installer
+            npx playwright install --with-deps chromium
+          fi
 
       - name: Install dependencies
         run: npm install
 
-      - name: Debug Environment
+      - name: Build Binary
         run: |
-          echo "PATH: $PATH"
-          which dot || true
-          which d2 || true
-          ls -l /usr/local/bin/d2 || true
-          ls -l node_modules/.bin/bpmn-to-image || true
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            cargo build --release --target ${{ matrix.target }}
+          else
+            make release
+          fi
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/kroki-rs dist/${{ matrix.artifact_name }} || cp target/release/kroki-rs dist/${{ matrix.artifact_name }}
 
-      - name: Configure CI Timeouts
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}
+
+  publish:
+    name: Publish Release
+    needs: release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Assets
         run: |
-          cat <<EOF > ci-kroki.toml
-          [server]
-          timeout_ms = 10000
-          [graphviz]
-          timeout_ms = 10000
-          [mermaid]
-          timeout_ms = 10000
-          [plantuml]
-          timeout_ms = 10000
-          [vega]
-          timeout_ms = 10000
-          [vegalite]
-          timeout_ms = 10000
-          [wavedrom]
-          timeout_ms = 10000
-          [bpmn]
-          timeout_ms = 10000
-          [d2]
-          timeout_ms = 10000
-          [ditaa]
-          timeout_ms = 10000
-          [excalidraw]
-          timeout_ms = 10000
-          EOF
-          echo "KROKI_CONFIG=$(pwd)/ci-kroki.toml" >> $GITHUB_ENV
+          mkdir dist
+          # Repackage files for release with version naming
+          cp artifacts/kroki-rs-macos/kroki-rs-macos dist/kroki-rs-macos
+          cp artifacts/kroki-rs-linux-amd64/kroki-rs-linux-amd64 dist/kroki-rs-linux-amd64
+          cp artifacts/kroki-rs-linux-arm64/kroki-rs-linux-arm64 dist/kroki-rs-linux-arm64
+          chmod +x dist/*
+          cd dist
+          tar -czvf kroki-rs-macos.tar.gz kroki-rs-macos
+          tar -czvf kroki-rs-linux-amd64.tar.gz kroki-rs-linux-amd64
+          tar -czvf kroki-rs-linux-arm64.tar.gz kroki-rs-linux-arm64
+          shasum -a 256 *.tar.gz > checksums.sha256
 
-      - name: Build and Package
-        run: |
-          export PATH=$PATH:$(pwd)/node_modules/.bin
-          make verify
-
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             dist/*.tar.gz
-            dist/*.sha256
+            dist/checksums.sha256
           draft: false
           prerelease: false
           generate_release_notes: true
+
+  docker:
+    name: Build & Push Docker Image
+    needs: release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Linux AMD64 Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: kroki-rs-linux-amd64
+          path: dist-amd64
+
+      - name: Download Linux ARM64 Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: kroki-rs-linux-arm64
+          path: dist-arm64
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Load (Local Verification)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          build-args: |
+             BASE_IMAGE=ghcr.io/${{ github.repository }}-base:latest
+          tags: kroki-rs:release-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify Image
+        run: |
+          docker run -d --name kroki-release-test -p 8000:8000 -p 8081:8081 kroki-rs:release-test
+          sleep 5
+          echo "Testing Health Endpoint..."
+          curl --fail -s http://localhost:8081/health || (docker logs kroki-release-test; exit 1)
+          echo "Testing Mermaid Rendering..."
+          curl --fail -s http://localhost:8000/mermaid/svg/eJxLL0osyFAIcbHmUnDU1bVzsgYALroEhg > /dev/null || (docker logs kroki-release-test; exit 1)
+          docker stop kroki-release-test
+          docker rm kroki-release-test
+
+      - name: Build and push Multi-arch Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+             BASE_IMAGE=ghcr.io/${{ github.repository }}-base:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

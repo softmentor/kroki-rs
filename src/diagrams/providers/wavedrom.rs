@@ -1,5 +1,4 @@
-use crate::diagrams::DiagramProvider;
-use anyhow::{Context, Result};
+use crate::diagrams::{DiagramError, DiagramProvider, DiagramResult};
 use async_trait::async_trait;
 use std::io::Write;
 use tempfile::NamedTempFile;
@@ -9,21 +8,26 @@ crate::diagrams::define_provider!(WavedromProvider);
 
 #[async_trait]
 impl DiagramProvider for WavedromProvider {
-    fn validate(&self, source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> DiagramResult<()> {
         if source.trim().is_empty() {
-            return Err(anyhow::anyhow!("Diagram source is empty"));
+            return Err(DiagramError::ValidationFailed(
+                "Diagram source is empty".into(),
+            ));
         }
         Ok(())
     }
 
-    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
-        let mut input_file =
-            NamedTempFile::new().context("Failed to create temporary input file")?;
-        input_file
-            .write_all(source.as_bytes())
-            .context("Failed to write source to temp file")?;
+    async fn generate(&self, source: &str, format: &str) -> DiagramResult<Vec<u8>> {
+        let mut input_file = NamedTempFile::new().map_err(|e| {
+            DiagramError::Internal(format!("Failed to create temporary input file: {}", e))
+        })?;
+        input_file.write_all(source.as_bytes()).map_err(|e| {
+            DiagramError::Internal(format!("Failed to write source to temp file: {}", e))
+        })?;
 
-        let output_file = NamedTempFile::new().context("Failed to create temporary output file")?;
+        let output_file = NamedTempFile::new().map_err(|e| {
+            DiagramError::Internal(format!("Failed to create temporary output file: {}", e))
+        })?;
         let output_path = output_file.path().to_path_buf();
 
         let mut cmd = Command::new(&self.bin_path);
@@ -37,10 +41,10 @@ impl DiagramProvider for WavedromProvider {
                 cmd.arg("-p").arg(&output_path);
             }
             _ => {
-                return Err(anyhow::anyhow!(
-                    "Unsupported format for Wavedrom: '{}'. Supported: svg, png",
-                    format
-                ))
+                return Err(DiagramError::UnsupportedFormat {
+                    format: format.into(),
+                    provider: "Wavedrom".into(),
+                })
             }
         }
 
@@ -55,12 +59,15 @@ impl DiagramProvider for WavedromProvider {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow::anyhow!("Wavedrom conversion failed: {}", stderr));
+            return Err(DiagramError::ProcessFailed(format!(
+                "Wavedrom conversion failed: {}",
+                stderr
+            )));
         }
 
-        let result = tokio::fs::read(&output_path)
-            .await
-            .context("Failed to read Wavedrom output file")?;
+        let result = tokio::fs::read(&output_path).await.map_err(|e| {
+            DiagramError::Internal(format!("Failed to read Wavedrom output file: {}", e))
+        })?;
 
         Ok(result)
     }

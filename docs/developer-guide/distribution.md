@@ -44,7 +44,15 @@ For users who already have Rust installed.
 -   **How**: `cargo publish` to crates.io.
 -   **Usage**: `cargo install kroki-rs`
 
-## 4. Cargo-dist & Cargo-binstall
+## 4. GitHub Container Registry (Docker)
+
+For containerized deployments and CI/CD pipelines.
+
+-   **Pros**: Multi-arch support, bundles all dependencies, easy to operate.
+-   **How**: Managed via GitHub Actions; pushes to `ghcr.io` for every release tag.
+-   **Documentation**: See the **[Docker Developer Guide](#kroki-rs.developer-guide.docker)** for deep dives into building and operating the container.
+
+## 5. Cargo-dist & Cargo-binstall
 
 [cargo-dist](https://github.com/axodotdev/cargo-dist) is a specialized tool for Rust projects that automates the creation of installers and CI/CD pipelines.
 

@@ -117,11 +117,12 @@ pub async fn get_diagram(
                     image_converter::png_to_webp(&bytes, image_converter::WebpQuality::Lossless)
                         .await
                 } else {
+                    let cache_dir = crate::config::Config::resolve_cache_dir(None);
                     image_converter::svg_to_webp(
                         &bytes,
                         image_converter::WebpQuality::Lossless,
                         &fonts,
-                        None,
+                        cache_dir.as_deref(),
                     )
                     .await
                 };
@@ -159,11 +160,25 @@ pub async fn get_diagram(
         }
         Err(e) => {
             tracing::error!("Generation failed for {}: {}", type_, e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Diagram generation failed. Check server logs for details.".to_string(),
-            )
-                .into_response()
+            let (status, msg) = match e {
+                crate::diagrams::DiagramError::ValidationFailed(msg) => {
+                    (StatusCode::BAD_REQUEST, msg)
+                }
+                crate::diagrams::DiagramError::UnsupportedFormat { .. } => {
+                    (StatusCode::BAD_REQUEST, e.to_string())
+                }
+                crate::diagrams::DiagramError::ToolNotFound(_) => {
+                    (StatusCode::SERVICE_UNAVAILABLE, e.to_string())
+                }
+                crate::diagrams::DiagramError::ExecutionTimeout { .. } => {
+                    (StatusCode::GATEWAY_TIMEOUT, e.to_string())
+                }
+                _ => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Diagram generation failed. Check server logs for details.".to_string(),
+                ),
+            };
+            (status, msg).into_response()
         }
     }
 }

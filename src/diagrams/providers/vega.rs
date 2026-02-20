@@ -1,5 +1,4 @@
-use crate::diagrams::DiagramProvider;
-use anyhow::Result;
+use crate::diagrams::{DiagramError, DiagramProvider, DiagramResult};
 use async_trait::async_trait;
 use std::path::PathBuf;
 use std::process::Stdio;
@@ -9,19 +8,21 @@ crate::diagrams::define_provider!(VegaProvider);
 
 #[async_trait]
 impl DiagramProvider for VegaProvider {
-    fn validate(&self, source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> DiagramResult<()> {
         if source.trim().is_empty() {
-            return Err(anyhow::anyhow!("Diagram source is empty"));
+            return Err(DiagramError::ValidationFailed(
+                "Diagram source is empty".into(),
+            ));
         }
         Ok(())
     }
 
-    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> DiagramResult<Vec<u8>> {
         if format != "svg" {
-            return Err(anyhow::anyhow!(
-                "Vega support currently limited to SVG format, got '{}'",
-                format
-            ));
+            return Err(DiagramError::UnsupportedFormat {
+                format: format.into(),
+                provider: "Vega".into(),
+            });
         }
 
         let mut cmd = Command::new(&self.bin_path);
@@ -40,14 +41,17 @@ impl DiagramProvider for VegaProvider {
 
         if output.status.success() {
             if output.stdout.is_empty() {
-                return Err(anyhow::anyhow!(
-                    "Vega conversion succeeded but output is empty"
+                return Err(DiagramError::ProcessFailed(
+                    "Vega conversion succeeded but output is empty".into(),
                 ));
             }
             Ok(output.stdout)
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(anyhow::anyhow!("Vega conversion failed: {}", stderr))
+            Err(DiagramError::ProcessFailed(format!(
+                "Vega conversion failed: {}",
+                stderr
+            )))
         }
     }
 }
@@ -70,18 +74,21 @@ impl VegaLiteProvider {
 
 #[async_trait]
 impl DiagramProvider for VegaLiteProvider {
-    fn validate(&self, source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> DiagramResult<()> {
         if source.trim().is_empty() {
-            return Err(anyhow::anyhow!("Diagram source is empty"));
+            return Err(DiagramError::ValidationFailed(
+                "Diagram source is empty".into(),
+            ));
         }
         Ok(())
     }
 
-    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+    async fn generate(&self, source: &str, format: &str) -> DiagramResult<Vec<u8>> {
         if format != "svg" {
-            return Err(anyhow::anyhow!(
-                "Vega-Lite support currently limited to SVG"
-            ));
+            return Err(DiagramError::UnsupportedFormat {
+                format: format.into(),
+                provider: "Vega-Lite".into(),
+            });
         }
 
         // Stage 1: vl2vg (Vega-Lite spec → Vega spec)
@@ -102,7 +109,10 @@ impl DiagramProvider for VegaLiteProvider {
 
         if !vl_output.status.success() {
             let stderr = String::from_utf8_lossy(&vl_output.stderr);
-            return Err(anyhow::anyhow!("vl2vg (stage 1) failed: {}", stderr));
+            return Err(DiagramError::ProcessFailed(format!(
+                "vl2vg (stage 1) failed: {}",
+                stderr
+            )));
         }
 
         // Stage 2: vg2svg (Vega spec → SVG)
@@ -124,19 +134,19 @@ impl DiagramProvider for VegaLiteProvider {
 
         if vg_output.status.success() {
             if vg_output.stdout.is_empty() {
-                return Err(anyhow::anyhow!(
+                return Err(DiagramError::ProcessFailed(format!(
                     "vg2svg (stage 2) succeeded but output is empty (vl2vg produced {} bytes)",
                     vg_input.len()
-                ));
+                )));
             }
             Ok(vg_output.stdout)
         } else {
             let stderr = String::from_utf8_lossy(&vg_output.stderr);
-            Err(anyhow::anyhow!(
+            Err(DiagramError::ProcessFailed(format!(
                 "vg2svg (stage 2) failed (vl2vg produced {} bytes): {}",
                 vg_input.len(),
                 stderr
-            ))
+            )))
         }
     }
 }

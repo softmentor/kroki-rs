@@ -121,7 +121,19 @@ pub async fn convert(
     cache_dir: Option<PathBuf>,
 ) -> Result<()> {
     let capabilities = Capabilities::discover(&config);
-    let registry = DiagramRegistry::new(&capabilities, &config);
+    let browser_manager = match crate::browser::BrowserManager::start(
+        config.browser.pool_size,
+        config.browser.context_ttl_requests,
+    )
+    .await
+    {
+        Ok(m) => Some(Arc::new(m)),
+        Err(e) => {
+            tracing::warn!("Browser worker failed to start: {}", e);
+            None
+        }
+    };
+    let registry = DiagramRegistry::new(&capabilities, &config, browser_manager);
     let cache_dir = Config::resolve_cache_dir(cache_dir);
 
     let source = fs::read_to_string(&input)
@@ -160,7 +172,23 @@ pub async fn batch(
     tracing::info!("Found {} files in {}", files.len(), input_dir.display());
 
     let capabilities = Capabilities::discover(&config);
-    let registry = Arc::new(DiagramRegistry::new(&capabilities, &config));
+    let browser_manager = match crate::browser::BrowserManager::start(
+        config.browser.pool_size,
+        config.browser.context_ttl_requests,
+    )
+    .await
+    {
+        Ok(m) => Some(Arc::new(m)),
+        Err(e) => {
+            tracing::warn!("Browser worker failed to start: {}", e);
+            None
+        }
+    };
+    let registry = Arc::new(DiagramRegistry::new(
+        &capabilities,
+        &config,
+        browser_manager,
+    ));
     let config = Arc::new(config);
     let cache_dir = Arc::new(Config::resolve_cache_dir(cache_dir));
     let format = Arc::new(format);

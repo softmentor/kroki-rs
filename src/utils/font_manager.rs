@@ -13,11 +13,9 @@ impl FontManager {
     pub fn new(cache_dir: Option<&Path>) -> Result<Self> {
         let dir = if let Some(d) = cache_dir {
             d.join("fonts")
-        } else if let Ok(d) = std::env::var("KROKI_CACHE_DIR") {
-            PathBuf::from(d).join("fonts")
         } else {
-            dirs::cache_dir()
-                .map(|d| d.join("kroki-rs").join("fonts"))
+            crate::config::Config::resolve_cache_dir(None)
+                .map(|d| d.join("fonts"))
                 .unwrap_or_else(|| PathBuf::from(".kroki-fonts"))
         };
 

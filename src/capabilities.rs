@@ -23,12 +23,13 @@ impl Capabilities {
     pub fn discover(config: &Config) -> Self {
         let caps = Self {
             graphviz: Self::find_tool(&config.graphviz.bin_path, "dot"),
-            mermaid: Self::find_tool(&config.mermaid.bin_path, "mmdc"),
+            // Playwright integrated tools rely purely on the Node.js global binaries
+            mermaid: Self::find_tool(&None, "node"),
             plantuml: Self::find_tool(&config.plantuml.bin_path, "plantuml"),
             vega: Self::find_tool(&config.vega.bin_path, "vg2svg"),
             vegalite: Self::find_tool(&config.vegalite.bin_path, "vl2vg"),
             wavedrom: Self::find_tool(&config.wavedrom.bin_path, "wavedrom-cli"),
-            bpmn: Self::find_tool(&config.bpmn.bin_path, "bpmn-to-image"),
+            bpmn: Self::find_tool(&None, "node"),
             d2: Self::find_tool(&config.d2.bin_path, "d2"),
             ditaa: Self::find_tool(&config.ditaa.bin_path, "ditaa"),
             excalidraw: Self::find_tool(&config.excalidraw.bin_path, "excalidraw-to-svg"),

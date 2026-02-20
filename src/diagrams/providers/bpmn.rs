@@ -1,70 +1,34 @@
-use crate::diagrams::DiagramProvider;
-use anyhow::{Context, Result};
+use crate::browser::BrowserManager;
+use crate::diagrams::{DiagramError, DiagramProvider, DiagramResult};
 use async_trait::async_trait;
-use std::io::Write;
-use tempfile::NamedTempFile;
-use tokio::process::Command;
+use std::sync::Arc;
 
-crate::diagrams::define_provider!(BpmnProvider);
+pub struct BpmnProvider {
+    browser: Arc<BrowserManager>,
+    _timeout_ms: Option<u64>,
+}
+
+impl BpmnProvider {
+    pub fn new(browser: Arc<BrowserManager>, timeout_ms: Option<u64>) -> Self {
+        Self {
+            browser,
+            _timeout_ms: timeout_ms,
+        }
+    }
+}
 
 #[async_trait]
 impl DiagramProvider for BpmnProvider {
-    fn validate(&self, source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> DiagramResult<()> {
         if source.trim().is_empty() {
-            return Err(anyhow::anyhow!("Diagram source is empty"));
+            return Err(DiagramError::ValidationFailed(
+                "Diagram source is empty".into(),
+            ));
         }
         Ok(())
     }
 
-    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
-        let mut input_file =
-            NamedTempFile::new().context("Failed to create temporary input file")?;
-        input_file
-            .write_all(source.as_bytes())
-            .context("Failed to write source to temp file")?;
-
-        let mut cmd = Command::new(&self.bin_path);
-
-        let suffix = format!(".{}", format);
-        let mut output_file_builder = tempfile::Builder::new();
-        output_file_builder.suffix(&suffix);
-        let output_file_with_ext = output_file_builder
-            .tempfile()
-            .context("Failed to create temp output file with extension")?;
-        let output_path_with_ext = output_file_with_ext.path().to_path_buf();
-
-        let io_arg_ext = format!(
-            "{}:{}",
-            input_file.path().to_string_lossy(),
-            output_path_with_ext.to_string_lossy()
-        );
-
-        cmd.arg(io_arg_ext);
-
-        let output = crate::diagrams::run_process_with_timeout(
-            "bpmn-to-image",
-            cmd,
-            None,
-            self.timeout_ms,
-            source.len(),
-        )
-        .await?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow::anyhow!("BPMN conversion failed: {}", stderr));
-        }
-
-        let result = tokio::fs::read(&output_path_with_ext)
-            .await
-            .context("Failed to read BPMN output file")?;
-
-        if result.is_empty() {
-            return Err(anyhow::anyhow!(
-                "BPMN conversion succeeded but output file is empty"
-            ));
-        }
-
-        Ok(result)
+    async fn generate(&self, source: &str, format: &str) -> DiagramResult<Vec<u8>> {
+        self.browser.evaluate("bpmn", source, format).await
     }
 }

@@ -1,10 +1,13 @@
 {
     "name": "kroki-rs-deps",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "Dependencies for kroki-rs",
     "dependencies": {
-        "@mermaid-js/mermaid-cli": "^11.4.2",
-        "bpmn-to-image": "^0.6.0",
+        "bpmn-js": "^18.12.0",
+        "express": "^5.2.1",
+        "generic-pool": "^3.9.0",
+        "mermaid": "^11.12.3",
+        "playwright": "^1.58.2",
         "vega-cli": "^6.2.0",
         "vega-lite": "^6.4.2",
         "wavedrom-cli": "^2.0.0"

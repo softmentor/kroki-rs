@@ -1,64 +1,34 @@
-use crate::diagrams::DiagramProvider;
-use anyhow::Result;
+use crate::browser::BrowserManager;
+use crate::diagrams::{DiagramError, DiagramProvider, DiagramResult};
 use async_trait::async_trait;
-use std::process::Stdio;
-use tokio::process::Command;
+use std::sync::Arc;
 
-crate::diagrams::define_provider!(MermaidProvider);
+pub struct MermaidProvider {
+    browser: Arc<BrowserManager>,
+    _timeout_ms: Option<u64>,
+}
+
+impl MermaidProvider {
+    pub fn new(browser: Arc<BrowserManager>, timeout_ms: Option<u64>) -> Self {
+        Self {
+            browser,
+            _timeout_ms: timeout_ms,
+        }
+    }
+}
 
 #[async_trait]
 impl DiagramProvider for MermaidProvider {
-    fn validate(&self, source: &str) -> Result<()> {
+    fn validate(&self, source: &str) -> DiagramResult<()> {
         if source.trim().is_empty() {
-            return Err(anyhow::anyhow!("Diagram source is empty"));
+            return Err(DiagramError::ValidationFailed(
+                "Diagram source is empty".into(),
+            ));
         }
         Ok(())
     }
 
-    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
-        // mmdc requires an input file or stdin, and output file.
-        // It's less stream-friendly than dot.
-        // We'll use a temporary file for output if needed, or see if it supports stdout.
-        // mmdc -i - -o - (output to stdout not fully supported in all versions, let's check docs or try)
-        // Modern mmdc supports `-o -` for stdout? Let's try.
-        // If not, use tempfile.
-
-        // Create a temporary input file because passing via stdin to mmdc can be flaky with some shells?
-        // Actually, let's try stdin first with `-i -`
-
-        let mut cmd = Command::new(&self.bin_path);
-        cmd.args(["-i", "-", "-o", "-"]) // Output to stdout
-            .arg(match format {
-                "svg" => "--outputFormat=svg",
-                "png" => "--outputFormat=png",
-                "pdf" => "--outputFormat=pdf",
-                _ => "--outputFormat=svg",
-            })
-            // .arg("--puppeteerConfigFile=...") // TODO: Support config
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        let output = crate::diagrams::run_process_with_timeout(
-            "mmdc",
-            cmd,
-            Some(source.as_bytes()),
-            self.timeout_ms,
-            source.len(),
-        )
-        .await?;
-
-        if output.status.success() {
-            if output.stdout.is_empty() {
-                return Err(anyhow::anyhow!(
-                    "Mermaid conversion succeeded but output is empty"
-                ));
-            }
-            Ok(output.stdout)
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            // Fallback for mmdc error
-            Err(anyhow::anyhow!("Mermaid conversion failed: {}", stderr))
-        }
+    async fn generate(&self, source: &str, format: &str) -> DiagramResult<Vec<u8>> {
+        self.browser.evaluate("mermaid", source, format).await
     }
 }

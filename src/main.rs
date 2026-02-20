@@ -21,8 +21,8 @@ struct Cli {
 enum Commands {
     /// Start the server
     Serve {
-        #[arg(short, long, default_value_t = 8000)]
-        port: u16,
+        #[arg(short, long)]
+        port: Option<u16>,
     },
     /// Convert a diagram file
     Convert {
@@ -67,8 +67,12 @@ async fn main() -> anyhow::Result<()> {
 
     match args.command {
         Commands::Serve { port } => {
-            info!("Starting server on port {}", port);
-            server::run(port, config).await?;
+            let mut config = config;
+            if let Some(p) = port {
+                config.server.port = p;
+            }
+            info!("Starting server on port {}", config.server.port);
+            server::run(config).await?;
         }
         Commands::Convert {
             type_,

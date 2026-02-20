@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.3] - 2026-02-20
+
+### Added
+- **Admin Dashboard & Health Check**: Introduced a dedicated Admin server on port `8081` offering a UI Dashboard and an orchestration-friendly `/health` API endpoint. (TD-19)
+- **Production OCI Images**: Created a multi-stage Debian Dockerfile containing `node`, `graphviz`, and `chromium` out-of-the-box. (TD-16)
+- **Structured Error Handling**: Implemented a strongly typed `DiagramError` enum to replace raw string errors, returning precise HTTP status codes (400, 503, 504) based on fault type. (TD-15)
+
+- **Playwright Browser Pool**: Replaced Node.js CLI wrappers with a highly efficient, persistent headless Chromium daemon using `generic-pool`. This virtually eliminates cold-start latency for Mermaid and BPMN diagrams and bounds memory usage via strictly enforced TTL request limits.
+
+### Changed
+- **Configuration Precedence**: Rearchitected `Config` to strictly obey `CLI Defaults > Environment Variables > kroki.toml > Fallbacks`. (TD-07)
+
 ## [0.0.2] - 2026-02-20
 
 ### Added

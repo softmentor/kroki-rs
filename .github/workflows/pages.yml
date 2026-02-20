@@ -1,9 +1,13 @@
-name: Doc Deployment (Main Branch Only)
+# Doc Deployment (Tags Only)
+# This workflow builds and deploys the project documentation (Rustdoc + MyST) to GitHub Pages.
+# It is synchronized with releases to ensure documentation reflects the currently released version.
+name: Doc Deployment (Tags Only)
+
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    tags:
+      - 'v*' # Trigger on any version tag (e.g., v0.0.3)
+  workflow_dispatch: # Allows manual trigger from UI
 
 permissions:
   contents: read
@@ -19,7 +23,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install dependencies
         run: npm install

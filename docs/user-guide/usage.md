@@ -150,6 +150,13 @@ curl http://localhost:8000/graphviz/svg/eNpLyUwvSizm5TIGAAWDAY0=
 }
 ```
 
+### Admin Dashboard & Health Checks
+
+When running in Server Mode, Kroki-rs automatically exposes an **Admin Dashboard** on an isolated port (default: `8081`). This completely separates administrative capabilities from the primary diagram rendering APIs.
+
+- **Dashboard UI**: Navigate to `http://localhost:8081/` to view service status, version metrics, and an active discovery capabilities list.
+- **Health Check API**: A machine-readable `HTTP GET /health` endpoint is available at `http://localhost:8081/health` enabling Docker, Kubernetes, and other orchestration platforms to reliably monitor container liveliness.
+
 ### Supported Clients
 
 Since `kroki-rs` is API-compatible, you can use existing Kroki clients! Just point them to your local instance.
