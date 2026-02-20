@@ -21,6 +21,11 @@ Thank you for your interest in contributing to **Kroki-rs**! We welcome contribu
 
 -   Rust (stable)
 -   Dependencies for diagrams you want to test (e.g., Graphviz, Node.js tools)
+-   **(Optional but Recommended)**: `sccache` for accelerating local builds.
+    ```bash
+    cargo install sccache
+    ```
+    *The Makefile will automatically detect and use it to drastically reduce recompilation times for large dependencies like image/resvg.*
 
 ### Building
 

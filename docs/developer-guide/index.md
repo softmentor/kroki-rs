@@ -57,6 +57,17 @@ To add support for a new diagram type:
 -   **Formatting**: Always run `cargo fmt` before committing.
 -   **Linting**: Ensure `cargo clippy` is clean.
 
+## Local Build Optimization
+
+Adding large dependencies like image encoders (`usvg`, `resvg`, `image`) increases the baseline compilation time of Kroki-rs. We strongly encourage developers to install `sccache` to accelerate their local builds:
+
+```bash
+cargo install sccache
+# Or on macOS: brew install sccache
+```
+
+The repository's `Makefile` is configured to automatically detect if `sccache` is available in your `PATH` and set `RUSTC_WRAPPER`. Subsequent `make all` iterations will then aggressively cache and skip recompilation of unchanged crates.
+
 ## Testing
 
 Kroki-rs uses standard Rust testing practices:
