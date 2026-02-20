@@ -1,0 +1,136 @@
+# Continuous Integration (PR-Gate)
+# Performs fast verification on every PR to ensure main stability.
+name: CI-Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: test
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install system dependencies for canvas
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+      - name: Install dependencies
+        run: npm ci
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright Browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install Playwright System Deps (cached browsers)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: Run tests with nextest
+        run: cargo nextest run --locked
+
+  smoke-test:
+    name: smoke-test
+    needs: [fmt, clippy, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for base image dependency changes
+        id: base-changes
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            Dockerfile
+            package.json
+            package-lock.json
+
+      - name: Determine BASE_IMAGE
+        id: determine-base
+        run: |
+          if [ "${{ steps.base-changes.outputs.any_changed }}" == "true" ]; then
+            echo "Base dependencies changed. Will build base from scratch."
+            echo "base_img=base" >> $GITHUB_OUTPUT
+          else
+            echo "No base dependencies changed. Utilizing pre-built GHCR base image."
+            echo "base_img=ghcr.io/${{ github.repository }}-base:latest" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Build and Load Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          build-args: |
+            BASE_IMAGE=${{ steps.determine-base.outputs.base_img }}
+          load: true 
+          tags: kroki-rs:ci-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify API and Rendering
+        run: |
+          # 1. Start the container
+          docker run -d --name kroki-test -p 8000:8000 -p 8081:8081 kroki-rs:ci-test
+          sleep 5
+          
+          # 2. Test Health Check API (Admin Port)
+          curl --fail -s http://localhost:8081/health | grep '"status":"ok"'
+          
+          # 3. Test Mermaid Rendering (Main API Port)
+          curl -s -f -o mermaid.svg http://localhost:8000/mermaid/svg/eJxLL0osyFAIcbHmUnDU1bVzsgYALroEhg
+          grep -q "<svg" mermaid.svg
+          
+          docker stop kroki-test
+          echo "✅ Smoke test passed!"

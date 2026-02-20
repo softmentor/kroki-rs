@@ -6,8 +6,9 @@ ARCHIVE_NAME=$(BINARY_NAME)-$(PLATFORM).tar.gz
 VERSION ?= $(shell grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
 
 # Default target: complete project lifecycle
+# Uses nextest for fast parallel testing, then full verify (release build + dist)
 .PHONY: all
-all: deps clean fmt verify test-load doc
+all: deps clean fmt lint test-ci doc verify test-load
 
 # Check for sccache and configure it if available (speeds up local builds)
 ifneq (, $(shell which sccache))
@@ -28,6 +29,11 @@ release:
 .PHONY: test
 test:
 	cargo test --release
+
+# Fast CI tests using nextest (debug profile, parallel execution)
+.PHONY: test-ci
+test-ci:
+	cargo nextest run --locked
 
 # Run tests with output
 .PHONY: test-v
@@ -166,11 +172,12 @@ docker-clean:
 
 # Run Local CI (GitHub Actions via act)
 # Mimics the GitHub Actions environment: Build, Load, and Smoke Test
+# --container-daemon-socket - : prevents act from mounting the Docker socket (fixes Podman on macOS)
 .PHONY: ci-local
 ci-local:
-	@echo "Running GitHub Actions locally for Docker workflow..."
+	@echo "Running GitHub Actions locally for CI-Build workflow..."
 	@export DOCKER_HOST=unix://$(shell podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' 2>/dev/null || echo "/var/run/docker.sock") && \
-	act -W .github/workflows/docker.yml -s GITHUB_TOKEN=$${CR_PAT:-$${GITHUB_TOKEN}}
+	act -W .github/workflows/ci-build.yml --container-daemon-socket - -s GITHUB_TOKEN=$${CR_PAT:-$${GITHUB_TOKEN}}
 
 # Complete Docker Lifecycle: Build, Test, and Local CI Verification
 .PHONY: docker-all

@@ -1,0 +1,26 @@
+# Rust
+/target
+
+# Node.js
+node_modules
+.npm-cache
+.npm
+npm-debug.log*
+yarn-error.log*
+yarn-debug.log*
+
+# Kroki-rs
+/dist
+/_build
+test_output.*
+kroki.toml
+
+# IDEs
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+*.code-workspace
