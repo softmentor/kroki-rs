@@ -33,42 +33,23 @@ impl Capabilities {
             ditaa: Self::find_tool(&config.ditaa.bin_path, "ditaa"),
             excalidraw: Self::find_tool(&config.excalidraw.bin_path, "excalidraw-to-svg"),
         };
-        // Log discovered tools
-        tracing::debug!("Capabilities discovery:");
-        tracing::debug!(
-            "  Graphviz ({:?}): {:?}",
-            config.graphviz.bin_path,
-            caps.graphviz
-        );
-        tracing::debug!(
-            "  Mermaid ({:?}): {:?}",
-            config.mermaid.bin_path,
-            caps.mermaid
-        );
-        tracing::debug!(
-            "  PlantUML ({:?}): {:?}",
-            config.plantuml.bin_path,
-            caps.plantuml
-        );
-        tracing::debug!("  Vega ({:?}): {:?}", config.vega.bin_path, caps.vega);
-        tracing::debug!(
-            "  Vega-Lite ({:?}): {:?}",
-            config.vegalite.bin_path,
-            caps.vegalite
-        );
-        tracing::debug!(
-            "  Wavedrom ({:?}): {:?}",
-            config.wavedrom.bin_path,
-            caps.wavedrom
-        );
-        tracing::debug!("  BPMN ({:?}): {:?}", config.bpmn.bin_path, caps.bpmn);
-        tracing::debug!("  D2 ({:?}): {:?}", config.d2.bin_path, caps.d2);
-        tracing::debug!("  Ditaa ({:?}): {:?}", config.ditaa.bin_path, caps.ditaa);
-        tracing::debug!(
-            "  Excalidraw ({:?}): {:?}",
-            config.excalidraw.bin_path,
-            caps.excalidraw
-        );
+        // Log summary of discovered capabilities
+        let found: Vec<&str> = [
+            caps.graphviz.as_ref().map(|_| "graphviz"),
+            caps.mermaid.as_ref().map(|_| "mermaid"),
+            caps.plantuml.as_ref().map(|_| "plantuml"),
+            caps.vega.as_ref().map(|_| "vega"),
+            caps.vegalite.as_ref().map(|_| "vegalite"),
+            caps.wavedrom.as_ref().map(|_| "wavedrom"),
+            caps.bpmn.as_ref().map(|_| "bpmn"),
+            caps.d2.as_ref().map(|_| "d2"),
+            caps.ditaa.as_ref().map(|_| "ditaa"),
+            caps.excalidraw.as_ref().map(|_| "excalidraw"),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        tracing::info!("Discovered {} tools: [{}]", found.len(), found.join(", "));
         caps
     }
 

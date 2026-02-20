@@ -86,6 +86,9 @@ pub struct ServerConfig {
     /// Maximum allowed input size in bytes (default: 1MB).
     #[serde(default = "default_max_input_size")]
     pub max_input_size: usize,
+    /// Maximum allowed output size in bytes (default: 50MB).
+    #[serde(default = "default_max_output_size")]
+    pub max_output_size: usize,
 }
 
 impl Default for ServerConfig {
@@ -93,7 +96,8 @@ impl Default for ServerConfig {
         Self {
             port: 8000,
             timeout_ms: 5000,
-            max_input_size: 1_048_576, // 1MB
+            max_input_size: 1_048_576,   // 1MB
+            max_output_size: 52_428_800, // 50MB
         }
     }
 }
@@ -106,6 +110,9 @@ fn default_timeout() -> u64 {
 }
 fn default_max_input_size() -> usize {
     1_048_576 // 1MB
+}
+fn default_max_output_size() -> usize {
+    52_428_800 // 50MB
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]

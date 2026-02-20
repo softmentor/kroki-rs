@@ -3,17 +3,33 @@ use image::{codecs::webp::WebPEncoder, ImageEncoder};
 use resvg::{tiny_skia, usvg};
 use std::io::Cursor;
 
-/// Represents WebP quality configuration
+/// Represents WebP quality configuration.
 #[derive(Debug, Clone, Copy)]
 pub enum WebpQuality {
+    /// Lossless encoding — larger file, perfect quality.
     Lossless,
-    Lossy(u8), // 0 to 100
+    /// Lossy encoding — quality 0 (worst) to 100 (best).
+    Lossy(u8),
+}
+
+/// Creates a WebP encoder with the specified quality setting.
+fn create_webp_encoder(
+    output: &mut Cursor<Vec<u8>>,
+    quality: WebpQuality,
+) -> WebPEncoder<&mut Cursor<Vec<u8>>> {
+    match quality {
+        WebpQuality::Lossless => WebPEncoder::new_lossless(output),
+        WebpQuality::Lossy(_q) => {
+            tracing::warn!("Lossy WebP requested but not yet supported (image crate limitation). Falling back to lossless.");
+            WebPEncoder::new_lossless(output)
+        }
+    }
 }
 
 /// Converts SVG bytes to WebP format.
 pub async fn svg_to_webp(
     svg_bytes: &[u8],
-    _quality: WebpQuality,
+    quality: WebpQuality,
     fonts: &[String],
     cache_dir: Option<&std::path::Path>,
 ) -> Result<Vec<u8>> {
@@ -40,22 +56,22 @@ pub async fn svg_to_webp(
     let (width, height) = (pixmap.width(), pixmap.height());
     let data = pixmap.data(); // RGBA bytes
 
-    let encoder = WebPEncoder::new_lossless(&mut output);
+    let encoder = create_webp_encoder(&mut output, quality);
     encoder
         .write_image(data, width, height, image::ExtendedColorType::Rgba8)
-        .context("Failed to encode lossless WebP")?;
+        .context("Failed to encode WebP")?;
 
     Ok(output.into_inner())
 }
 
-/// Converts PNG bytes to WebP format (useful for ditaa fallback)
-pub async fn png_to_webp(png_bytes: &[u8], _quality: WebpQuality) -> Result<Vec<u8>> {
+/// Converts PNG bytes to WebP format.
+pub async fn png_to_webp(png_bytes: &[u8], quality: WebpQuality) -> Result<Vec<u8>> {
     let img = image::load_from_memory_with_format(png_bytes, image::ImageFormat::Png)
         .context("Failed to decode PNG for WebP conversion")?;
 
     let mut output = Cursor::new(Vec::new());
 
-    let encoder = WebPEncoder::new_lossless(&mut output);
+    let encoder = create_webp_encoder(&mut output, quality);
     encoder
         .write_image(
             img.as_bytes(),
@@ -63,7 +79,7 @@ pub async fn png_to_webp(png_bytes: &[u8], _quality: WebpQuality) -> Result<Vec<
             img.height(),
             img.color().into(),
         )
-        .context("Failed to encode lossless WebP from PNG")?;
+        .context("Failed to encode WebP from PNG")?;
 
     Ok(output.into_inner())
 }

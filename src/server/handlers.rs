@@ -63,12 +63,18 @@ pub async fn get_diagram(
     let provider = match state.registry.get(&type_) {
         Some(p) => p,
         None => {
-            tracing::warn!("Diagram type '{}' not supported or tool not found", type_);
-            return (
-                StatusCode::NOT_FOUND,
-                format!("Diagram type '{}' not supported or tool not found", type_),
-            )
-                .into_response();
+            let known = state.registry.known_types();
+            let msg = if known.is_empty() {
+                "No diagram tools are available on this server".to_string()
+            } else {
+                format!(
+                    "Diagram type '{}' is not available. Supported types: {}",
+                    type_,
+                    known.join(", ")
+                )
+            };
+            tracing::warn!("{}", msg);
+            return (StatusCode::NOT_FOUND, msg).into_response();
         }
     };
 
@@ -86,6 +92,24 @@ pub async fn get_diagram(
     // 5. Generate
     match provider.generate(&source, base_format).await {
         Ok(mut bytes) => {
+            // Output size validation (TD-20)
+            if bytes.len() > state.config.server.max_output_size {
+                tracing::error!(
+                    "Output too large ({} bytes, max: {} bytes) for type={}",
+                    bytes.len(),
+                    state.config.server.max_output_size,
+                    type_
+                );
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!(
+                        "Generated output exceeds size limit ({} bytes). Consider simplifying the diagram.",
+                        bytes.len()
+                    ),
+                )
+                    .into_response();
+            }
+
             if is_webp {
                 let fonts = state.config.all_fonts();
 

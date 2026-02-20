@@ -110,7 +110,15 @@ impl DiagramRegistry {
         Self { providers }
     }
 
+    /// Returns the provider for a given diagram type, if available.
     pub fn get(&self, name: &str) -> Option<Arc<dyn DiagramProvider + Send + Sync>> {
         self.providers.get(name).cloned()
+    }
+
+    /// Returns the list of all registered diagram type names.
+    pub fn known_types(&self) -> Vec<String> {
+        let mut types: Vec<String> = self.providers.keys().cloned().collect();
+        types.sort();
+        types
     }
 }
