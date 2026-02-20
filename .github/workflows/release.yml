@@ -50,6 +50,34 @@ jobs:
           ls -l /usr/local/bin/d2 || true
           ls -l node_modules/.bin/bpmn-to-image || true
 
+      - name: Configure CI Timeouts
+        run: |
+          cat <<EOF > ci-kroki.toml
+          [server]
+          timeout_ms = 10000
+          [graphviz]
+          timeout_ms = 10000
+          [mermaid]
+          timeout_ms = 10000
+          [plantuml]
+          timeout_ms = 10000
+          [vega]
+          timeout_ms = 10000
+          [vegalite]
+          timeout_ms = 10000
+          [wavedrom]
+          timeout_ms = 10000
+          [bpmn]
+          timeout_ms = 10000
+          [d2]
+          timeout_ms = 10000
+          [ditaa]
+          timeout_ms = 10000
+          [excalidraw]
+          timeout_ms = 10000
+          EOF
+          echo "KROKI_CONFIG=$(pwd)/ci-kroki.toml" >> $GITHUB_ENV
+
       - name: Build and Package
         run: |
           export PATH=$PATH:$(pwd)/node_modules/.bin
