@@ -55,6 +55,7 @@ jobs:
 
   smoke-test:
     name: smoke-test
+    needs: [fmt, clippy, test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
