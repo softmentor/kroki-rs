@@ -5,12 +5,17 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tempfile::NamedTempFile;
 
+/// Provider for converting Excalidraw diagrams to SVG.
+///
+/// This provider uses the `excalidraw-to-svg` CLI tool to perform the conversion.
 #[derive(Debug)]
 pub struct ExcalidrawProvider {
+    /// Path to the `excalidraw-to-svg` executable.
     pub bin_path: PathBuf,
 }
 
 impl ExcalidrawProvider {
+    /// Creates a new `ExcalidrawProvider` with the given binary path.
     pub fn new(bin_path: PathBuf) -> Self {
         Self { bin_path }
     }

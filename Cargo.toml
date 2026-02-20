@@ -25,5 +25,7 @@ dirs = "4.0"
 sha2 = "0.10"
 hex = "0.4"
 walkdir = "2.4"
+resvg = { version = "0.42.0", default-features = false, features = ["text"] }
+image = { version = "0.25", default-features = false, features = ["webp"] }
 # Optional experimental support
-# rustyscript = { version = "0.1", optional = true } 
+# rustyscript = { version = "0.1", optional = true }

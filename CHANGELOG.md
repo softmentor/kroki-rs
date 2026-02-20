@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.2] - 2026-02-20
+
+### Added
+- **WebP Output Support**: Added high-quality, centralized compilation of SVGs and PNGs into the WebP format (`-f webp`), capable of perfect lossless vector rasterization.
+- **WebP Configuration**: The ability to configure the WebP quality profile (`lossless`, `high`, `medium`, `low`, or `0-100`) via `kroki.toml` or the `--webp-quality` CLI flag.
+- **Performance**: Introduced a local filesystem caching layer to instantly serve previously rendered diagrams (SHA-256 content-based hashing).
+- **CLI Utilities**: Added a new `batch` command (`kroki-rs batch`) to recursively discover and convert all diagrams in a directory concurrently.
+- **Supported Providers**: Added support for Excalidraw diagrams via the `excalidraw-to-svg` tool.
+- **Testing**: Added dedicated integration tests for each individual provider to ensure reliable conversions.
+
+### Changed
+- **CI/CD Optimization**: Integrated `Swatinem/rust-cache@v2` into GitHub Actions to eliminate redundant compilation of the new image dependencies, keeping build times low.
+- **Testing**: Refactored the integration test suite for better isolation, parallel execution, and targeted provider verification.
+
+### Changed
+- **Testing**: Refactored the integration test suite for better isolation, parallel execution, and targeted provider verification.
+
 ## [0.0.1] - 2026-02-19
 
 ### Added

@@ -9,7 +9,8 @@ Unlike the original Java-based Kroki which bundles dependencies in Docker, **Kro
 -   🚀 **Fast & Lightweight**: Written in Rust, minimal footprint.
 -   🛠️ **Native Execution**: Runs directly on host, using system tools or Node.js versions.
 -   🔄 **Drop-in Compatible**: specific API endpoints match Kroki (`GET /:type/:format/:source`).
--   🖥️ **CLI Support**: Convert files instantly from the command line.
+-   🖥️ **CLI Support**: Convert files instantly from the command line, with new **batch processing** capabilities.
+-   ⚡ **Built-in Caching**: Optional filesystem cache using SHA-256 for instant re-rendering of unchanged diagrams.
 -   🔍 **Auto-Discovery**: Automatically detects installed diagram tools.
 
 ## Quick Start

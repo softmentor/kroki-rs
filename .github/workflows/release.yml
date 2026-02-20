@@ -17,6 +17,9 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Setup Rust Cache
+        uses: Swatinem/rust-cache@v2
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:

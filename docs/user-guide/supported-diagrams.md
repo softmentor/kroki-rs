@@ -13,6 +13,7 @@ Kroki-rs supports a wide variety of diagram types by leveraging existing CLI too
 | `bpmn` | [BPMN](https://bpmn.io/) | SVG | `bpmn-to-image` |
 | `d2` | [D2](https://d2lang.com/) | SVG | `d2` |
 | `ditaa` | [Ditaa](http://ditaa.sourceforge.net/) | PNG | `ditaa` |
+| `excalidraw` | [Excalidraw](https://excalidraw.com/) | SVG | `excalidraw-to-svg` |
 
 ## Installation of Tools
 
@@ -35,6 +36,5 @@ This installs `mmdc`, `vg2svg`, `vl2vg`, `wavedrom-cli`, and `bpmn-to-image` int
 While Kroki-rs aims to support all formats (SVG, PNG, PDF, etc.) where possible, **SVG** is the most reliable and highly recommended format across all providers. Some providers (like `ditaa`) may only support PNG.
 
 ## Skipped / Upcoming
-- **Excalidraw**: Currently in development.
 - **BlockDiag**: Coming soon.
 - **C4 with PlantUML**: Supported via the `plantuml` provider.

@@ -32,6 +32,9 @@ enum Commands {
         format: String,
         #[arg(value_name = "FILE")]
         input: PathBuf,
+        /// Optional: WebP quality ('lossless', 'high', 'medium', 'low', or 0-100)
+        #[arg(long)]
+        webp_quality: Option<String>,
     },
     /// Convert all diagrams in a directory
     Batch {
@@ -45,6 +48,9 @@ enum Commands {
         /// Optional: Output directory (defaults to input dir)
         #[arg(short, long)]
         out_dir: Option<PathBuf>,
+        /// Optional: WebP quality ('lossless', 'high', 'medium', 'low', or 0-100)
+        #[arg(long)]
+        webp_quality: Option<String>,
     },
 }
 
@@ -68,7 +74,12 @@ async fn main() -> anyhow::Result<()> {
             type_,
             format,
             input,
+            webp_quality,
         } => {
+            let mut config = config;
+            if let Some(wq) = webp_quality {
+                config.webp.quality = wq;
+            }
             cli::convert(type_, format, input, config, args.cache_dir).await?;
         }
         Commands::Batch {
@@ -76,7 +87,12 @@ async fn main() -> anyhow::Result<()> {
             input,
             type_,
             out_dir,
+            webp_quality,
         } => {
+            let mut config = config;
+            if let Some(wq) = webp_quality {
+                config.webp.quality = wq;
+            }
             cli::batch(format, input, type_, out_dir, config, args.cache_dir).await?;
         }
     }

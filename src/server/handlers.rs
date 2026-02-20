@@ -2,6 +2,7 @@ use crate::capabilities::Capabilities;
 use crate::config::Config;
 use crate::diagrams::registry::DiagramRegistry;
 use crate::utils::decode;
+use crate::utils::image_converter;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -54,14 +55,62 @@ pub async fn get_diagram(
         }
     };
 
+    let is_webp = format.to_lowercase() == "webp";
+    let base_format = if is_webp {
+        if type_.to_lowercase() == "ditaa" {
+            "png"
+        } else {
+            "svg"
+        }
+    } else {
+        &format
+    };
+
     // 4. Generate
-    match provider.generate(&source, &format) {
-        Ok(bytes) => {
+    match provider.generate(&source, base_format) {
+        Ok(mut bytes) => {
+            if is_webp {
+                let quality = match config.webp.quality.to_lowercase().as_str() {
+                    "lossless" => image_converter::WebpQuality::Lossless,
+                    "high" => image_converter::WebpQuality::Lossy(90),
+                    "medium" => image_converter::WebpQuality::Lossy(75),
+                    "low" => image_converter::WebpQuality::Lossy(50),
+                    q => {
+                        if let Ok(num) = q.parse::<u8>() {
+                            image_converter::WebpQuality::Lossy(num.clamp(0, 100))
+                        } else {
+                            image_converter::WebpQuality::Lossless
+                        }
+                    }
+                };
+
+                let convert_result = if base_format == "png" {
+                    image_converter::png_to_webp(&bytes, quality)
+                } else {
+                    image_converter::svg_to_webp(&bytes, quality)
+                };
+
+                match convert_result {
+                    Ok(webp_bytes) => {
+                        bytes = webp_bytes;
+                    }
+                    Err(e) => {
+                        tracing::error!("WebP conversion failed for {}: {}", type_, e);
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            format!("WebP conversion failed: {}", e),
+                        )
+                            .into_response();
+                    }
+                }
+            }
+
             let content_type = match format.as_str() {
                 "svg" => "image/svg+xml",
                 "png" => "image/png",
                 "pdf" => "application/pdf",
                 "txt" => "text/plain",
+                "webp" => "image/webp",
                 _ => "application/octet-stream",
             };
 

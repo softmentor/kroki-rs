@@ -1,6 +1,7 @@
 use crate::capabilities::Capabilities;
 use crate::config::Config;
 use crate::diagrams::registry::DiagramRegistry;
+use crate::utils::image_converter;
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
@@ -69,9 +70,44 @@ pub async fn convert(
         .validate(&source)
         .context("Source validation failed")?;
 
-    let output_bytes = provider
-        .generate(&source, &format)
+    let is_webp = format.to_lowercase() == "webp";
+    let base_format = if is_webp {
+        if type_.to_lowercase() == "ditaa" {
+            "png"
+        } else {
+            "svg"
+        }
+    } else {
+        &format
+    };
+
+    let mut output_bytes = provider
+        .generate(&source, base_format)
         .context("Diagram generation failed")?;
+
+    if is_webp {
+        let quality = match config.webp.quality.to_lowercase().as_str() {
+            "lossless" => image_converter::WebpQuality::Lossless,
+            "high" => image_converter::WebpQuality::Lossy(90),
+            "medium" => image_converter::WebpQuality::Lossy(75),
+            "low" => image_converter::WebpQuality::Lossy(50),
+            q => {
+                if let Ok(num) = q.parse::<u8>() {
+                    image_converter::WebpQuality::Lossy(num.clamp(0, 100))
+                } else {
+                    image_converter::WebpQuality::Lossless
+                }
+            }
+        };
+
+        output_bytes = if base_format == "png" {
+            image_converter::png_to_webp(&output_bytes, quality)
+                .context("Failed to convert PNG to WebP")?
+        } else {
+            image_converter::svg_to_webp(&output_bytes, quality)
+                .context("Failed to convert SVG to WebP")?
+        };
+    }
 
     // Write to cache
     if let Some(cache_path) = &cache_dir {
@@ -278,9 +314,45 @@ async fn convert_to_file(
     provider
         .validate(&source)
         .context("Source validation failed")?;
-    let output_bytes = provider
-        .generate(&source, &format)
+
+    let is_webp = format.to_lowercase() == "webp";
+    let base_format = if is_webp {
+        if type_.to_lowercase() == "ditaa" {
+            "png"
+        } else {
+            "svg"
+        }
+    } else {
+        &format
+    };
+
+    let mut output_bytes = provider
+        .generate(&source, base_format)
         .context("Diagram generation failed")?;
+
+    if is_webp {
+        let quality = match config.webp.quality.to_lowercase().as_str() {
+            "lossless" => image_converter::WebpQuality::Lossless,
+            "high" => image_converter::WebpQuality::Lossy(90),
+            "medium" => image_converter::WebpQuality::Lossy(75),
+            "low" => image_converter::WebpQuality::Lossy(50),
+            q => {
+                if let Ok(num) = q.parse::<u8>() {
+                    image_converter::WebpQuality::Lossy(num.clamp(0, 100))
+                } else {
+                    image_converter::WebpQuality::Lossless
+                }
+            }
+        };
+
+        output_bytes = if base_format == "png" {
+            image_converter::png_to_webp(&output_bytes, quality)
+                .context("Failed to convert PNG to WebP")?
+        } else {
+            image_converter::svg_to_webp(&output_bytes, quality)
+                .context("Failed to convert SVG to WebP")?
+        };
+    }
 
     if let Some(cache_path) = &cache_dir {
         let cached_file = cache_path.join(format!("{}.{}", hash, format));
