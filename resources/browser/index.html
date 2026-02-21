@@ -34,8 +34,16 @@
                 }
 
                 this.debug('Calling cheerpjInit()...');
-                await cheerpjInit();
-                this.debug('cheerpjInit() completed');
+                try {
+                    await cheerpjInit();
+                    this.debug('cheerpjInit() completed');
+                } catch (error) {
+                    const errorMsg = error?.message || error?.toString?.() || 'Unknown error';
+                    const errorStack = error?.stack || 'No stack trace';
+                    this.debug('cheerpjInit() failed: ' + errorMsg);
+                    this.debug('Error stack: ' + errorStack);
+                    throw new Error('Failed to initialize CheerpJ: ' + errorMsg);
+                }
 
                 // Wait for cjCall to be available (allows classloading to complete)
                 this.debug('Waiting for cjCall to be available...');
@@ -73,6 +81,8 @@
             async renderPlantUml(source) {
                 try {
                     this.debug('Starting PlantUML render...');
+                    this.debug('Source length: ' + (source ? source.length : 'null'));
+
                     await this.initPlantUml();
                     this.debug('PlantUML initialized');
 
@@ -94,7 +104,16 @@
 
                     this.debug('Calling cjCall for PlantUML conversion...');
                     // API: com.plantuml.api.cheerpj.v1.Svg.convert("light", text)
-                    const result = await cjCall("com.plantuml.api.cheerpj.v1.Svg", "convert", "light", source);
+                    let result;
+                    try {
+                        result = await cjCall("com.plantuml.api.cheerpj.v1.Svg", "convert", "light", source);
+                    } catch (callError) {
+                        const callErrorMsg = callError?.message || callError?.toString?.() || 'Unknown cjCall error';
+                        this.debug('cjCall threw error: ' + callErrorMsg);
+                        this.debug('cjCall error stack: ' + (callError?.stack || 'No stack'));
+                        throw new Error('PlantUML rendering failed: ' + callErrorMsg);
+                    }
+
                     this.debug('cjCall returned, result type=' + typeof result + ', length=' + (result ? result.length : 'null'));
 
                     if (!result) {
@@ -107,10 +126,11 @@
                     this.debug('PlantUML render successful, output size=' + result.length);
                     return result;
                 } catch (error) {
-                    const errorMsg = error.message || String(error);
+                    const errorMsg = error?.message || error?.toString?.() || 'Unknown error during PlantUML render';
                     this.lastError = errorMsg;
-                    this.debug('ERROR: ' + errorMsg);
-                    this.debug('Debug log: ' + JSON.stringify(this.debugLog));
+                    this.debug('RENDER ERROR: ' + errorMsg);
+                    this.debug('RENDER ERROR stack: ' + (error?.stack || 'No stack'));
+                    this.debug('Final debug log: ' + JSON.stringify(this.debugLog));
                     throw error;
                 }
             }
