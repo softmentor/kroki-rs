@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>PlantUML Native Engine</title>
+    <script src="https://cjrtnc.leaningtech.com/2.0/loader.js"></script>
+</head>
+
+<body>
+    <div id="output"></div>
+    <script>
+        let isInitialized = false;
+
+        async function init() {
+            if (isInitialized) return;
+            console.log("Initializing CheerpJ...");
+            await cheerpjInit();
+
+            // Note: In CheerpJ 2.0, jar.js files are usually pre-loaded or loaded via runMain
+            // but the convert API might expect the JAR to be registered.
+            console.log("Initialization complete.");
+            isInitialized = true;
+        }
+
+        async function renderSvg(source) {
+            await init();
+            try {
+                // API based on research for plantuml-core
+                const svg = await cjCall("com.plantuml.api.cheerpj.v1.Svg", "convert", "light", source);
+                return svg;
+            } catch (e) {
+                console.error("Render Error:", e);
+                throw e;
+            }
+        }
+
+        window.renderSvg = renderSvg;
+    </script>
+</body>
+
+</html>

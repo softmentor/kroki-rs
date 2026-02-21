@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>PlantUML CheerpJ Test</title>
+    <script src="https://cjrtnc.leaningtech.com/2.0/loader.js"></script>
+</head>
+<body>
+    <div id="output">Rendering...</div>
+    <script>
+        async function renderPlantUML(source) {
+            try {
+                console.log("Initializing CheerpJ...");
+                await cheerpjInit();
+                
+                console.log("Loading PlantUML Core...");
+                // Load the pre-compiled JAR.js
+                await cheerpjRunMain("net.sourceforge.plantuml.Run", "/app/plantuml-core.jar.js", "-pipe", "-tsvg");
+                
+                // Note: The above runMain is for CLI-like execution. 
+                // For library usage, we might need a different approach if we want to pass strings.
+                // However, plantuml-core usually works by piping or file access via CheerpJ's virtual filesystem.
+            } catch (e) {
+                console.error("PlantUML Error:", e);
+                document.getElementById("output").innerText = "Error: " + e.message;
+            }
+        }
+
+        // Exposed for evaluate()
+        window.render = renderPlantUML;
+    </script>
+</body>
+</html>

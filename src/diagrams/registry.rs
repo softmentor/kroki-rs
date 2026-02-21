@@ -46,9 +46,9 @@ impl DiagramRegistry {
             providers.insert("mermaid".to_string(), provider);
         }
 
-        if let Some(path) = &capabilities.plantuml {
+        if let Some(browser) = &browser_manager {
             let provider = Arc::new(PlantUmlProvider::new(
-                path.clone(),
+                browser.clone(),
                 config.plantuml.timeout_ms,
             )) as Arc<dyn DiagramProvider + Send + Sync>;
             providers.insert("plantuml".to_string(), provider.clone());

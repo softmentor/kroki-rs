@@ -1,9 +1,21 @@
+use crate::browser::BrowserManager;
 use crate::diagrams::{DiagramError, DiagramProvider, DiagramResult};
 use async_trait::async_trait;
-use std::process::Stdio;
-use tokio::process::Command;
+use std::sync::Arc;
 
-crate::diagrams::define_provider!(PlantUmlProvider);
+pub struct PlantUmlProvider {
+    browser: Arc<BrowserManager>,
+    _timeout_ms: Option<u64>,
+}
+
+impl PlantUmlProvider {
+    pub fn new(browser: Arc<BrowserManager>, timeout_ms: Option<u64>) -> Self {
+        Self {
+            browser,
+            _timeout_ms: timeout_ms,
+        }
+    }
+}
 
 #[async_trait]
 impl DiagramProvider for PlantUmlProvider {
@@ -17,38 +29,7 @@ impl DiagramProvider for PlantUmlProvider {
     }
 
     async fn generate(&self, source: &str, format: &str) -> DiagramResult<Vec<u8>> {
-        // PlantUML CLI: java -jar plantuml.jar -pipe -tsvg
-        // Or if installed via brew: plantuml -pipe -tsvg
-
-        let mut cmd = Command::new(&self.bin_path);
-        cmd.arg("-pipe")
-            .arg(match format {
-                "svg" => "-tsvg",
-                "png" => "-tpng",
-                "txt" => "-ttxt",
-                _ => "-tsvg",
-            })
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        let output = crate::diagrams::run_process_with_timeout(
-            "plantuml",
-            cmd,
-            Some(source.as_bytes()),
-            self.timeout_ms,
-            source.len(),
-        )
-        .await?;
-
-        if output.status.success() {
-            Ok(output.stdout)
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(DiagramError::ProcessFailed(format!(
-                "PlantUML conversion failed: {}",
-                stderr
-            )))
-        }
+        // Redirect to browser-based rendering using CheerpJ + plantuml-core.jar.js
+        self.browser.evaluate("plantuml", source, format).await
     }
 }
