@@ -45,29 +45,36 @@
                 } catch (error) {
                     // Try multiple ways to extract error information
                     let errorMsg = 'Unknown error';
-                    let errorType = 'Unknown';
+                    let errorType = typeof error;
                     let errorDetails = '';
 
-                    // Try basic properties
-                    if (error?.message) {
+                    // Handle primitive string (CheerpJ can throw empty string)
+                    if (typeof error === 'string') {
+                        errorMsg = error && error.length > 0 ? error : '(empty string thrown by CheerpJ)';
+                    } else if (error?.message) {
                         errorMsg = error.message;
                     } else if (error?.toString) {
                         try {
-                            errorMsg = error.toString();
+                            const str = error.toString();
+                            if (str && str.length > 0 && str !== '[object Object]') {
+                                errorMsg = str;
+                            }
                         } catch (e) {
                             errorMsg = 'Error toString() failed';
                         }
                     }
 
-                    // Try to identify error type
-                    if (error?.constructor?.name) {
+                    // Try to identify error type better
+                    if (typeof error === 'string') {
+                        errorType = 'String';
+                    } else if (error?.constructor?.name) {
                         errorType = error.constructor.name;
                     }
 
                     // Try JSON stringify
                     try {
                         const stringified = JSON.stringify(error);
-                        if (stringified && stringified !== '{}') {
+                        if (stringified && stringified !== '{}' && stringified !== '""') {
                             errorDetails = '. JSON: ' + stringified;
                         }
                     } catch (e) {
