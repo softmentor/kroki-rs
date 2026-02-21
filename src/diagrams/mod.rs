@@ -6,6 +6,7 @@ pub mod providers {
     pub mod excalidraw;
     pub mod mermaid;
     pub mod plantuml;
+    pub mod plugin;
     pub mod vega;
     pub mod wavedrom;
 }

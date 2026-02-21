@@ -11,13 +11,33 @@ use tokio::net::TcpListener;
 /// Starts the admin server alongside the main application.
 pub async fn run_admin_server(state: AppState) -> anyhow::Result<()> {
     let port = state.config.server.admin_port;
-    let app = Router::new()
+    let metrics_export_enabled =
+        state.config.server.metrics.enabled && state.config.server.metrics.export_endpoint;
+
+    let mut app = Router::new()
         .route("/health", get(health_check))
-        .route("/", get(dashboard))
+        .route("/", get(dashboard));
+
+    // Add metrics endpoint if enabled and export is configured
+    if metrics_export_enabled {
+        app = app.route("/metrics", get(metrics_handler));
+    }
+
+    let app = app
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::server::middleware::auth::admin_auth_middleware,
+        ))
         .with_state(state);
 
     let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     tracing::info!("Admin dashboard available at http://localhost:{}", port);
+    if metrics_export_enabled {
+        tracing::info!(
+            "Prometheus metrics available at http://localhost:{}/metrics",
+            port
+        );
+    }
     axum::serve(listener, app).await?;
     Ok(())
 }
@@ -41,6 +61,21 @@ async fn health_check(State(state): State<AppState>) -> impl IntoResponse {
 
 async fn dashboard(State(state): State<AppState>) -> impl IntoResponse {
     let capabilities = state.registry.known_types();
+    let auth_status = if state.config.server.auth.enabled {
+        "Enabled"
+    } else {
+        "Disabled (Dev Mode)"
+    };
+    let rate_limit_status = if state.config.server.rate_limit.enabled {
+        "Enabled"
+    } else {
+        "Disabled"
+    };
+    let cb_status = if state.config.server.circuit_breaker.enabled {
+        "Enabled"
+    } else {
+        "Disabled"
+    };
 
     let html = format!(
         r#"
@@ -52,9 +87,12 @@ async fn dashboard(State(state): State<AppState>) -> impl IntoResponse {
         body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2rem; background: #f9fafb; color: #111827; }}
         h1 {{ border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; }}
         .card {{ background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1rem; }}
-        .success {{ color: #059669; font-weight: bold; }}
+        .status {{ font-weight: bold; }}
+        .enabled {{ color: #059669; }}
+        .disabled {{ color: #6b7280; }}
         ul {{ columns: 2; list-style-type: none; padding: 0; }}
         li {{ padding: 0.25rem 0; }}
+        .feature-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }}
     </style>
 </head>
 <body>
@@ -62,7 +100,16 @@ async fn dashboard(State(state): State<AppState>) -> impl IntoResponse {
     
     <div class="card">
         <h2>System Status</h2>
-        <p>Service: <span class="success">Online</span></p>
+        <div class="feature-grid">
+            <div>
+                <p>Service: <span class="status enabled">Online</span></p>
+                <p>Authentication: <span class="status {}">{}</span></p>
+            </div>
+            <div>
+                <p>Rate Limiting: <span class="status {}">{}</span></p>
+                <p>Circuit Breaker: <span class="status {}">{}</span></p>
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -75,6 +122,24 @@ async fn dashboard(State(state): State<AppState>) -> impl IntoResponse {
 </html>
 "#,
         env!("CARGO_PKG_VERSION"),
+        if state.config.server.auth.enabled {
+            "enabled"
+        } else {
+            "disabled"
+        },
+        auth_status,
+        if state.config.server.rate_limit.enabled {
+            "enabled"
+        } else {
+            "disabled"
+        },
+        rate_limit_status,
+        if state.config.server.circuit_breaker.enabled {
+            "enabled"
+        } else {
+            "disabled"
+        },
+        cb_status,
         capabilities.len(),
         capabilities
             .iter()
@@ -84,4 +149,12 @@ async fn dashboard(State(state): State<AppState>) -> impl IntoResponse {
     );
 
     Html(html)
+}
+
+async fn metrics_handler(State(state): State<AppState>) -> impl IntoResponse {
+    if let Some(handle) = &state.metrics_handle {
+        handle.render()
+    } else {
+        "Metrics collection is disabled".to_string()
+    }
 }
