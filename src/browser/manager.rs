@@ -17,7 +17,7 @@ impl BrowserManager {
     /// Prefers Native (headless_chrome) if available, falling back to Playwright if needed.
     pub async fn start(pool_size: usize, context_ttl: usize) -> Result<Self> {
         // 1. Try Native Backend (v0.0.5 target)
-        match NativeBackend::new() {
+        match NativeBackend::new().await {
             Ok(backend) => {
                 tracing::info!("Initialized native browser backend (headless_chrome)");
                 return Ok(Self {
