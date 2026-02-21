@@ -1,6 +1,8 @@
 mod browser;
 mod cli;
 mod config;
+mod discovery;
+mod docker;
 mod helpers;
 mod providers;
 mod server;

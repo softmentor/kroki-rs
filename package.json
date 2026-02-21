@@ -1,6 +1,6 @@
 {
     "name": "kroki-rs-deps",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Dependencies for kroki-rs",
     "dependencies": {
         "bpmn-js": "^18.12.0",

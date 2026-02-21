@@ -13,22 +13,50 @@ Kroki-rs is designed to work out-of-the-box with auto-discovery, but you can cus
 port = 8000
 admin_port = 8081
 timeout_ms = 5000
+max_input_size = 10485760   # 10MB
+max_output_size = 20971520  # 20MB
+
+[server.auth]
+enabled = false             # Set to true for production
+api_keys = [
+  { key = "prod-key-1", label = "marketing-app" },
+  { key = "debug-key", label = "internal-testing" }
+]
+
+[server.rate_limit]
+enabled = false
+requests_per_second = 10
+burst_size = 50
+
+[server.circuit_breaker]
+enabled = false
+failure_threshold = 5
+reset_timeout_secs = 30
+
+[server.metrics]
+enabled = true
+export_endpoint = true      # Exposes /metrics on admin port
 
 [browser]
 pool_size = 4
 context_ttl_requests = 100
+
+[[plugins]]
+name = "mytool"
+command = "/usr/local/bin/my-renderer"
+args = ["--format", "{format}", "--input", "-"]
+stdin = true
+formats = ["svg", "png"]
 
 [graphviz]
 bin_path = "/usr/local/bin/dot"
 
 [mermaid]
 bin_path = "./node_modules/.bin/mmdc"
-# Optional specific config for mermaid
 config_path = "mermaid-config.json"
 
 [plantuml]
 bin_path = "java"
-# arguments = ["-jar", "plantuml.jar"] # (Future support)
 
 [d2]
 bin_path = "d2"

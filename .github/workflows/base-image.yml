@@ -5,16 +5,16 @@ name: Build Base Image
 
 on:
   workflow_dispatch: # Allows manual trigger from GitHub UI
-  schedule:
-    - cron: '0 0 * * 0' # Every Sunday at midnight (Weekly security refresh)
-  push:
-    branches: ["main"]
-    # Trigger only when dependency-related files or this workflow change
-    paths:
-      - 'Dockerfile'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/base-image.yml'
+  # schedule:
+  #   - cron: '0 0 * * 0' # Every Sunday at midnight (Weekly security refresh)
+  # push:
+  #   branches: ["main"]
+  #   # Trigger only when dependency-related files or this workflow change
+  #   paths:
+  #     - 'Dockerfile'
+  #     - 'package.json'
+  #     - 'package-lock.json'
+  #     - '.github/workflows/base-image.yml'
 
 jobs:
   build-base:

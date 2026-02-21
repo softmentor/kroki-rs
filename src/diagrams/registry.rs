@@ -110,7 +110,22 @@ impl DiagramRegistry {
             providers.insert("excalidraw".to_string(), provider);
         }
 
-        // Add other providers here
+        // 2. Register custom plugins (TD-05 / ADR 0007)
+        for plugin_cfg in &config.plugins {
+            if providers.contains_key(&plugin_cfg.name) {
+                tracing::error!(
+                    "Plugin collision: '{}' already exists as a built-in provider. Skipping.",
+                    plugin_cfg.name
+                );
+                continue;
+            }
+
+            tracing::info!("Registering custom plugin: {}", plugin_cfg.name);
+            let provider = Arc::new(crate::diagrams::providers::plugin::PluginProvider::new(
+                plugin_cfg,
+            )) as Arc<dyn DiagramProvider + Send + Sync>;
+            providers.insert(plugin_cfg.name.clone(), provider);
+        }
 
         Self { providers }
     }

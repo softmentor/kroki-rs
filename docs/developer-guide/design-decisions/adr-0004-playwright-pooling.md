@@ -1,7 +1,7 @@
-# ADR 0004: Unified Browser Rendering and Instance Pooling
-
-## Status
-Proposed
+---
+title: "ADR 0004: Browser Instance Pooling & Recycling"
+label: kroki-rs.adr.0004
+---
 
 ## Context
 Currently, Kroki-rs relies on external CLI tools like `mermaid-cli` and `bpmn-to-image` to generate certain diagrams. These wrappers internally launch a separate Node.js process and a complete headless Chromium browser instance for every single diagram conversion request.

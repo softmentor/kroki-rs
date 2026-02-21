@@ -99,7 +99,9 @@ async fn test_server_diagram_endpoints() {
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
-    assert!(resp.text().await.unwrap().contains("Kroki-rs is running"));
+    let html = resp.text().await.unwrap();
+    assert!(html.contains("Kroki-rs"));
+    assert!(html.contains("Discovery"));
 
     // 2. Unsupported format -> 400 Bad Request
     let resp = client

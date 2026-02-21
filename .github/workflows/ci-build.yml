@@ -67,70 +67,13 @@ jobs:
 
   smoke-test:
     name: smoke-test
-    needs: [fmt, clippy, test]
+    needs: [test]
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Check for base image dependency changes
-        id: base-changes
-        uses: tj-actions/changed-files@v44
-        with:
-          files: |
-            Dockerfile
-            package.json
-            package-lock.json
-
-      - name: Determine BASE_IMAGE
-        id: determine-base
-        run: |
-          if [ "${{ steps.base-changes.outputs.any_changed }}" == "true" ]; then
-            echo "Base dependencies changed. Will build base from scratch."
-            echo "base_img=base" >> $GITHUB_OUTPUT
-          else
-            echo "No base dependencies changed. Utilizing pre-built GHCR base image."
-            echo "base_img=ghcr.io/${{ github.repository }}-base:latest" >> $GITHUB_OUTPUT
-          fi
-          
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
-
-      - name: Build and Load Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          build-args: |
-            BASE_IMAGE=${{ steps.determine-base.outputs.base_img }}
-          load: true 
-          tags: kroki-rs:ci-test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Verify API and Rendering
-        run: |
-          # 1. Start the container
-          docker run -d --name kroki-test -p 8000:8000 -p 8081:8081 kroki-rs:ci-test
-          sleep 5
-          
-          # 2. Test Health Check API (Admin Port)
-          curl --fail -s http://localhost:8081/health | grep '"status":"ok"'
-          
-          # 3. Test Mermaid Rendering (Main API Port)
-          curl -s -f -o mermaid.svg http://localhost:8000/mermaid/svg/eJxLL0osyFAIcbHmUnDU1bVzsgYALroEhg
-          grep -q "<svg" mermaid.svg
-          
-          docker stop kroki-test
-          echo "✅ Smoke test passed!"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install system dependencies for rendering
+        run: sudo apt-get update && sudo apt-get install -y build-essential graphviz
+      - name: Run native smoke test
+        run: make smoke-test

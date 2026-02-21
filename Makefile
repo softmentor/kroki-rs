@@ -5,10 +5,13 @@ PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
 ARCHIVE_NAME=$(BINARY_NAME)-$(PLATFORM).tar.gz
 VERSION ?= $(shell grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
 
-# Default target: complete project lifecycle
-# Uses nextest for fast parallel testing, then full verify (release build + dist)
+# Default target: complete project lifecycle (native)
 .PHONY: all
-all: deps clean fmt lint test-ci doc verify test-load
+all: deps clean fmt lint test-ci doc verify smoke-test
+
+# Quick dev iteration run without clean
+.PHONY: devrun
+devrun: deps fmt lint test-ci doc verify smoke-test
 
 # Check for sccache and configure it if available (speeds up local builds)
 ifneq (, $(shell which sccache))
@@ -51,10 +54,11 @@ lint:
 	cargo clippy --release -- -D warnings
 	cargo fmt --all -- --check
 
-# Formatting
+# Formatting and automatic fixes
 .PHONY: fmt
 fmt:
 	cargo fmt --all
+	cargo clippy --fix --allow-dirty --allow-staged
 
 # Generate code documentation
 .PHONY: doc
@@ -92,6 +96,21 @@ verify: lint test dist
 		exit 1; \
 	fi
 
+# Native Smoke Test (No Docker)
+.PHONY: smoke-test
+smoke-test: release
+	@echo "Starting native smoke test..."
+	@lsof -ti :8000,8081 | xargs kill -9 2>/dev/null || true
+	@target/release/$(BINARY_NAME) serve > smoke-test.log 2>&1 &
+	@sleep 3
+	@echo "Verifying Health Check..."
+	@curl --fail -s http://localhost:8081/health | grep '"status":"ok"' || (echo "❌ Health check failed"; lsof -ti :8000,8081 | xargs kill -9; exit 1)
+	@echo "Verifying Graphviz Rendering..."
+	@curl --fail -s http://localhost:8000/graphviz/svg/eJxLyUwvSizIUHBXqFbwSM3JyVfQtVMIzy_KSVGoBQCJQglG > /dev/null && echo "✅ Rendering OK" || (echo "❌ Rendering failed"; lsof -ti :8000,8081 | xargs kill -9; exit 1)
+	@lsof -ti :8000,8081 | xargs kill -9 2>/dev/null || true
+	@rm -f smoke-test.log
+	@echo "✅ Native smoke test passed!"
+
 # Version bump helper
 # Usage: make bump VERSION=0.0.3
 .PHONY: bump
@@ -116,6 +135,7 @@ serve:
 .PHONY: deps
 deps:
 	npm install
+	npx playwright install chromium
 
 # Container Engine (Podman preferred for Local/Mac)
 CONTAINER_ENGINE ?= $(shell which podman 2>/dev/null || which docker 2>/dev/null)
@@ -179,6 +199,11 @@ ci-local:
 	@export DOCKER_HOST=unix://$(shell podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' 2>/dev/null || echo "/var/run/docker.sock") && \
 	act -W .github/workflows/ci-build.yml --container-daemon-socket - -s GITHUB_TOKEN=$${CR_PAT:-$${GITHUB_TOKEN}}
 
-# Complete Docker Lifecycle: Build, Test, and Local CI Verification
-.PHONY: docker-all
-docker-all: docker-build docker-test ci-local
+# Complete Native Lifecycle: Build, Test, and Smoke Test
+.PHONY: full-check
+full-check: all
+
+# ==============================================================================
+# Docker/Production Targets (Optional - currently avoided for fast dev cycles)
+# ==============================================================================
+# Container Engine (Podman preferred for Local/Mac)

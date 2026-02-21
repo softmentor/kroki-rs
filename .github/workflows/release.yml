@@ -136,103 +136,10 @@ jobs:
           prerelease: false
           generate_release_notes: true
 
-  docker:
-    name: Build & Push Docker Image
-    needs: [release, publish]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Tag and Push Base Image for Release
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          BASE_IMG="ghcr.io/${{ github.repository }}-base"
-          # We don't need to pull/build, we can use 'docker manifest' or 'regctl' but
-          # 'docker buildx imagetools' is the easiest way to alias a multi-arch image
-          docker buildx imagetools create \
-            --tag "${BASE_IMG}:${VERSION}" \
-            "${BASE_IMG}:latest"
-          echo "✅ Tagged ${BASE_IMG}:latest as ${BASE_IMG}:${VERSION}"
-
-      - name: Download Linux AMD64 Binary
-        uses: actions/download-artifact@v4
-        with:
-          name: kroki-rs-linux-amd64
-          path: dist-amd64
-
-      - name: Download Linux ARM64 Binary
-        uses: actions/download-artifact@v4
-        with:
-          name: kroki-rs-linux-arm64
-          path: dist-arm64
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest
-
-      - name: Build and Load (Local Verification)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          load: true
-          build-args: |
-             BASE_IMAGE=ghcr.io/${{ github.repository }}-base:latest
-          tags: kroki-rs:release-test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Verify Image
-        run: |
-          docker run -d --name kroki-release-test -p 8000:8000 -p 8081:8081 kroki-rs:release-test
-          sleep 5
-          echo "Testing Health Endpoint..."
-          curl --fail -s http://localhost:8081/health || (docker logs kroki-release-test; exit 1)
-          echo "Testing Mermaid Rendering..."
-          curl --fail -s http://localhost:8000/mermaid/svg/eJxLL0osyFAIcbHmUnDU1bVzsgYALroEhg > /dev/null || (docker logs kroki-release-test; exit 1)
-          docker stop kroki-release-test
-          docker rm kroki-release-test
-
-      - name: Build and push Multi-arch Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: |
-             BASE_IMAGE=ghcr.io/${{ github.repository }}-base:latest
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   # Job 4: Deploy documentation only after all artifacts are published
   pages:
     name: Deploy Documentation
-    needs: [publish, docker]
+    needs: [publish]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:

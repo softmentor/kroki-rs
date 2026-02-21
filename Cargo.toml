@@ -1,6 +1,6 @@
 [package]
 name = "kroki-rs"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 
 [dependencies]
@@ -28,6 +28,11 @@ walkdir = "2.4"
 resvg = { version = "0.42.0", default-features = false, features = ["text", "system-fonts"] }
 image = { version = "0.25", default-features = false, features = ["webp"] }
 async-trait = "0.1.89"
+dashmap = "6"
+bcrypt = "0.15"
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
+
 # Optional experimental support
 # rustyscript = { version = "0.1", optional = true }
 

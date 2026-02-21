@@ -26,7 +26,7 @@ site:
     url: https://softmentor.github.io/kroki-rs/
     folders: false
     hide_authors: true
-    logo_text: Kroki-rs V0.0.3
+    logo_text: Kroki-rs V0.0.4
     logo: assets/images/k-rs-icon.png
     logo_dark: assets/images/k-rs-icon.png
     favicon: assets/images/k-rs-icon.png
