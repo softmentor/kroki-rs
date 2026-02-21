@@ -1,8 +1,9 @@
 use crate::browser::backend::BrowserBackend;
 use crate::diagrams::{DiagramError, DiagramResult};
 use async_trait::async_trait;
-use base64::{engine::general_purpose::STANDARD, Engine};
+use headless_chrome::protocol::cdp::types::Event;
 use headless_chrome::Browser;
+use std::sync::Arc;
 
 /// Native browser backend using the `headless_chrome` crate.
 /// Eliminates the need for a separate Node.js worker process.
@@ -22,6 +23,7 @@ impl NativeBackend {
                 std::ffi::OsStr::new("--disable-setuid-sandbox"),
                 std::ffi::OsStr::new("--disable-dev-shm-usage"),
                 std::ffi::OsStr::new("--disable-gpu"),
+                std::ffi::OsStr::new("--allow-file-access-from-files"),
             ],
             ..Default::default()
         };
@@ -44,12 +46,50 @@ impl BrowserBackend for NativeBackend {
             .new_tab()
             .map_err(|e| DiagramError::ProcessFailed(e.to_string()))?;
 
-        // 1. Prepare rendering environment
-        let html = include_str!("../../resources/browser/index.html");
+        // Enable console log capturing to pipe diagnostics to Rust tracing
+        tab.add_event_listener(Arc::new(move |event: &Event| {
+            if let Event::RuntimeConsoleAPICalled(evt) = event {
+                let args: Vec<String> = evt
+                    .params
+                    .args
+                    .iter()
+                    .filter_map(|p| {
+                        p.value.as_ref().and_then(|v: &serde_json::Value| {
+                            v.as_str().map(|s: &str| s.to_string())
+                        })
+                    })
+                    .collect();
+                tracing::debug!(
+                    "Browser Console [{:?}]: {}",
+                    evt.params.Type,
+                    args.join(" ")
+                );
+            }
+        }))
+        .map_err(|e| {
+            DiagramError::ProcessFailed(format!("Failed to enable console capture: {}", e))
+        })?;
 
-        // Use a data URI to load the basic harness
-        let data_uri = format!("data:text/html;base64,{}", STANDARD.encode(html.as_bytes()));
-        tab.navigate_to(&data_uri)
+        // 1. Prepare rendering environment using a temporary file
+        // Data URIs result in a 'null' origin which causes CheerpJ to fail.
+        let html = include_str!("../../resources/browser/index.html");
+        let mut temp_file = tempfile::Builder::new()
+            .prefix("kroki-harness-")
+            .suffix(".html")
+            .tempfile()
+            .map_err(|e| {
+                DiagramError::ProcessFailed(format!("Failed to create temp harness: {}", e))
+            })?;
+
+        use std::io::Write;
+        temp_file
+            .write_all(html.as_bytes())
+            .map_err(|e| DiagramError::ProcessFailed(e.to_string()))?;
+
+        let file_uri = format!("file://{}", temp_file.path().display());
+        tracing::debug!("Navigating to harness: {}", file_uri);
+
+        tab.navigate_to(&file_uri)
             .map_err(|e| DiagramError::ProcessFailed(e.to_string()))?;
         tab.wait_until_navigated()
             .map_err(|e| DiagramError::ProcessFailed(e.to_string()))?;
@@ -69,7 +109,7 @@ impl BrowserBackend for NativeBackend {
                 })?;
             }
             "plantuml" => {
-                // CheerpJ loader (CDN for now, or we could embed it too if we had it)
+                // CheerpJ loader (CDN for now)
                 let loader_script = "const s = document.createElement('script'); s.src = 'https://cjrtnc.leaningtech.com/2.0/loader.js'; document.head.appendChild(s);";
                 tab.evaluate(loader_script, false)
                     .map_err(|e| DiagramError::ProcessFailed(e.to_string()))?;
@@ -79,9 +119,6 @@ impl BrowserBackend for NativeBackend {
                 tab.evaluate(wait_js, true).map_err(|e| {
                     DiagramError::ProcessFailed(format!("CheerpJ initialization failed: {}", e))
                 })?;
-
-                // Load PlantUML JAR.js lazily in initPlantUml (will be loaded when first rendering)
-                // This is deferred to avoid blocking on the 17MB file during setup
             }
             _ => {
                 return Err(DiagramError::UnsupportedFormat {
@@ -167,7 +204,6 @@ impl BrowserBackend for NativeBackend {
             })?;
 
         if result.is_empty() {
-            // For empty results, also try to get debug info
             let mut error_msg =
                 "Render produced empty output - render function may have failed silently"
                     .to_string();
