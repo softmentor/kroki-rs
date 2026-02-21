@@ -125,6 +125,10 @@ fn app(state: AppState) -> axum::Router {
     axum::Router::new()
         .route("/", get(handlers::root))
         .route("/{type}/{format}/{source}", get(handlers::get_diagram))
+        .route(
+            "/{type}/{format}",
+            axum::routing::post(handlers::post_render),
+        )
         .layer(mw::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,
