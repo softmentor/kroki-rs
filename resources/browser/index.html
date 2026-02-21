@@ -43,13 +43,51 @@
                     await cheerpjInit();
                     this.debug('cheerpjInit() completed');
                 } catch (error) {
-                    const errorMsg = error?.message || error?.toString?.() || 'Unknown error';
-                    const errorStack = error?.stack || 'No stack trace';
-                    const errorKeys = error ? Object.keys(error).join(',') : 'N/A';
+                    // Try multiple ways to extract error information
+                    let errorMsg = 'Unknown error';
+                    let errorType = 'Unknown';
+                    let errorDetails = '';
+
+                    // Try basic properties
+                    if (error?.message) {
+                        errorMsg = error.message;
+                    } else if (error?.toString) {
+                        try {
+                            errorMsg = error.toString();
+                        } catch (e) {
+                            errorMsg = 'Error toString() failed';
+                        }
+                    }
+
+                    // Try to identify error type
+                    if (error?.constructor?.name) {
+                        errorType = error.constructor.name;
+                    }
+
+                    // Try JSON stringify
+                    try {
+                        const stringified = JSON.stringify(error);
+                        if (stringified && stringified !== '{}') {
+                            errorDetails = '. JSON: ' + stringified;
+                        }
+                    } catch (e) {
+                        // Ignore stringify failures
+                    }
+
+                    // Get keys even if empty
+                    const keys = error ? Object.keys(error).join(',') || 'no enumerable keys' : 'null';
+
                     this.debug('cheerpjInit() failed: ' + errorMsg);
-                    this.debug('Error keys: ' + errorKeys);
-                    this.debug('Error stack: ' + errorStack);
-                    throw new Error('Failed to initialize CheerpJ: ' + errorMsg);
+                    this.debug('Error type: ' + errorType);
+                    this.debug('Error keys: ' + keys);
+                    if (error?.stack) {
+                        this.debug('Error stack: ' + error.stack);
+                    }
+                    if (errorDetails) {
+                        this.debug('Error details' + errorDetails);
+                    }
+
+                    throw new Error('Failed to initialize CheerpJ: ' + errorMsg + ' (' + errorType + ')');
                 }
 
                 // Wait for cjCall to be available (allows classloading to complete)
