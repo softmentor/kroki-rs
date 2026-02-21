@@ -15,15 +15,30 @@
             isPlantUmlInitialized: false,
             isPlantUmlCoreLoaded: false,
             lastError: null,
+            debugLog: [],
+
+            debug(msg) {
+                this.debugLog.push(msg);
+                console.log('[kroki-debug]', msg);
+            },
 
             async initPlantUml() {
-                if (this.isPlantUmlInitialized) return;
+                if (this.isPlantUmlInitialized) {
+                    this.debug('PlantUML already initialized');
+                    return;
+                }
+
+                this.debug('Checking for cheerpjInit...');
                 if (typeof cheerpjInit === 'undefined') {
                     throw new Error("CheerpJ loader not found. Link https://cjrtnc.leaningtech.com/2.0/loader.js first.");
                 }
+
+                this.debug('Calling cheerpjInit()...');
                 await cheerpjInit();
+                this.debug('cheerpjInit() completed');
 
                 // Wait for cjCall to be available (allows classloading to complete)
+                this.debug('Waiting for cjCall to be available...');
                 const startTime = Date.now();
                 while (typeof cjCall === 'undefined' && (Date.now() - startTime) < 5000) {
                     await new Promise(resolve => setTimeout(resolve, 100));
@@ -31,6 +46,7 @@
                 if (typeof cjCall === 'undefined') {
                     throw new Error("CheerpJ cjCall function not available after initialization");
                 }
+                this.debug('cjCall is available');
 
                 this.isPlantUmlInitialized = true;
             },
@@ -56,28 +72,45 @@
 
             async renderPlantUml(source) {
                 try {
+                    this.debug('Starting PlantUML render...');
                     await this.initPlantUml();
+                    this.debug('PlantUML initialized');
 
                     if (!this.isPlantUmlCoreLoaded) {
+                        this.debug('Checking for PlantUML classes (com namespace)...');
+
                         // Ensure PlantUML classes are available
                         const classCheckStartTime = Date.now();
                         while (typeof com === 'undefined' && (Date.now() - classCheckStartTime) < 5000) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
                         if (typeof com === 'undefined') {
-                            throw new Error("PlantUML classes not available after loading core");
+                            this.debug('ERROR: com namespace not available after 5s');
+                            throw new Error("PlantUML classes not available after loading core. com=" + typeof com);
                         }
+                        this.debug('PlantUML classes found. com.plantuml=' + (typeof com.plantuml));
                         this.isPlantUmlCoreLoaded = true;
                     }
 
+                    this.debug('Calling cjCall for PlantUML conversion...');
                     // API: com.plantuml.api.cheerpj.v1.Svg.convert("light", text)
                     const result = await cjCall("com.plantuml.api.cheerpj.v1.Svg", "convert", "light", source);
+                    this.debug('cjCall returned, result type=' + typeof result + ', length=' + (result ? result.length : 'null'));
+
                     if (!result) {
-                        throw new Error("PlantUML returned empty result");
+                        throw new Error("PlantUML returned empty/null result");
                     }
+                    if (typeof result !== 'string') {
+                        throw new Error("PlantUML returned non-string: " + typeof result);
+                    }
+
+                    this.debug('PlantUML render successful, output size=' + result.length);
                     return result;
                 } catch (error) {
-                    this.lastError = error.message || String(error);
+                    const errorMsg = error.message || String(error);
+                    this.lastError = errorMsg;
+                    this.debug('ERROR: ' + errorMsg);
+                    this.debug('Debug log: ' + JSON.stringify(this.debugLog));
                     throw error;
                 }
             }

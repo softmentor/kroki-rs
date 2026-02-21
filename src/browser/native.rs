@@ -131,27 +131,58 @@ impl BrowserBackend for NativeBackend {
             .value
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .ok_or_else(|| {
-                // Try to get console errors for better diagnostics
-                let console_info = tab
-                    .evaluate(
-                        "window.kroki.lastError || 'No error message available'",
-                        false,
-                    )
-                    .ok()
-                    .and_then(|obj| obj.value)
-                    .and_then(|val| val.as_str().map(|s| format!("Last error: {}", s)))
-                    .unwrap_or_else(|| {
-                        "Render returned null or non-string (unable to get error details)"
-                            .to_string()
-                    });
-                DiagramError::ProcessFailed(console_info)
+                // Try to get console errors and debug logs for better diagnostics
+                let mut error_details = String::new();
+
+                // Get stored error message
+                if let Ok(error_obj) = tab.evaluate("window.kroki.lastError", false) {
+                    if let Some(val) = error_obj
+                        .value
+                        .as_ref()
+                        .and_then(|v| v.as_str().map(|s| s.to_string()))
+                    {
+                        error_details.push_str(&format!("Last error: {}\n", val));
+                    }
+                }
+
+                // Get debug logs
+                if let Ok(debug_obj) = tab.evaluate("JSON.stringify(window.kroki.debugLog)", false)
+                {
+                    if let Some(val) = debug_obj
+                        .value
+                        .as_ref()
+                        .and_then(|v| v.as_str().map(|s| s.to_string()))
+                    {
+                        error_details.push_str(&format!("Debug log: {}\n", val));
+                    }
+                }
+
+                let final_msg = if error_details.is_empty() {
+                    "Render returned null or non-string (unable to get error details)".to_string()
+                } else {
+                    error_details
+                };
+
+                DiagramError::ProcessFailed(final_msg)
             })?;
 
         if result.is_empty() {
-            return Err(DiagramError::ProcessFailed(
+            // For empty results, also try to get debug info
+            let mut error_msg =
                 "Render produced empty output - render function may have failed silently"
-                    .to_string(),
-            ));
+                    .to_string();
+
+            if let Ok(debug_obj) = tab.evaluate("JSON.stringify(window.kroki.debugLog)", false) {
+                if let Some(val) = debug_obj
+                    .value
+                    .as_ref()
+                    .and_then(|v| v.as_str().map(|s| s.to_string()))
+                {
+                    error_msg.push_str(&format!("\nDebug log: {}", val));
+                }
+            }
+
+            return Err(DiagramError::ProcessFailed(error_msg));
         }
 
         Ok(result.into_bytes())
