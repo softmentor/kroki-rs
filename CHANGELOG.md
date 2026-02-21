@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2026-02-21
+
+### Added
+- **Native Browser Backend**: Replaced Node.js/Playwright with a pure-Rust `headless_chrome` implementation, achieving sub-50ms cold starts and zero runtime dependencies for core diagrams. (ADR 0008, 0008.1)
+- **Java-Free PlantUML**: Integrated `plantuml-core.jar.js` via CheerpJ to render PlantUML diagrams within the native browser engine, eliminating the local Java runtime requirement.
+- **Interface Layer**: Implemented standardized DTOs and RFC 7807 Problem Details for all error responses.
+- **Native Load Testing**: Added stress testing for the `headless_chrome` backend to ensure stability under high concurrency.
+
+### Changed
+- **Browser Abstraction**: Introduced the `BrowserBackend` trait, allowing seamless switching between Native and Playwright backends.
+- **Documentation**: New [Browser Rendering](docs/developer-guide/browser-rendering.md) guide and updated user guides for zero-dependency workflows.
+- **Test Infrastructure**: Optimized server integration tests for single-instance initialization, reducing suite execution time.
+- **Project Roadmap**: Marked v0.0.5 as complete.
+
 ## [0.0.4] - 2026-02-21
 
 ### Added
