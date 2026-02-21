@@ -41,18 +41,33 @@ impl DiagramProvider for MyProvider {
     }
 
     async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
-        // 1. Validate format — reject unsupported formats explicitly
-        if format != "svg" {
-            return Err(anyhow::anyhow!(
-                "MyTool only supports SVG format, got '{}'", format
-            ));
-        }
-        // 2. Build command
-        // 3. Call run_process_with_timeout
-        // 4. Check exit status, return output bytes
+        // ... build command and run
     }
 }
 ```
+
+### Browser-Based Providers
+
+If a diagram tool requires a JavaScript runtime (e.g., Mermaid, BPMN, PlantUML-CheerpJ), use the `BrowserManager`:
+
+```rust
+pub struct MyBrowserProvider {
+    browser: Arc<BrowserManager>,
+}
+
+#[async_trait]
+impl DiagramProvider for MyBrowserProvider {
+    async fn generate(&self, source: &str, format: &str) -> Result<Vec<u8>> {
+        // The manager handles pooling, fallback, and native execution
+        self.browser.evaluate("my-type", source, format).await
+    }
+}
+```
+
+**Rules:**
+- Never initialize a new browser instance inside a provider — always use the shared `BrowserManager`
+- Direct evaluation is preferred over subprocesses for performance
+- The `type` passed to `evaluate()` must be supported by the browser harness (`window.kroki`)
 
 **Rules:**
 - Always validate format — **never** silently fall back to a different format

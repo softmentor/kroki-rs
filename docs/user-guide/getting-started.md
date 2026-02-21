@@ -6,13 +6,15 @@ label: kroki-rs.user-guide.getting-started
 
 ## Prerequisites
 
-Kroki-rs is highly modular and relies on external tools to render specific diagrams. The [**Installation Script**](#the-quick-way-recommended) will check for these automatically, but you should eventually install:
+Kroki-rs is highly modular. While many diagrams now use a **Rust-Native** engine with zero runtime dependencies, some specialized tools still require external binaries:
 
-- **Graphviz**: For DOT and PlantUML support.
-- **Node.js**: Required for Mermaid, Vega, and Wavedrom.
+- **Graphviz**: Required for Ditaa and advanced DOT features.
+- **Node.js**: Required for Vega and Wavedrom (Mermaid and BPMN are now native).
 - **D2**: For modern, data-driven diagrams.
+- **Chromium / Chrome**: Required for browser-based diagrams (Mermaid, BPMN, PlantUML).
 
-See the [**Supported Diagrams**](#kroki-rs.user-guide.supported-diagrams) page for details on tool requirements.
+> [!TIP]
+> **Java** is no longer required for PlantUML! Kroki-rs uses a native browser-based integration via CheerpJ.
 
 ## Installation
 
@@ -54,10 +56,11 @@ This runs the main API on port `8000` and the Admin dashboard/health checks on p
 
 On startup, `kroki-rs` automatically checks for available tools in your `PATH` and `node_modules/.bin`.
 
-1.  Install Node dependencies (optional, for Mermaid/Vega/etc.):
+1.  (Optional) Install Node dependencies:
     ```bash
     npm install
     ```
+    *Note: Mermaid and BPMN libraries are already embedded in the binary. This is only needed for Vega or if using the legacy Playwright backend.*
 
 2.  Run the server:
     ```bash

@@ -9,15 +9,15 @@ Kroki-rs supports a wide variety of diagram types by leveraging existing CLI too
 | ID | Name | Primary Format | Required Tool |
 | :--- | :--- | :--- | :--- |
 | `graphviz` | [Graphviz](https://graphviz.org/) | SVG | `dot` |
-| `mermaid` | [Mermaid](https://mermaid.js.org/) | SVG | `mmdc` |
-| `plantuml` | [PlantUML](https://plantuml.com/) | SVG | `plantuml` (or `java -jar`) |
-| `vega` | [Vega](https://vega.github.io/vega/) | SVG | `vg2svg` |
-| `vegalite` | [Vega-Lite](https://vega.github.io/vega-lite/) | SVG | `vl2vg` & `vg2svg` |
-| `wavedrom` | [WaveDrom](https://wavedrom.com/) | SVG | `wavedrom-cli` |
-| `bpmn` | [BPMN](https://bpmn.io/) | SVG | `bpmn-to-image` |
+| `mermaid` | [Mermaid](https://mermaid.js.org/) | SVG | **Native Engine** (Chrome/Chromium) |
+| `plantuml` | [PlantUML](https://plantuml.com/) | SVG | **Native Engine** (Chrome/Chromium) |
+| `vega` | [Vega](https://vega.github.io/vega/) | SVG | `vg2svg` (Node.js) |
+| `vegalite` | [Vega-Lite](https://vega.github.io/vega-lite/) | SVG | `vl2vg` & `vg2svg` (Node.js) |
+| `wavedrom` | [WaveDrom](https://wavedrom.com/) | SVG | `wavedrom-cli` (Node.js) |
+| `bpmn` | [BPMN](https://bpmn.io/) | SVG | **Native Engine** (Chrome/Chromium) |
 | `d2` | [D2](https://d2lang.com/) | SVG | `d2` |
 | `ditaa` | [Ditaa](http://ditaa.sourceforge.net/) | PNG | `ditaa` |
-| `excalidraw` | [Excalidraw](https://excalidraw.com/) | SVG | `excalidraw-to-svg` |
+| `excalidraw` | [Excalidraw](https://excalidraw.com/) | SVG | `excalidraw-to-svg` (Node.js) |
 
 ## Installation of Tools
 

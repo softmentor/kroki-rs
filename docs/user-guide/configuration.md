@@ -38,6 +38,9 @@ enabled = true
 export_endpoint = true      # Exposes /metrics on admin port
 
 [browser]
+# Preferred backend: "native" (default) or "playwright"
+backend = "native"
+# Legacy Playwright only:
 pool_size = 4
 context_ttl_requests = 100
 
@@ -56,7 +59,8 @@ bin_path = "./node_modules/.bin/mmdc"
 config_path = "mermaid-config.json"
 
 [plantuml]
-bin_path = "java"
+# No bin_path or Java required! Kroki-rs uses embedded JS.
+# bin_path = "java"
 
 [d2]
 bin_path = "d2"
@@ -75,8 +79,9 @@ You can override any configuration directly using environment variables:
 -   `KROKI_MAX_INPUT_SIZE`: Maximum payload size in bytes
 -   `KROKI_MAX_OUTPUT_SIZE`: Maximum SVG/PNG size in bytes
 -   `KROKI_CONFIG`: Path to a custom config file
--   `KROKI_BROWSER_POOL_SIZE`: Maximum number of concurrent Playwright generic-pool browser sessions (default 4)
--   `KROKI_BROWSER_CONTEXT_TTL`: Request evaluations allowed per browser context before forced recycling (default 100)
+-   `KROKI_BROWSER_BACKEND`: "native" (default) or "playwright"
+-   `KROKI_BROWSER_POOL_SIZE`: (Playwright only) Max concurrent browser sessions (default 4)
+-   `KROKI_BROWSER_CONTEXT_TTL`: (Playwright only) Forced recycling TTL (default 100)
 
 Tool-specific env overrides follow the pattern `KROKI_<TOOL>_<OPTION>`, e.g.:
 -   `KROKI_GRAPHVIZ_BIN`: Path to dot executable
