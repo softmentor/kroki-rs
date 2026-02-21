@@ -39,6 +39,7 @@
 
                 this.debug('Calling cheerpjInit()...');
                 this.debug('cheerpjInit type: ' + typeof cheerpjInit);
+                this.debug('isSecureContext: ' + window.isSecureContext);
                 try {
                     await cheerpjInit({ disableServiceWorker: true });
                     this.debug('cheerpjInit() completed');

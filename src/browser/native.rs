@@ -12,13 +12,14 @@ use headless_chrome::protocol::cdp::types::Event;
 use headless_chrome::Browser;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, Semaphore};
 
 /// Native browser backend using the `headless_chrome` crate.
 /// Eliminates the need for a separate Node.js worker process.
 pub struct NativeBackend {
     browser: Browser,
     harness_url: String,
+    semaphore: Arc<Semaphore>,
     _shutdown_tx: oneshot::Sender<()>,
 }
 
@@ -59,7 +60,9 @@ impl NativeBackend {
             Ok(p) => p,
             Err(_) => return Err("Failed to start local harness server".to_string()),
         };
-        let harness_url = format!("http://localhost:{}", port);
+
+        // Use 127.0.0.1 specifically. localhost resolution to ::1 can cause slow fallbacks or failures in CI.
+        let harness_url = format!("http://127.0.0.1:{}", port);
         tracing::debug!("Local harness server started at {}", harness_url);
 
         // 2. Initialize browser
@@ -71,14 +74,23 @@ impl NativeBackend {
                 std::ffi::OsStr::new("--disable-dev-shm-usage"),
                 std::ffi::OsStr::new("--disable-gpu"),
                 std::ffi::OsStr::new("--disable-web-security"),
+                // Additional CI stability flags
+                std::ffi::OsStr::new("--disable-software-rasterizer"),
+                std::ffi::OsStr::new("--disable-features=IsolateOrigins,site-per-process"),
             ],
             ..Default::default()
         };
 
         let browser = Browser::new(options).map_err(|e| e.to_string())?;
+
+        // Limit concurrency to avoid resource exhaustion in CI runners.
+        // GitHub Actions has 7GB RAM and 2 CPUs. 4 concurrent tabs is a safe middle ground.
+        let semaphore = Arc::new(Semaphore::new(4));
+
         Ok(Self {
             browser,
             harness_url,
+            semaphore,
             _shutdown_tx: shutdown_tx,
         })
     }
@@ -118,6 +130,11 @@ impl BrowserBackend for NativeBackend {
         source: &str,
         _format: &str,
     ) -> DiagramResult<Vec<u8>> {
+        // Limit concurrency
+        let _permit = self.semaphore.acquire().await.map_err(|_| {
+            DiagramError::ProcessFailed("Native backend semaphore was closed".to_string())
+        })?;
+
         let tab = self
             .browser
             .new_tab()
@@ -174,7 +191,7 @@ impl BrowserBackend for NativeBackend {
                     .map_err(|e| DiagramError::ProcessFailed(format!("BPMN load timeout: {}", e)))?;
             }
             "plantuml" => {
-                // CheerpJ loader (CDN for now, or we could self-host the loader.js too if needed)
+                // CheerpJ loader (CDN for now)
                 let loader_script = "const s = document.createElement('script'); s.src = 'https://cjrtnc.leaningtech.com/2.0/loader.js'; document.head.appendChild(s);";
                 tab.evaluate(loader_script, false)
                     .map_err(|e| DiagramError::ProcessFailed(e.to_string()))?;
@@ -270,7 +287,8 @@ impl BrowserBackend for NativeBackend {
             "status": "ok",
             "backend": "headless_chrome",
             "tabs": tabs_count,
-            "harness_url": self.harness_url
+            "harness_url": self.harness_url,
+            "concurrency_permits_available": self.semaphore.available_permits()
         })
     }
 }
