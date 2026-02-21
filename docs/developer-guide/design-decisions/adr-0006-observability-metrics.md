@@ -1,7 +1,7 @@
-# ADR 0006: Per-Provider Observability & Metrics
-
-## Status
-Proposed
+---
+title: "ADR 0006: Per-Provider Observability & Metrics"
+label: kroki-rs.adr.0006
+---
 
 ## Context
 Production deployments require visibility into per-provider performance to diagnose bottlenecks, set SLOs, and inform capacity planning. Operators need to answer: "Which diagram type is slowest?", "Which provider fails most?", "What's the P99 latency?"

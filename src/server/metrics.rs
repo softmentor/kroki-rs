@@ -4,9 +4,14 @@ pub use metrics_exporter_prometheus::PrometheusHandle;
 
 use std::sync::OnceLock;
 
+/// A global handle to the Prometheus exporter.
 static METRICS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
 
 /// Initialize the Prometheus metrics exporter.
+///
+/// This registers the recorder and defines all core metrics (counters, histograms, gauges)
+/// according to ADR 0006.
+///
 /// Returns a handle that can be used to scrape metrics if the endpoint is enabled.
 /// This function is idempotent and safe to call multiple times (e.g. in integration tests).
 pub fn init_metrics() -> PrometheusHandle {
@@ -56,18 +61,24 @@ fn describe_metrics() {
     );
 }
 
-/// Helper for recording metrics in handlers.
+/// Helper for recording common metrics in API and Admin handlers.
+///
+/// This provides a static interface to record requests, durations, errors,
+/// and circuit breaker states without needing to pass around recorder handles.
 pub struct Metrics;
 
 impl Metrics {
+    /// Increments the total request count for a given provider and format.
     pub fn increment_requests(provider: &str, format: &str) {
         counter!("kroki_requests_total", "provider" => provider.to_string(), "format" => format.to_string()).increment(1);
     }
 
+    /// Records the end-to-end duration of a request.
     pub fn record_duration(provider: &str, format: &str, seconds: f64) {
         histogram!("kroki_request_duration_seconds", "provider" => provider.to_string(), "format" => format.to_string()).record(seconds);
     }
 
+    /// Records a rendering error, categorized by error kind.
     pub fn increment_errors(provider: &str, format: &str, error_kind: &str) {
         counter!("kroki_rendering_errors_total",
             "provider" => provider.to_string(),
@@ -77,18 +88,22 @@ impl Metrics {
         .increment(1);
     }
 
+    /// Records the size of the input payload (compressed/encoded source).
     pub fn record_payload_size(provider: &str, format: &str, bytes: f64) {
         histogram!("kroki_payload_size_bytes", "provider" => provider.to_string(), "format" => format.to_string()).record(bytes);
     }
 
+    /// Records the pure conversion time (excluding server overhead).
     pub fn record_conversion_time(provider: &str, format: &str, seconds: f64) {
         histogram!("kroki_conversion_time_seconds", "provider" => provider.to_string(), "format" => format.to_string()).record(seconds);
     }
 
+    /// Updates the gauge for currently active concurrent requests.
     pub fn set_active_connections(provider: &str, format: &str, count: f64) {
         gauge!("kroki_active_connections", "provider" => provider.to_string(), "format" => format.to_string()).set(count);
     }
 
+    /// Updates the gauge for a provider's circuit breaker state (0=Closed, 1=Open, 2=HalfOpen).
     pub fn set_circuit_breaker_state(provider: &str, state: f64) {
         gauge!("kroki_circuit_breaker_state", "provider" => provider.to_string()).set(state);
     }

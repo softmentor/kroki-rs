@@ -19,9 +19,16 @@ project:
         - file: developer-guide/distribution.md
         - file: developer-guide/coding-patterns.md
         - file: developer-guide/tech-debt-tracking.md
+        - file: developer-guide/brainstorm-re-architecture.md
+        - file: developer-guide/brainstorm-implementation.md
         - file: developer-guide/design-decisions/0001-native-webp-conversion.md
         - file: developer-guide/design-decisions/0002-dynamic-font-loading.md
         - file: developer-guide/design-decisions/0003-async-subprocess-timeouts.md
+        - file: developer-guide/design-decisions/adr-0004-playwright-pooling.md
+        - file: developer-guide/design-decisions/adr-0005-authentication-model.md
+        - file: developer-guide/design-decisions/adr-0006-observability-metrics.md
+        - file: developer-guide/design-decisions/adr-0007-custom-plugin-api.md
+        - file: developer-guide/design-decisions/adr-0008-rust-browser-automation.md
         - file: ../ROADMAP.md
         - file: ../CONTRIBUTING.md
     - title: Reference

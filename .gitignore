@@ -24,3 +24,7 @@ kroki.toml
 # OS
 .DS_Store
 *.code-workspace
+
+# jupyter
+.ipynb_checkpoints
+.jupyter

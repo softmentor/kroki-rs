@@ -72,7 +72,7 @@ pub async fn auth_middleware(
 /// 1. `auth.enabled = false` (dev mode)
 /// 2. `auth.admin_password_hash` is not configured
 ///
-/// Otherwise, expects "Authorization: Basic <base64>" header.
+/// Otherwise, expects "Authorization: Basic `<base64>`" header.
 pub async fn admin_auth_middleware(
     state: axum::extract::State<crate::server::AppState>,
     request: Request<Body>,

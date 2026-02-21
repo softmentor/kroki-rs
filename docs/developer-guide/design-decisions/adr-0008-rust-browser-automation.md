@@ -1,7 +1,7 @@
-# ADR 0008: Rust-Native Browser Automation (Eliminating Node.js)
-
-## Status
-Proposed — **Experiment Required Before Implementation**
+---
+title: "ADR 0008: Rust-Native Browser Automation (Eliminating Node.js)"
+label: kroki-rs.adr.0008
+---
 
 ## Context
 The current `BrowserManager` (ADR 0004) uses a Node.js child process running Playwright to render browser-dependent diagrams (Mermaid, BPMN, Excalidraw). While effective, this requires Node.js as a runtime dependency, complicating deployment and increasing container image size.

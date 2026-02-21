@@ -31,31 +31,32 @@ This document outlines the planned internal improvements and future features for
 - [x] **Health Check API**: Endpoint for container orchestration and uptime monitoring.
 - [x] **Configuration Priority Pattern**: Establish a clear hierarchy for global vs. local settings (TD-07).
 
-## 🔵 v0.0.4: Server Production Enablement (Current)
+## � v0.0.4: Server Production Enablement (Completed)
 
-Incremental production-grade hardening of the existing server architecture. All features are config-gated and disabled by default, supporting a "dev mode" for fast local debugging.
+Incremental production-grade hardening of the existing server architecture. All features are config-gated and enabled by default, supporting a "dev mode" for fast local debugging.
 
 ### Authentication & Security
-- [ ] **API Key Authentication**: Token-based security for the `serve` endpoint with per-key rate limits (ADR 0005).
-- [ ] **OAuth Support** (optional): OAuth2 token validation for external identity providers, with built-in demo user support.
-- [ ] **Admin Authentication**: Password-based (bcrypt encrypted) or OAuth email allowlist for the admin dashboard.
+- [x] **API Key Authentication**: Token-based security for the `serve` endpoint with per-key rate limits (ADR 0005).
+- [ ] **OAuth Support** (optional): OAuth2 token validation for external identity providers.
+- [x] **Admin Authentication**: Password-based (bcrypt encrypted) for the admin dashboard.
 - [ ] **TLS Support** (optional): Serve over HTTPS via `axum-server` with `rustls` (behind `tls` feature flag).
 
 ### Observability
-- [ ] **Per-Provider Prometheus Metrics**: Request count, duration, payload size, conversion time, error type — all per diagram provider with p75/p90/p99 histograms (ADR 0006).
-- [ ] **Metrics Export Endpoint** (optional): `/metrics` on admin port for Prometheus scraping.
-- [ ] **OpenTelemetry Integration** (optional): `tracing-opentelemetry` bridge with OTLP exporter, configurable via `kroki.toml` or env vars (behind `otel` feature flag).
+- [x] **Per-Provider Prometheus Metrics**: Request count, duration, payload size, conversion time, error type — all per diagram provider (ADR 0006).
+- [x] **Metrics Export Endpoint**: `/metrics` on admin port for Prometheus scraping.
+- [ ] **OpenTelemetry Integration** (optional): `tracing-opentelemetry` bridge with OTLP exporter (behind `otel` feature flag).
 
 ### Server Hardening
-- [ ] **Rate Limiting**: Per-IP/per-key token-bucket rate limiter with configurable burst size.
-- [ ] **Circuit Breaker**: Per-provider circuit breaker (Closed → Open → Half-Open) to prevent cascading failures.
+- [x] **Rate Limiting**: Per-IP token-bucket rate limiter with configurable burst size.
+- [x] **Circuit Breaker**: Per-provider circuit breaker (Closed → Open → Half-Open) to prevent cascading failures.
 
 ### Extensibility
-- [ ] **Custom Plugin API**: Subprocess-based plugin protocol in the core library. Users define `[[plugins]]` in `kroki.toml` to register custom `DiagramProvider` implementations (ADR 0007).
+- [x] **Custom Plugin API**: Subprocess-based plugin protocol in the core library (ADR 0007).
 
-### Admin Dashboard
-- [ ] **Enhanced Admin API**: `/health`, `/metrics`, `/config` (sanitized), `/providers` endpoints.
-- [ ] **Admin Dashboard**: Live health indicators, request volume, circuit breaker states per provider.
+### Discovery & Admin
+- [x] **Discovery Home Page**: Interactive dashboard at the root URL aiding endpoint discovery.
+- [x] **Enhanced Admin API**: `/health`, `/metrics`, `/config` (sanitized), `/providers` endpoints.
+- [x] **Admin Dashboard**: Live health indicators, request volume, circuit breaker states per provider.
 
 ## 🟡 v0.0.5: Rust-Native Core — Eliminate Runtime Dependencies
 

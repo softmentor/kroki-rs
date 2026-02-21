@@ -4,15 +4,24 @@ use std::process::Stdio;
 use tokio::process::Command;
 
 /// A diagram provider that executes an external plugin via a subprocess protocol.
+///
+/// It communicates with the plugin using stdin (optional) and captures stdout
+/// for the rendered diagram. It supports argument templating for formats.
 pub struct PluginProvider {
+    /// Human-readable name of the plugin (e.g. "mytool").
     pub name: String,
+    /// Path to the executable binary.
     pub command: String,
+    /// Arguments passed to the binary. Supports `{format}` substitution.
     pub args: Vec<String>,
+    /// Whether to pipe the diagram source to the binary's stdin.
     pub stdin: bool,
+    /// Maximum time allowed for the plugin to run.
     pub timeout_ms: u64,
 }
 
 impl PluginProvider {
+    /// Creates a new plugin provider from the given configuration.
     pub fn new(config: &crate::config::PluginConfig) -> Self {
         Self {
             name: config.name.clone(),

@@ -1,7 +1,7 @@
-# ADR 0005: Authentication & Authorization Model
-
-## Status
-Proposed
+---
+title: "ADR 0005: Authentication & Authorization Model"
+label: kroki-rs.adr.0005
+---
 
 ## Context
 As Kroki-rs moves towards production deployments, the server needs authentication to prevent unauthorized use. Use cases range from local development (no auth needed) to multi-tenant SaaS (OAuth with per-user rate limits). The design must accommodate this full spectrum without adding complexity for simple deployments.

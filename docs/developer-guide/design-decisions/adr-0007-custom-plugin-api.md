@@ -1,7 +1,7 @@
-# ADR 0007: Custom Plugin API via Subprocess Protocol
-
-## Status
-Proposed
+---
+title: "ADR 0007: Custom Plugin API via Subprocess Protocol"
+label: kroki-rs.adr.0007
+---
 
 ## Context
 Users need to extend Kroki-rs with custom diagram providers without modifying the core codebase. The plugin system must work identically for both CLI and server usage, meaning it belongs in the core library (not the server layer).

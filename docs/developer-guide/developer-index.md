@@ -26,5 +26,10 @@ Key design decisions and architectural trade-offs are documented using the ADR f
 - [ADR 0001: Native WebP Conversion](#kroki-rs.adr.0001)
 - [ADR 0002: Dynamic Font Loading](#kroki-rs.adr.0002)
 - [ADR 0003: Async Subprocess Execution and Adaptive Timeouts](#kroki-rs.adr.0003)
+- [ADR 0004: Browser Instance Pooling & Recycling](#kroki-rs.adr.0004)
+- [ADR 0005: Authentication & Authorization Model](#kroki-rs.adr.0005)
+- [ADR 0006: Per-Provider Observability & Metrics](#kroki-rs.adr.0006)
+- [ADR 0007: Custom Plugin API via Subprocess Protocol](#kroki-rs.adr.0007)
+- [ADR 0008: Rust-Native Browser Automation (Eliminating Node.js)](#kroki-rs.adr.0008)
 
 If you are looking for information on how to use Kroki-rs, please proceed to the [User Guide](#kroki-rs.user-guide.user-index).
