@@ -14,6 +14,10 @@ inputs:
     description: 'Whether to install Playwright and its dependencies'
     required: false
     default: 'false'
+  install-nextest:
+    description: 'Whether to install cargo-nextest'
+    required: false
+    default: 'true'
 
 runs:
   using: "composite"
@@ -57,3 +61,7 @@ runs:
           echo "PLAYWRIGHT_EXECUTABLE_PATH=/Applications/Chromium.app/Contents/MacOS/Chromium" >> $GITHUB_ENV
           echo "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1" >> $GITHUB_ENV
         fi
+
+    - name: Install nextest
+      if: inputs.install-nextest == 'true'
+      uses: taiki-e/install-action@nextest
