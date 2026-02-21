@@ -74,10 +74,10 @@ impl BrowserBackend for NativeBackend {
                 tab.evaluate(loader_script, false)
                     .map_err(|e| DiagramError::ProcessFailed(e.to_string()))?;
 
-                // Wait for loader to be available
-                let wait_js = "new Promise((resolve) => { const check = () => { if (typeof cheerpjInit !== 'undefined') resolve(); else setTimeout(check, 50); }; check(); })";
+                // Wait for loader to be available with timeout (10 seconds max)
+                let wait_js = "new Promise((resolve, reject) => { const startTime = Date.now(); const check = () => { if (typeof cheerpjInit !== 'undefined') { resolve(true); } else if (Date.now() - startTime > 10000) { reject(new Error('CheerpJ loader timeout - CDN may be unreachable')); } else { setTimeout(check, 100); } }; check(); })";
                 tab.evaluate(wait_js, true)
-                    .map_err(|e| DiagramError::ProcessFailed(format!("CheerpJ timeout: {}", e)))?;
+                    .map_err(|e| DiagramError::ProcessFailed(format!("CheerpJ initialization failed: {}", e)))?;
 
                 // Inject PlantUML JAR.js (it's 17MB, maybe we should read it from file instead of including at compile time?)
                 // For this version, let's try to load it from the filesystem via the browser's view.
@@ -130,8 +130,20 @@ impl BrowserBackend for NativeBackend {
             .value
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .ok_or_else(|| {
-                DiagramError::ProcessFailed("Render returned null or non-string".to_string())
+                // Try to get console errors for better diagnostics
+                let console_info = tab.evaluate("window.kroki.lastError || 'No error message available'", false)
+                    .ok()
+                    .and_then(|obj| obj.value)
+                    .and_then(|val| val.as_str().map(|s| format!("Last error: {}", s)))
+                    .unwrap_or_else(|| "Render returned null or non-string (unable to get error details)".to_string());
+                DiagramError::ProcessFailed(console_info)
             })?;
+
+        if result.is_empty() {
+            return Err(DiagramError::ProcessFailed(
+                "Render produced empty output - render function may have failed silently".to_string()
+            ));
+        }
 
         Ok(result.into_bytes())
     }

@@ -13,6 +13,7 @@
         // Global state
         window.kroki = {
             isPlantUmlInitialized: false,
+            lastError: null,
 
             async initPlantUml() {
                 if (this.isPlantUmlInitialized) return;
@@ -43,9 +44,18 @@
             },
 
             async renderPlantUml(source) {
-                await this.initPlantUml();
-                // API: com.plantuml.api.cheerpj.v1.Svg.convert("light", text)
-                return await cjCall("com.plantuml.api.cheerpj.v1.Svg", "convert", "light", source);
+                try {
+                    await this.initPlantUml();
+                    // API: com.plantuml.api.cheerpj.v1.Svg.convert("light", text)
+                    const result = await cjCall("com.plantuml.api.cheerpj.v1.Svg", "convert", "light", source);
+                    if (!result) {
+                        throw new Error("PlantUML returned empty result");
+                    }
+                    return result;
+                } catch (error) {
+                    this.lastError = error.message || String(error);
+                    throw error;
+                }
             }
         };
     </script>
