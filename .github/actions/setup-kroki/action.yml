@@ -10,6 +10,10 @@ inputs:
     description: 'Node.js version'
     required: false
     default: '22'
+  install-node:
+    description: 'Whether to install Node.js and npm dependencies'
+    required: false
+    default: 'false'
   install-playwright:
     description: 'Whether to install Playwright and its dependencies'
     required: false
@@ -22,7 +26,8 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup Node
+    - name: Setup Node (if needed)
+      if: inputs.install-node == 'true' || inputs.install-playwright == 'true'
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
@@ -33,7 +38,13 @@ runs:
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
           sudo apt-get update
-          sudo apt-get install -y build-essential libssl-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev graphviz chromium-browser
+          # Only install chromium if not using Playwright (Playwright installs its own)
+          if [ "${{ inputs.install-playwright }}" == "false" ]; then
+            PKGS="build-essential libssl-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev graphviz chromium-browser"
+          else
+            PKGS="build-essential libssl-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev graphviz"
+          fi
+          sudo apt-get install -y $PKGS
         elif [ "$RUNNER_OS" == "macOS" ]; then
           brew install pkg-config cairo pango libpng jpeg-turbo giflib librsvg graphviz
         fi
@@ -46,7 +57,8 @@ runs:
     - name: Setup Rust Cache
       uses: Swatinem/rust-cache@v2
 
-    - name: Install NPM dependencies
+    - name: Install NPM dependencies (if needed)
+      if: inputs.install-node == 'true' || inputs.install-playwright == 'true'
       shell: bash
       run: npm ci
 
@@ -62,6 +74,6 @@ runs:
           echo "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1" >> $GITHUB_ENV
         fi
 
-    - name: Install nextest
+    - name: Install nextest (if needed)
       if: inputs.install-nextest == 'true'
       uses: taiki-e/install-action@nextest

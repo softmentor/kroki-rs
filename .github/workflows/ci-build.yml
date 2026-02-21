@@ -40,6 +40,7 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-kroki
         with:
+          install-node: 'true'
           install-playwright: 'true'
       - name: Run tests with nextest
         run: cargo nextest run --locked
@@ -52,5 +53,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Setup Environment
         uses: ./.github/actions/setup-kroki
+        with:
+          install-node: 'false'
+          install-playwright: 'false'
       - name: Run native smoke test
         run: make smoke-test

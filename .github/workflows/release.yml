@@ -40,6 +40,7 @@ jobs:
         uses: ./.github/actions/setup-kroki
         with:
           rust-targets: ${{ matrix.target }}
+          install-node: 'false'
           install-playwright: ${{ matrix.os == 'ubuntu-latest' && matrix.target != 'aarch64-unknown-linux-gnu' && 'true' || 'false' }}
 
       - name: Set up QEMU (ARM64 only)
@@ -124,6 +125,9 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-kroki
+        with:
+          install-node: 'true'
+          install-playwright: 'false'
 
       - name: Build Rustdoc
         run: make doc
