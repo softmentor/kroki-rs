@@ -59,7 +59,7 @@ impl NativeBackend {
             Ok(p) => p,
             Err(_) => return Err("Failed to start local harness server".to_string()),
         };
-        let harness_url = format!("http://127.0.0.1:{}", port);
+        let harness_url = format!("http://localhost:{}", port);
         tracing::debug!("Local harness server started at {}", harness_url);
 
         // 2. Initialize browser

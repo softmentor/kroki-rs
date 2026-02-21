@@ -40,7 +40,7 @@
                 this.debug('Calling cheerpjInit()...');
                 this.debug('cheerpjInit type: ' + typeof cheerpjInit);
                 try {
-                    await cheerpjInit();
+                    await cheerpjInit({ disableServiceWorker: true });
                     this.debug('cheerpjInit() completed');
                 } catch (error) {
                     // Try multiple ways to extract error information
