@@ -43,8 +43,6 @@ jobs:
           install-playwright: 'true'
       - name: Run tests with nextest
         run: cargo nextest run --locked
-      - name: Run tests with nextest
-        run: cargo nextest run --locked
 
   smoke-test:
     name: smoke-test
