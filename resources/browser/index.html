@@ -29,18 +29,25 @@
                 }
 
                 this.debug('Checking for cheerpjInit...');
+                // More detailed check for CheerpJ availability
+                this.debug('typeof cheerpjInit=' + typeof cheerpjInit);
+                this.debug('typeof window.cheerpjInit=' + typeof window.cheerpjInit);
+
                 if (typeof cheerpjInit === 'undefined') {
                     throw new Error("CheerpJ loader not found. Link https://cjrtnc.leaningtech.com/2.0/loader.js first.");
                 }
 
                 this.debug('Calling cheerpjInit()...');
+                this.debug('cheerpjInit type: ' + typeof cheerpjInit);
                 try {
                     await cheerpjInit();
                     this.debug('cheerpjInit() completed');
                 } catch (error) {
                     const errorMsg = error?.message || error?.toString?.() || 'Unknown error';
                     const errorStack = error?.stack || 'No stack trace';
+                    const errorKeys = error ? Object.keys(error).join(',') : 'N/A';
                     this.debug('cheerpjInit() failed: ' + errorMsg);
+                    this.debug('Error keys: ' + errorKeys);
                     this.debug('Error stack: ' + errorStack);
                     throw new Error('Failed to initialize CheerpJ: ' + errorMsg);
                 }
