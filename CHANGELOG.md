@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.4] - 2026-02-21
+
+### Added
+- **Server Middleware**: Introduced config-gated middleware for API Key Authentication, Token-bucket Rate Limiting, and per-provider Circuit Breakers. (TD-18, ADR 0005)
+- **Observability**: Added rich Prometheus metrics tagged by provider and format, including request duration, payload size, and circuit breaker states. (ADR 0006)
+- **Custom Plugin API**: Enabled the registration of external rendering tools via simple configuration, allowing kroki-rs to be extended without core code changes. (TD-05, ADR 0007)
+- **Discovery Page**: A modern, interactive service root page providing quick access to health, metrics, and registered providers.
+- **CI/CD Optimization**: Refactored release workflows to prioritize native artifacts and high-velocity iteration, removing Docker-heavy dependencies.
+
+### Changed
+- **Documentation**: Migrated to a unified MyST-based structure with robust cross-referencing and automated GitHub Pages deployment.
+- **Dependency Management**: Standardized system dependencies (pixman, cairo) for stable document builds on Linux and macOS.
+
 ## [0.0.3] - 2026-02-20
 
 ### Added
