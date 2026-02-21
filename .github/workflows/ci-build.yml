@@ -5,6 +5,7 @@ name: CI-Build
 on:
   push:
     branches: [ "main" ]
+    tags-ignore: [ "v*" ]
   pull_request:
     branches: [ "main" ]
 
@@ -36,32 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-      - name: Install nextest
-        uses: taiki-e/install-action@nextest
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Environment
+        uses: ./.github/actions/setup-kroki
         with:
-          node-version: '22'
-          cache: 'npm'
-      - name: Install system dependencies for canvas
-        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
-      - name: Install dependencies
-        run: npm ci
-      - name: Cache Playwright Browsers
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('package-lock.json') }}
-      - name: Install Playwright Browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-      - name: Install Playwright System Deps (cached browsers)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+          install-playwright: 'true'
+      - name: Run tests with nextest
+        run: cargo nextest run --locked
       - name: Run tests with nextest
         run: cargo nextest run --locked
 
@@ -71,9 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Install system dependencies for rendering
-        run: sudo apt-get update && sudo apt-get install -y build-essential graphviz
+      - name: Setup Environment
+        uses: ./.github/actions/setup-kroki
       - name: Run native smoke test
         run: make smoke-test

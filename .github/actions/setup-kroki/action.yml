@@ -1,0 +1,59 @@
+name: 'Setup Kroki'
+description: 'Standard setup for Rust, Node.js, and System Dependencies'
+
+inputs:
+  rust-targets:
+    description: 'Rust targets to install'
+    required: false
+    default: ''
+  node-version:
+    description: 'Node.js version'
+    required: false
+    default: '22'
+  install-playwright:
+    description: 'Whether to install Playwright and its dependencies'
+    required: false
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+
+    - name: Install system dependencies for canvas and rendering
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev graphviz
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          brew install pkg-config cairo pango libpng jpeg-turbo giflib librsvg graphviz
+        fi
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ inputs.rust-targets }}
+
+    - name: Setup Rust Cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install NPM dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Setup Playwright
+      if: inputs.install-playwright == 'true'
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          npx playwright install --with-deps chromium
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          brew install --cask chromium
+          echo "PLAYWRIGHT_EXECUTABLE_PATH=/Applications/Chromium.app/Contents/MacOS/Chromium" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1" >> $GITHUB_ENV
+        fi
