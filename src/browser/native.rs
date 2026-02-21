@@ -84,11 +84,14 @@ impl BrowserBackend for NativeBackend {
                 // However, headless_chrome can't easily access local files due to security.
                 // We'll use a direct injection for now to be safe, though it bloats the binary.
                 // TODO: Optimization - move to dynamic loading from a specific kroki resource dir.
-                let plantuml_js = std::fs::read_to_string(
-                    "resources/plantuml/plantuml-core.jar.js",
-                )
-                .map_err(|e| {
-                    DiagramError::ProcessFailed(format!("Could not read plantuml-core: {}", e))
+                let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                let plantuml_path = manifest_dir.join("resources/plantuml/plantuml-core.jar.js");
+                let plantuml_js = std::fs::read_to_string(&plantuml_path).map_err(|e| {
+                    DiagramError::ProcessFailed(format!(
+                        "Could not read plantuml-core at {}: {}",
+                        plantuml_path.display(),
+                        e
+                    ))
                 })?;
 
                 // In CheerpJ 2.0, we just need to load the script

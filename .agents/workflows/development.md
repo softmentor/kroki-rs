@@ -28,7 +28,7 @@ description: Kroki-Flow development protocol — mandatory steps for all code ch
    ```bash
    cargo nextest run --locked
    ```
-5. Generate source code documentation:
+5. Generate source code documentation (user, developer, source docs), update changelog:
    ```bash
    cargo doc --no-deps --document-private-items
    ```
