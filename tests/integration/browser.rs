@@ -128,3 +128,57 @@ async fn test_load_playwright_concurrency() {
         handle.await.unwrap();
     }
 }
+
+/// NATIVE LOAD TEST: Smashes the headless_chrome backend with concurrent requests.
+/// Verification for the new 0.0.5 native engine.
+/// Run locally with: `cargo test --test integration test_load_native_concurrency -- --ignored`
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore]
+async fn test_load_native_concurrency() {
+    let (port, _) = start_test_server().await;
+    let client = Client::new();
+
+    let valid_mermaid_payload = {
+        use base64::prelude::*;
+        use std::io::Write;
+        let mut encoder =
+            flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(b"graph TD;\nA-->B;").unwrap();
+        let compressed = encoder.finish().unwrap();
+        BASE64_URL_SAFE.encode(compressed)
+    };
+
+    // Fire 60 concurrent requests.
+    // Native backend (headless_chrome) uses on-demand tabs.
+    let concurrency_level = 10;
+    let total_requests = 60;
+
+    let semaphore = Arc::new(Semaphore::new(concurrency_level));
+    let mut handles = Vec::new();
+
+    for i in 0..total_requests {
+        let client_clone = client.clone();
+        let payload = valid_mermaid_payload.to_string();
+        let sem_clone = semaphore.clone();
+        handles.push(tokio::spawn(async move {
+            let _permit = sem_clone.acquire().await.unwrap();
+            let url = format!("http://127.0.0.1:{}/mermaid/svg/{}", port, payload);
+            let resp = client_clone.get(&url).send().await.expect("Request failed");
+
+            if resp.status() != StatusCode::OK {
+                let status = resp.status();
+                let txt = resp.text().await.unwrap_or_default();
+                panic!(
+                    "Native worker failed at request {} with status {}: {}",
+                    i, status, txt
+                );
+            }
+            let txt = resp.text().await.unwrap();
+            assert!(txt.contains("<svg"));
+        }));
+    }
+
+    for handle in handles {
+        handle.await.unwrap();
+    }
+}

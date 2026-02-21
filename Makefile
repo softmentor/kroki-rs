@@ -7,7 +7,7 @@ VERSION ?= $(shell grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
 
 # Default target: complete project lifecycle (native)
 .PHONY: all
-all: deps clean fmt lint test-ci doc verify smoke-test
+all: deps clean fmt lint test-ci doc verify smoke-test test-load
 
 # Quick dev iteration run without clean
 .PHONY: devrun
@@ -46,7 +46,7 @@ test-v:
 # Run heavy load/concurrency tests locally (skipped in CI)
 .PHONY: test-load
 test-load:
-	cargo test --release -- --ignored --nocapture
+	cargo test --release --test integration test_load_ -- --ignored --nocapture
 
 # Linting
 .PHONY: lint
