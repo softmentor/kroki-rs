@@ -13,6 +13,7 @@
         // Global state
         window.kroki = {
             isPlantUmlInitialized: false,
+            isPlantUmlCoreLoaded: false,
             lastError: null,
 
             async initPlantUml() {
@@ -21,6 +22,16 @@
                     throw new Error("CheerpJ loader not found. Link https://cjrtnc.leaningtech.com/2.0/loader.js first.");
                 }
                 await cheerpjInit();
+
+                // Wait for cjCall to be available (allows classloading to complete)
+                const startTime = Date.now();
+                while (typeof cjCall === 'undefined' && (Date.now() - startTime) < 5000) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                if (typeof cjCall === 'undefined') {
+                    throw new Error("CheerpJ cjCall function not available after initialization");
+                }
+
                 this.isPlantUmlInitialized = true;
             },
 
@@ -46,6 +57,19 @@
             async renderPlantUml(source) {
                 try {
                     await this.initPlantUml();
+
+                    if (!this.isPlantUmlCoreLoaded) {
+                        // Ensure PlantUML classes are available
+                        const classCheckStartTime = Date.now();
+                        while (typeof com === 'undefined' && (Date.now() - classCheckStartTime) < 5000) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
+                        if (typeof com === 'undefined') {
+                            throw new Error("PlantUML classes not available after loading core");
+                        }
+                        this.isPlantUmlCoreLoaded = true;
+                    }
+
                     // API: com.plantuml.api.cheerpj.v1.Svg.convert("light", text)
                     const result = await cjCall("com.plantuml.api.cheerpj.v1.Svg", "convert", "light", source);
                     if (!result) {
