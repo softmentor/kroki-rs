@@ -33,7 +33,7 @@ runs:
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
           sudo apt-get update
-          sudo apt-get install -y build-essential libssl-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev graphviz
+          sudo apt-get install -y build-essential libssl-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev graphviz chromium-browser
         elif [ "$RUNNER_OS" == "macOS" ]; then
           brew install pkg-config cairo pango libpng jpeg-turbo giflib librsvg graphviz
         fi

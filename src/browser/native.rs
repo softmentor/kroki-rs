@@ -13,8 +13,20 @@ pub struct NativeBackend {
 impl NativeBackend {
     /// Initializes a new native browser instance.
     pub fn new() -> Result<Self, String> {
-        // Use default configuration (finds system chrome)
-        let browser = Browser::default().map_err(|e| e.to_string())?;
+        use headless_chrome::LaunchOptions;
+
+        // Use custom launch options for better compatibility (e.g. CI/containers)
+        let options = LaunchOptions {
+            args: vec![
+                std::ffi::OsStr::new("--no-sandbox"),
+                std::ffi::OsStr::new("--disable-setuid-sandbox"),
+                std::ffi::OsStr::new("--disable-dev-shm-usage"),
+                std::ffi::OsStr::new("--disable-gpu"),
+            ],
+            ..Default::default()
+        };
+
+        let browser = Browser::new(options).map_err(|e| e.to_string())?;
         Ok(Self { browser })
     }
 }

@@ -26,12 +26,14 @@ async fn start_test_server() -> (u16, u16) {
     config.browser.context_ttl_requests = 10;
 
     tokio::spawn(async move {
+        // Ensure logs are visible in tests if RUST_LOG is set
+        let _ = tracing_subscriber::fmt::try_init();
         server::run(config).await.unwrap();
     });
 
     let client = reqwest::Client::new();
     let mut started = false;
-    for _ in 0..50 {
+    for i in 0..150 {
         if client
             .get(format!("http://127.0.0.1:{}/health", admin_port))
             .send()
@@ -41,11 +43,14 @@ async fn start_test_server() -> (u16, u16) {
             started = true;
             break;
         }
+        if i % 10 == 0 {
+            println!("Waiting for test server... {}s", i / 5);
+        }
         sleep(Duration::from_millis(200)).await;
     }
 
     if !started {
-        panic!("Test server failed to start within 10 seconds");
+        panic!("Test server failed to start within 30 seconds");
     }
 
     (port, admin_port)
