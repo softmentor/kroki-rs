@@ -52,8 +52,12 @@ if [ "${1:-}" = "--shell" ]; then
     CI_IMAGE_LOCAL="softmentor/kroki-rs-ci"
     CI_IMAGE_REMOTE="ghcr.io/softmentor/kroki-rs-ci:${CI_FINGERPRINT}"
     echo "📦 Ensuring CI image is ready (fingerprint: ${CI_FINGERPRINT})..."
-    if $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
+    if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>&1; then
+        echo "✅ Found CI image locally (fingerprint: ${CI_FINGERPRINT})."
+        $DOCKER_CMD tag "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" "$CI_IMAGE_LOCAL"
+    elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
         echo "✅ Pulled CI image from ghcr.io."
+        $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
         $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
     else
         echo "📦 CI image not in registry; building locally..."
@@ -67,8 +71,8 @@ if [ "${1:-}" = "--shell" ]; then
     exec $DOCKER_CMD run --rm -it \
         -v "$(pwd):/app" \
         -v "$(pwd)/target:/app/target" \
-        -v "$(pwd)/.cargo-cache/registry:/root/.cargo/registry" \
-        -v "$(pwd)/.cargo-cache/git:/root/.cargo/git" \
+        -v "$(pwd)/.cargo-cache/registry:/usr/local/cargo/registry" \
+        -v "$(pwd)/.cargo-cache/git:/usr/local/cargo/git" \
         -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
         -w /app \
         -e JOBS="${JOBS:-1}" \
@@ -112,9 +116,12 @@ CI_IMAGE_LOCAL="softmentor/kroki-rs-ci"
 CI_IMAGE_REMOTE="ghcr.io/softmentor/kroki-rs-ci:${CI_FINGERPRINT}"
 
 echo "📦 Ensuring CI environment image is ready (fingerprint: ${CI_FINGERPRINT})..."
-echo "🔍 Remote image: ${CI_IMAGE_REMOTE}"
-if $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
+if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>&1; then
+    echo "✅ Found CI image locally (fingerprint: ${CI_FINGERPRINT})."
+    $DOCKER_CMD tag "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" "$CI_IMAGE_LOCAL"
+elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
     echo "✅ Pulled CI image from ghcr.io."
+    $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
 else
     echo "⚠️  CI image not in registry (${CI_FINGERPRINT})."
@@ -124,12 +131,12 @@ else
 fi
 
 echo "🧪 Running CI target '$TARGET' inside container..."
-mkdir -p "$(pwd)/target" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
+mkdir -p "$(pwd)/target/ci" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
 $DOCKER_CMD run --rm \
     -v "$(pwd):/app" \
-    -v "$(pwd)/target:/app/target" \
-    -v "$(pwd)/.cargo-cache/registry:/root/.cargo/registry" \
-    -v "$(pwd)/.cargo-cache/git:/root/.cargo/git" \
+    -v "$(pwd)/target/ci:/app/target-ci" \
+    -v "$(pwd)/.cargo-cache/registry:/usr/local/cargo/registry" \
+    -v "$(pwd)/.cargo-cache/git:/usr/local/cargo/git" \
     -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
     -w /app \
     -e JOBS \
@@ -138,8 +145,12 @@ $DOCKER_CMD run --rm \
     -e VERBOSE \
     -e NO_NETWORK \
     -e LOAD_TEST \
+    -e CARGO_TARGET_DIR=/app/target-ci \
     -e SCCACHE_DIR=/root/.cache/sccache \
     -e RUSTC_WRAPPER=sccache \
+    -e SCCACHE_GHA_ENABLED \
+    -e ACTIONS_CACHE_URL \
+    -e ACTIONS_RUNTIME_TOKEN \
     --security-opt seccomp=unconfined \
     "$CI_IMAGE_LOCAL" \
     make $TARGET JOBS=${JOBS:-1} "$@"

@@ -42,6 +42,8 @@ JOBS ?=
 
 # --- Environment detection ---
 PODMAN_STORAGE_DIR ?=
+VM_MEM ?= 12288
+VM_CPUS ?= 5
 IS_CONTAINER ?= $(shell [ -f /.dockerenv ] || [ -f /run/.containerenv ] && echo true || echo false)
 
 # --- Modifier flags ---

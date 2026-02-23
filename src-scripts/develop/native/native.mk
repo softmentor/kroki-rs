@@ -14,6 +14,12 @@
 #   verify, smoke-test, quick, bump, serve.
 # ------------------------------------------------------------------------------
 
+RELEASE_DIR = target/release
+ifneq ($(CARGO_TARGET_DIR),)
+    RELEASE_DIR = $(CARGO_TARGET_DIR)/release
+endif
+RELEASE_BIN = $(RELEASE_DIR)/$(BINARY_NAME)
+
 ifneq (, $(shell which sccache 2>/dev/null))
 export RUSTC_WRAPPER=sccache
 endif
@@ -71,7 +77,7 @@ clean:
 dist: release
 	@echo "Packaging $(BINARY_NAME) for $(PLATFORM)..."
 	@mkdir -p $(DIST_DIR)
-	@cp target/release/$(BINARY_NAME) $(DIST_DIR)/
+	@cp $(RELEASE_BIN) $(DIST_DIR)/
 	@cd $(DIST_DIR) && tar -czvf $(ARCHIVE_NAME) $(BINARY_NAME)
 	@cd $(DIST_DIR) && shasum -a 256 $(ARCHIVE_NAME) > $(ARCHIVE_NAME).sha256
 	@echo "Distribution package created in $(DIST_DIR)/$(ARCHIVE_NAME)"
@@ -87,11 +93,11 @@ verify: dist
 .PHONY: smoke-test
 smoke-test: release
 	@echo "Starting native smoke test..."
-	@lsof -ti :8000,8081 | xargs kill -9 2>/dev/null || true
-	@target/release/$(BINARY_NAME) serve > smoke-test.log 2>&1 &
+	@PIDS=$$(lsof -ti :8000,8081); if [ -n "$$PIDS" ]; then echo $$PIDS | xargs kill -9 2>/dev/null || true; fi
+	@$(RELEASE_BIN) serve > smoke-test.log 2>&1 &
 	@sleep 3
-	@curl --fail -s http://localhost:8081/health | grep '"status":"ok"' || (kill $$(lsof -ti :8000,8081); exit 1)
-	@lsof -ti :8000,8081 | xargs kill -9 2>/dev/null || true
+	@curl --fail -s http://localhost:8081/health | grep '"status":"ok"' || (PIDS=$$(lsof -ti :8000,8081); if [ -n "$$PIDS" ]; then echo $$PIDS | xargs kill -9; fi; exit 1)
+	@PIDS=$$(lsof -ti :8000,8081); if [ -n "$$PIDS" ]; then echo $$PIDS | xargs kill -9 2>/dev/null || true; fi
 	@rm -f smoke-test.log
 	@echo "✅ Smoke test passed!"
 

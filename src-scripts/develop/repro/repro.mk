@@ -37,8 +37,8 @@ setup:
 				podman machine rm -f >/dev/null 2>&1 || true; \
 				podman system connection rm podman-machine-default >/dev/null 2>&1 || true; \
 				podman system connection rm podman-machine-default-root >/dev/null 2>&1 || true; \
-				echo "Initializing Podman machine..."; \
-				podman machine init; \
+				echo "Initializing Podman machine with $(VM_MEM)MB RAM and $(VM_CPUS) CPUs..."; \
+				podman machine init --memory $(VM_MEM) --cpus $(VM_CPUS); \
 				if [ -n "$(PODMAN_STORAGE_DIR)" ]; then \
 					echo "Relocating VM disk images to external storage..."; \
 					export PODMAN_STORAGE_DIR=$(PODMAN_STORAGE_DIR) && bash src-scripts/setup/podman-setup/podman-storage.sh; \
