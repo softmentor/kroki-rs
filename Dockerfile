@@ -46,8 +46,9 @@ WORKDIR /app
 FROM base AS ci
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
-# Install nextest for faster CI tests and cargo-chef for build optimization
-RUN cargo install --locked cargo-nextest cargo-chef
+# Install nextest and cargo-chef via pre-built binaries for speed
+RUN curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C /usr/local/bin && \
+    curl -LsSf https://github.com/LukeMathWalker/cargo-chef/releases/latest/download/cargo-chef-x86_64-unknown-linux-musl.tar.gz | tar zxf - -C /usr/local/bin
 
 # Stage 3: Planner (cargo-chef)
 FROM rust:slim-bookworm AS chef

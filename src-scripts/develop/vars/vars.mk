@@ -72,8 +72,8 @@ else
 endif
 
 # --- Content-addressable base image fingerprint ---
-# Inputs: Dockerfile, Makefile, install.sh, and all files under src-scripts/ (LC_ALL=C sort).
-BASE_IMAGE_FINGERPRINT := $(shell (cat Dockerfile Makefile install.sh 2>/dev/null; find src-scripts -type f 2>/dev/null | LC_ALL=C sort | xargs cat 2>/dev/null) | openssl dgst -sha256 2>/dev/null | sed 's/.* //' | cut -c1-12)
+# Inputs: Dockerfile, Makefile, install.sh, and all files under src-scripts/ (excluding host-side tasks).
+BASE_IMAGE_FINGERPRINT := $(shell (cat Dockerfile Makefile install.sh 2>/dev/null; find src-scripts -type f ! -path "*/gh-tasks/*" 2>/dev/null | LC_ALL=C sort | xargs cat 2>/dev/null) | openssl dgst -sha256 2>/dev/null | sed 's/.* //' | cut -c1-12)
 
 # --- Container image names ---
 CONTAINER_ENGINE ?= $(shell which podman 2>/dev/null || which docker 2>/dev/null)
