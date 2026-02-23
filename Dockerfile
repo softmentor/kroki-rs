@@ -100,7 +100,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     mkdir -p dist && cp target/release/kroki-rs dist/kroki-rs
 
 # Stage 5: Final runtime image
-FROM ${BASE_IMAGE}
+FROM base
 
 ENV KROKI_PORT=8000
 ENV KROKI_ADMIN_PORT=8081

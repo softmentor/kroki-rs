@@ -130,6 +130,8 @@ jobs:
         if: steps.image_logic.outputs.loaded == 'false'
         run: |
           IMAGE="ghcr.io/${{ github.repository }}-ci:${{ steps.image_logic.outputs.fingerprint }}"
+          echo "📦 Pulling built image to local daemon for caching..."
+          docker pull "$IMAGE"
           docker save -o ci-image.tar "$IMAGE"
 
       - name: Run sccache-cache
