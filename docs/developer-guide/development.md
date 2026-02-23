@@ -13,7 +13,7 @@ Kroki-rs is built as a modular system using the **Provider Pattern**. This decou
 ### Project Structure
 
 ```
-├── scripts/         # Maintenance and distribution scripts
+├── src-scripts/     # Scripts and Makefile modules by phase (setup, develop, ci-verify)
 ├── tests/           # Integration tests and fixtures
 ├── src/
 │   ├── main.rs          # Entry point, CLI parsing, capability discovery

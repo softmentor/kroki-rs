@@ -42,7 +42,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     {
         Ok(manager) => Some(Arc::new(manager)),
         Err(e) => {
-            tracing::warn!("Browser Manager failed to initialize: {}. Playwright-based features will be disabled.", e);
+            tracing::warn!("Native Browser Backend failed to initialize: {}. Browser-based features (Mermaid, BPMN) will be disabled.", e);
             None
         }
     };

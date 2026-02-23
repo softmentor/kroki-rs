@@ -4,41 +4,40 @@ label: kroki-rs.user-guide.supported-diagrams
 ---
 # Supported Diagram Types
 
-Kroki-rs supports a wide variety of diagram types by leveraging existing CLI tools. Below is a list of supported types and their primary delivery format.
+Kroki-rs supports a wide variety of diagram types by leveraging existing CLI tools and a high-performance **Native Browser Engine**.
 
-| ID | Name | Primary Format | Required Tool |
+| ID | Name | Primary Format | Backend |
 | :--- | :--- | :--- | :--- |
-| `graphviz` | [Graphviz](https://graphviz.org/) | SVG | `dot` |
-| `mermaid` | [Mermaid](https://mermaid.js.org/) | SVG | **Native Engine** (Chrome/Chromium) |
-| `plantuml` | [PlantUML](https://plantuml.com/) | SVG | **Native Engine** (Chrome/Chromium) |
-| `vega` | [Vega](https://vega.github.io/vega/) | SVG | `vg2svg` (Node.js) |
-| `vegalite` | [Vega-Lite](https://vega.github.io/vega-lite/) | SVG | `vl2vg` & `vg2svg` (Node.js) |
-| `wavedrom` | [WaveDrom](https://wavedrom.com/) | SVG | `wavedrom-cli` (Node.js) |
-| `bpmn` | [BPMN](https://bpmn.io/) | SVG | **Native Engine** (Chrome/Chromium) |
-| `d2` | [D2](https://d2lang.com/) | SVG | `d2` |
-| `ditaa` | [Ditaa](http://ditaa.sourceforge.net/) | PNG | `ditaa` |
-| `excalidraw` | [Excalidraw](https://excalidraw.com/) | SVG | `excalidraw-to-svg` (Node.js) |
+| `graphviz` | [Graphviz](https://graphviz.org/) | SVG | `dot` (CLI) |
+| **`mermaid`** | [Mermaid](https://mermaid.js.org/) | SVG | **Native Engine** (Headless Chromium) |
+| **`bpmn`** | [BPMN](https://bpmn.io/) | SVG | **Native Engine** (Headless Chromium) |
+| `d2` | [D2](https://d2lang.com/) | SVG | `d2` (CLI) |
+| `ditaa` | [Ditaa](http://ditaa.sourceforge.net/) | PNG | `ditaa` (CLI) |
+| `excalidraw` | [Excalidraw](https://excalidraw.com/) | SVG | `excalidraw-to-svg` (CLI) |
+| `vega` | [Vega](https://vega.github.io/vega/) | SVG | `vg2svg` (CLI) |
+| `vegalite` | [Vega-Lite](https://vega.github.io/vega-lite/) | SVG | `vl2vg` & `vg2svg` (CLI) |
+| `wavedrom` | [WaveDrom](https://wavedrom.com/) | SVG | `wavedrom-cli` (CLI) |
+
+## Native Browser Engine (Mermaid & BPMN)
+
+For v0.0.5, Mermaid and BPMN are rendered using a native headless Chromium instance. This ensures:
+- **Accuracy**: Perfect rendering using official JS libraries.
+- **Performance**: Managed tab pooling and concurrency control.
+- **Serverless Architecture**: Uses a local `file://` based harness, eliminating the need for internal HTTP servers or loopback networking.
+- **Zero-Dependency Core**: No local Node.js or Playwright installation required (all assets are embedded).
+
+### High-Performance Font Support
+Our Native Engine features a robust font-management system:
+1.  **Google Fonts**: Supported out-of-the-box via internet access in headless mode.
+2.  **Dynamic Injection**: You can inject custom CSS (e.g., `@font-face` or `@import`) into the rendering harness at runtime via the `window.krokiFontCss` configuration.
+3.  **Consistency**: Automatically uses `--font-render-hinting=none` to ensure pixel-perfect SVG generation across different operating systems.
 
 ## Installation of Tools
-
-Most tools can be installed via your system package manager or `npm`.
+Most tools can be installed via your system package manager.
 
 ### macOS (Homebrew)
 ```bash
-brew install graphviz plantuml d2 ditaa
 ```
 
-### Node.js based (Local to project)
-Install these via the provided `package.json`:
-```bash
-npm install
-```
-This installs `mmdc`, `vg2svg`, `vl2vg`, `wavedrom-cli`, and `bpmn-to-image` into `node_modules/.bin`.
-
-## Formats Note
-
-While Kroki-rs aims to support all formats (SVG, PNG, PDF, etc.) where possible, **SVG** is the most reliable and highly recommended format across all providers. Some providers (like `ditaa`) may only support PNG.
-
-## Skipped / Upcoming
-- **BlockDiag**: Coming soon.
-- **C4 with PlantUML**: Supported via the `plantuml` provider.
+### Note on Format
+While Kroki-rs supports SVG, PNG, and PDF, **SVG** is the recommended format for most web-based documentation as it provides the best clarity and scalability.

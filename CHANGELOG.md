@@ -4,19 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.5] - 2026-02-21
+## [0.0.5] - 2026-02-22
 
 ### Added
-- **Native Browser Backend**: Replaced Node.js/Playwright with a pure-Rust `headless_chrome` implementation, achieving sub-50ms cold starts and zero runtime dependencies for core diagrams. (ADR 0008, 0008.1)
-- **Java-Free PlantUML**: Integrated `plantuml-core.jar.js` via CheerpJ to render PlantUML diagrams within the native browser engine, eliminating the local Java runtime requirement.
-- **Interface Layer**: Implemented standardized DTOs and RFC 7807 Problem Details for all error responses.
-- **Native Load Testing**: Added stress testing for the `headless_chrome` backend to ensure stability under high concurrency.
+- **Native Browser Engine (v2)**: Fully stabilized pure-Rust `headless_chrome` implementation for Mermaid and BPMN, replacing Node.js/Playwright ecosystem.
+- **Robust Font Integration**: Dynamic font injection and pixel-perfect SVG rendering with OS-agnostic hinting.
+- **Professional Unified Workflow**: Redesigned `Makefile` with standardized targets (`devrun`, `cirun`, `ghrun`, `teardown`) and professional modifier flags (`PURGE_DISK`, `DEBUG_LOG`, `LOAD_TEST`).
+- **Secure Remote CI**: Repository-driven synchronization with SSH Agent Forwarding for private repo verification on remote build servers.
+- **Resource Recovery**: Automated pruning of container objects and native caches via `make teardown`.
 
 ### Changed
-- **Browser Abstraction**: Introduced the `BrowserBackend` trait, allowing seamless switching between Native and Playwright backends.
-- **Documentation**: New [Browser Rendering](docs/developer-guide/browser-rendering.md) guide and updated user guides for zero-dependency workflows.
-- **Test Infrastructure**: Optimized server integration tests for single-instance initialization, reducing suite execution time.
-- **Project Roadmap**: Marked v0.0.5 as complete.
+- **Memory Optimization**: Reduced linker memory requirements by 70%—configured `debug=0` for dev/test profiles to prevent OOM in resource-constrained environments.
+- **Storage Strategy**: Relocated Podman machine storage to external volumes on macOS via `src-scripts/setup/podman-setup/podman-storage.sh`.
+- **Documentation Overhaul**: Consolidated all developer workflows, CI/CD architectures, and contribution guides into a unified structure.
+- **Infrastructure**: Standardized all verification scripts (`repro-ci.sh`, `remote-ci.sh`) to share identical containerized environments.
+
+### Verification
+- **rel/0.0.5 Verified** (2026-02-23): Cold repro and full diagram suite passed. See [docs/releases/rel-0.0.5-verified.md](docs/releases/rel-0.0.5-verified.md).
 
 ## [0.0.4] - 2026-02-21
 

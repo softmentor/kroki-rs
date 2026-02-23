@@ -212,7 +212,6 @@ pub async fn batch(
                 "d2" => Some("d2".to_string()),
                 "dot" | "gv" => Some("graphviz".to_string()),
                 "mmd" | "mermaid" => Some("mermaid".to_string()),
-                "puml" | "plantuml" => Some("plantuml".to_string()),
                 "excalidraw" => Some("excalidraw".to_string()),
                 "bpmn" => Some("bpmn".to_string()),
                 "vega" => Some("vega".to_string()),

@@ -58,7 +58,7 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     use tracing_subscriber::{fmt, prelude::*, EnvFilter};
     tracing_subscriber::registry()
-        .with(fmt::layer())
+        .with(fmt::layer().with_writer(std::io::stderr))
         .with(EnvFilter::from_default_env())
         .init();
 
@@ -84,7 +84,6 @@ async fn main() -> anyhow::Result<()> {
             if !font.is_empty() {
                 config.mermaid.fonts.extend(font.clone());
                 config.graphviz.fonts.extend(font.clone());
-                config.plantuml.fonts.extend(font.clone());
                 config.excalidraw.fonts.extend(font);
             }
             cli::convert(type_, format, input, config, args.cache_dir).await?;
@@ -100,7 +99,6 @@ async fn main() -> anyhow::Result<()> {
             if !font.is_empty() {
                 config.mermaid.fonts.extend(font.clone());
                 config.graphviz.fonts.extend(font.clone());
-                config.plantuml.fonts.extend(font.clone());
                 config.excalidraw.fonts.extend(font);
             }
             cli::batch(format, input, type_, out_dir, config, args.cache_dir).await?;

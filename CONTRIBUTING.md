@@ -24,40 +24,56 @@ Thank you for your interest in contributing to **Kroki-rs**! We welcome contribu
 ### Prerequisites
 
 -   Rust (stable)
--   Dependencies for diagrams you want to test (e.g., Graphviz, Node.js tools)
--   **(Optional but Recommended)**: `sccache` for accelerating local builds.
+-   `podman` or `docker` (required for `cirun` and container builds)
+-   Dependencies for diagrams you want to test (e.g., Graphviz)
+-   **(Optional)**: `sccache` for accelerating local builds.
     ```bash
     cargo install sccache
     ```
-    *The Makefile will automatically detect and use it to drastically reduce recompilation times for large dependencies like image/resvg.*
 
-### Building
+### Unified Workflow Targets
 
+To ensure consistency across local iteration and CI, we use the professional **`dflow`** CLI wrapper. **Please use these instead of raw cargo commands whenever possible.**
+
+| Command | Role | When to use |
+| :--- | :--- | :--- |
+| `./dflow setup` | **Environment Init** | After cloning or when tools are missing. |
+| `./dflow develop` | **Local Verification** | Rapid iteration on your native OS (macOS). (alias: `dev`) |
+| `./dflow ci-verify` | **CI Verification** | Before pushing, verify in the CI container (same env as GHA). (alias: `repro`) |
+| `./dflow teardown` | **Disk Cleanup** | Purge all native and container caches. (alias: `clean`) |
+
+**Concrete Examples:**
 ```bash
-cargo build
+./dflow develop -p -v       # Full native verification with clean cache and verbose logs
+./dflow ci-verify --test load   # Containerized CI verification with load tests
+./dflow develop -d           # Local iteration with debug tracing enabled
 ```
 
-### Testing
+### Pull Request Process
 
-Run the test suite:
+### Pull Request Process
 
-```bash
-cargo test
-```
+1.  **Sync with Release Branch**: Before starting or submitting, ensure your feature branch is up-to-date with its parent `rel/vX.X.X`.
+    ```bash
+    git fetch origin rel/vX.X.X && git merge origin/rel/vX.X.X
+    ```
+2.  **Iterate & Verify**: Use `./dflow develop` for native OS checks and `./dflow ci-verify` for container parity (~45s warm rebuild).
+3.  **Final Freshness Check**: Before merging your feature into the **release branch** (e.g., `rel/vX.X.X`), run a fresh check:
+    ```bash
+    DEBUG_LOG=false make all
+    ```
+4.  **Submit PR**: Open your PR from `feat/your-feature` to `rel/vX.X.X`. Once the release branch is ready, a final PR will be raised from `rel/vX.X.X` to `main`.
 
-To test specific diagram conversions, you can use the CLI:
+## Environmental Roles
 
-```bash
-cargo run -- convert -t dot -f svg test.dot
-```
+| Environment | OS / Runtime | What runs | Role |
+| :--- | :--- | :--- | :--- |
+| **Local Dev** | macOS (native) | `./dflow develop` | Rapid iteration |
+| **Local CI verification** | macOS/Linux + container | `./dflow ci-verify` | Verify in same env as GHA before pushing |
+| **Remote offload** | Remote host + container | `remote-ci.sh` → repro-ci.sh | Offload; still container-based (reproducible) |
+| **GitHub CI** | GHA runner + container | ci-build.yml (container jobs) | Source of truth |
 
-## Pull Requests
-
-1.  Ensure your code builds and passes tests.
-2.  Format your code using `cargo fmt`.
-3.  Run lints using `cargo clippy`.
-4.  Submit a Pull Request against the `main` branch.
-5.  Provide a clear description of your changes.
+---
 
 ## Adding a New Diagram Provider
 

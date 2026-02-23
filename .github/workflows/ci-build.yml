@@ -1,5 +1,5 @@
 # Continuous Integration (PR-Gate)
-# Performs fast verification on every PR to ensure main stability.
+# Runs inside the fingerprinted CI container for 100% parity with local repro (repro-ci.sh).
 name: CI-Build
 
 on:
@@ -10,51 +10,67 @@ on:
     branches: [ "main" ]
 
 jobs:
-  fmt:
-    name: fmt
+  ci-verify:
+    name: "PR-Verify"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-      - run: cargo fmt --all --check
 
-  clippy:
-    name: clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets -- -D warnings
+      - name: "CI: Registry Check & Sync"
+        id: registry_check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FINGERPRINT=$( (cat Dockerfile Makefile install.sh 2>/dev/null; find src-scripts -type f 2>/dev/null | LC_ALL=C sort | xargs cat 2>/dev/null) | openssl dgst -sha256 2>/dev/null | sed 's/.* //' | cut -c1-12)
+          IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          echo "Fingerprint: $FINGERPRINT"
+          
+          if ! docker pull "$IMAGE" 2>/dev/null; then
+            echo "⚠️  Image $FINGERPRINT missing in GHCR."
+            
+            # Check if a build is already in progress for this repo
+            IN_PROGRESS=$(gh run list --workflow "Build Base Image" --status in_progress --json databaseId -q '.[0].databaseId')
+            
+            if [ -n "$IN_PROGRESS" ]; then
+              echo "⏳ Base image build ($IN_PROGRESS) is already in progress. Please wait for it to complete."
+            else
+              echo "🚀 Triggering remote build (base-image.yml)..."
+              gh workflow run base-image.yml --ref ${{ github.event.pull_request.head.ref || github.ref_name }}
+              echo "✅ Remote build triggered. Re-run this PR once the image is ready."
+            fi
+            
+            echo "❌ Failing this run to prevent redundant/unoptimized builds on the runner."
+            exit 1
+          fi
+          echo "✅ Image $FINGERPRINT verified in registry."
 
-  test:
-    name: test
-    needs: [fmt, clippy]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Environment
-        uses: ./.github/actions/setup-kroki
-        with:
-          install-node: 'true'
-          install-playwright: 'true'
-      - name: Run tests with nextest
-        run: cargo nextest run --locked
+      - name: Set up Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
 
-  smoke-test:
-    name: smoke-test
-    needs: [test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Environment
-        uses: ./.github/actions/setup-kroki
+      - name: Cache Cargo target
+        uses: actions/cache@v4
         with:
-          install-node: 'false'
-          install-playwright: 'false'
-      - name: Run native smoke test
-        run: make smoke-test
+          path: target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-target-
+
+      - name: "CI: Format Check"
+        run: ./dflow ci-verify fmt
+
+      - name: "CI: Lint (Clippy)"
+        run: ./dflow ci-verify lint
+
+      - name: "CI: Build"
+        run: ./dflow ci-verify build
+
+      - name: "CI: Tests"
+        run: ./dflow ci-verify test-ci
+
+      - name: "CI: Smoke Test"
+        run: ./dflow ci-verify smoke-test
+
+      - name: "CI: Final Verification"
+        run: ./dflow ci-verify verify

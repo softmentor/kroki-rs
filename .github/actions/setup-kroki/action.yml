@@ -22,6 +22,10 @@ inputs:
     description: 'Whether to install cargo-nextest'
     required: false
     default: 'true'
+  use-cache:
+    description: 'Whether to use Rust cache (set to false for fresh builds)'
+    required: false
+    default: 'true'
 
 runs:
   using: "composite"
@@ -55,6 +59,7 @@ runs:
         targets: ${{ inputs.rust-targets }}
 
     - name: Setup Rust Cache
+      if: inputs.use-cache == 'true'
       uses: Swatinem/rust-cache@v2
 
     - name: Install NPM dependencies (if needed)

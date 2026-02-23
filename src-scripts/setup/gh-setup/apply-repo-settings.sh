@@ -1,10 +1,14 @@
 #!/bin/bash
 set -e
 
-# Configuration
+# src-scripts/setup/gh-setup/apply-repo-settings.sh
+# Purpose: Apply GitHub repository and branch-protection settings from a JSON template.
+# Usage: Run from repo root. Requires 'gh' CLI and admin access.
+# Template: src-scripts/setup/gh-setup/repo-settings.json
+
 ORG="softmentor"
 REPO="kroki-rs"
-TEMPLATE="scripts/repo-settings.json"
+TEMPLATE="src-scripts/setup/gh-setup/repo-settings.json"
 
 echo "--- Processing $ORG/$REPO ---"
 
@@ -18,13 +22,10 @@ if [ ! -f "$TEMPLATE" ]; then
     exit 1
 fi
 
-# 1. Update General Repository Settings
 echo "Updating general settings..."
 jq '.repository' "$TEMPLATE" | gh api --method PATCH "/repos/$ORG/$REPO" --input - --silent
 
-# 2. Update Branch Protection (on 'main')
 echo "Applying branch protection to 'main'..."
-# Protection requires a specific structure for 'required_status_checks'
 jq '.branch_protection' "$TEMPLATE" | gh api --method PUT "/repos/$ORG/$REPO/branches/main/protection" --input - --silent
 
 echo "✅ Successfully configured $REPO according to Kroki-Flow protocol."

@@ -67,7 +67,6 @@ Major internal architecture shift. Remove Node.js and Java runtime dependencies 
 - [x] **Native Backend**: Implement pure-Rust browser automation using `headless_chrome` with automated fallback to the legacy Playwright backend.
 
 ### PlantUML without Java
-- [x] **PlantUML via CheerpJ**: Integrated `plantuml-core.jar.js` to render diagrams in the native browser engine, removing the need for `java`.
 
 ### Design & Architecture
 - [x] **BrowserBackend Trait**: Abstract browser implementations behind a trait for future crate separation (ADR 0008.1).

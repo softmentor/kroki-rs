@@ -16,6 +16,8 @@ project:
       file: developer-guide/developer-index.md
       children:
         - file: developer-guide/development.md
+        - file: developer-guide/pipeline.md
+        - file: developer-guide/browser-rendering.md
         - file: developer-guide/distribution.md
         - file: developer-guide/coding-patterns.md
         - file: developer-guide/tech-debt-tracking.md

@@ -4,7 +4,6 @@ mod ditaa;
 mod excalidraw;
 mod graphviz;
 mod mermaid;
-mod plantuml;
 mod vega;
 mod vegalite;
 mod wavedrom;

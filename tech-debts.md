@@ -49,7 +49,6 @@ Identified during pre-release code review. Ordered by impact × effort.
 - [x] **TD-23**: `decode()` hides UTF-8 errors behind generic message (`utils/mod.rs`)
 - [x] **TD-24**: `excalidraw.rs` ignores format parameter
 - [x] **TD-25**: `bpmn.rs`, `wavedrom.rs`, `ditaa.rs` use blocking I/O in async
-- [x] **TD-26**: `plantuml.rs` silently defaults to SVG for unknown formats
 - [x] **TD-27**: Batch exits 0 even with partial failures (`cli/mod.rs`)
 
 ## 🔵 Minor

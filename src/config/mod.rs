@@ -20,8 +20,6 @@ pub struct Config {
     #[serde(default)]
     pub mermaid: ToolConfig,
     #[serde(default)]
-    pub plantuml: ToolConfig,
-    #[serde(default)]
     pub vega: ToolConfig,
     #[serde(default)]
     pub vegalite: ToolConfig,
@@ -322,7 +320,6 @@ impl Config {
         // Apply overrides for all tools
         self.graphviz.apply_env_overrides("graphviz");
         self.mermaid.apply_env_overrides("mermaid");
-        self.plantuml.apply_env_overrides("plantuml");
         self.vega.apply_env_overrides("vega");
         self.vegalite.apply_env_overrides("vegalite");
         self.wavedrom.apply_env_overrides("wavedrom");
@@ -352,7 +349,6 @@ impl Config {
         let mut fonts = Vec::new();
         fonts.extend(self.graphviz.fonts.clone());
         fonts.extend(self.mermaid.fonts.clone());
-        fonts.extend(self.plantuml.fonts.clone());
         fonts.extend(self.vega.fonts.clone());
         fonts.extend(self.vegalite.fonts.clone());
         fonts.extend(self.wavedrom.fonts.clone());
