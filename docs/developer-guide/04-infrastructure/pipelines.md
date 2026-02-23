@@ -14,9 +14,10 @@ Kroki-rs uses a 3-tier pipeline architecture optimized for speed and atomic rele
 - Provides individual status bubbles on GitHub PRs for granular tracking.
 
 ## 2. Base & CI Image Management
-**Workflow**: `base-image.yml` (and inline in `CI-Build`)
-- **Build-on-Demand**: CI automatically detects `Dockerfile` fingerprint changes and builds multi-arch images inline if missing.
-- **Zero-Pull Caching**: Uses `actions/cache` to store the fingerprinted CI image as a `.tar` file, allowing parallel jobs to restore it instantly.
+**Workflow**: `base-image.yml` (Source of Truth)
+- **Centralized Identity**: GitHub Actions is the master of Docker fingerprints and base images. Local tools pull directly from GHCR based on the `Dockerfile` hash.
+- **Build-on-Demand**: The CI system automatically detects if the `Dockerfile` fingerprint changed and builds the multi-arch images inline if missing from GHCR.
+- **Zero-Pull Caching**: Uses `actions/cache` to store the fingerprinted CI image as a `.tar` file for parallel job speed.
 
 ## 3. Distribution (CD)
 **Workflow**: `release.yml`

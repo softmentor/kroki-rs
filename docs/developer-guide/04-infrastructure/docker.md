@@ -43,18 +43,19 @@ make docker-clean
 
 Compiling Rust and its dependencies can be memory-intensive. For environments with limited RAM (e.g., 2GB Podman machines), the `Dockerfile` is configured to limit parallel jobs:
 
-- **Base Image Strategy**: The Dockerfile is split into a `base` stage (dependencies) and a `builder` stage. By pre-building the base, CI verification time is significantly reduced.
+- **Base Image Strategy**: The Dockerfile is split into a `base` stage (dependencies) and a `builder` stage. By pre-building the base on GitHub Actions, CI verification time is significantly reduced.
+- **Source of Truth**: GitHub Actions is the **sole source of truth** for base image fingerprints. This ensures absolute consistency and portability; every environment (local or remote) pulls from the same verified pool of images in GHCR, eliminating "works on my machine" identity divergence.
 - **Cargo Jobs**: The build stage uses `cargo build --release` (on high-capacity CI) or `-j 2` locally to prevent OOM.
 - **Context Optimization**: A `.dockerignore` file is used to exclude `target/`, `node_modules/`, and `.git/`.
 
 ### Fast Local Packaging (Binary Injection)
-If you already have a Linux binary (either built locally on Linux or downloaded from CI artifacts), you can skip the Rust compilation entirely:
+If you already have a Linux binary (either built locally on Linux or downloaded from CI artifacts), you can skip the Rust compilation entirely. 
+
+> [!IMPORTANT]
+> This target strictly pulls the fingerprinted base image from GHCR to ensure your local package is 100% identical to the production release.
 
 ```bash
-# Builds the base image with all diagram tools
-make docker-base
-
-# Packages the image in < 5 seconds using dist/kroki-rs
+# Pulls the fingerprinted base from GHCR
 make docker-pack
 ```
 
