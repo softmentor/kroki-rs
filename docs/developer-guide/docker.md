@@ -52,7 +52,7 @@ If you already have a Linux binary (either built locally on Linux or downloaded 
 
 ```bash
 # Downloads the Linux binary for your architecture from GitHub Releases
-./scripts/fetch-binary.sh
+make docker-base
 
 # Packages the image in < 5 seconds
 make docker-pack

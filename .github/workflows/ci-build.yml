@@ -1,5 +1,5 @@
 # Continuous Integration (PR-Gate)
-# Performs fast verification on every PR to ensure main stability.
+# Runs inside the fingerprinted CI container for 100% parity with local repro (repro-ci.sh).
 name: CI-Build
 
 on:
@@ -10,51 +10,39 @@ on:
     branches: [ "main" ]
 
 jobs:
-  fmt:
-    name: fmt
+  ci-verify:
+    name: full-parity-verification
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-      - run: cargo fmt --all --check
 
-  clippy:
-    name: clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets -- -D warnings
+      - name: Set up Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
 
-  test:
-    name: test
-    needs: [fmt, clippy]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Environment
-        uses: ./.github/actions/setup-kroki
+      - name: Cache Cargo target
+        uses: actions/cache@v4
         with:
-          install-node: 'true'
-          install-playwright: 'true'
-      - name: Run tests with nextest
-        run: cargo nextest run --locked
+          path: target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-target-
 
-  smoke-test:
-    name: smoke-test
-    needs: [test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Environment
-        uses: ./.github/actions/setup-kroki
-        with:
-          install-node: 'false'
-          install-playwright: 'false'
-      - name: Run native smoke test
-        run: make smoke-test
+      - name: "CI: Format Check"
+        run: ./dflow ci-verify fmt
+
+      - name: "CI: Lint (Clippy)"
+        run: ./dflow ci-verify lint
+
+      - name: "CI: Build"
+        run: ./dflow ci-verify build
+
+      - name: "CI: Tests"
+        run: ./dflow ci-verify test-ci
+
+      - name: "CI: Smoke Test"
+        run: ./dflow ci-verify smoke-test
+
+      - name: "CI: Final Verification"
+        run: ./dflow ci-verify verify

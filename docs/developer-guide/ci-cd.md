@@ -11,17 +11,26 @@ The pipeline is split into three distinct functional areas to optimize for devel
 
 - **Triggers**: Every `push` to `main` and every `pull_request`.
 - **Goal**: Rapidly verify that changes don't break the application or the container environment.
-- **Optimization**: Uses the pre-built **Base Image** (see below) to bypass system dependency installation.
-- **Verification**: Performs a health check and a real Mermaid-to-SVG rendering test inside the container.
-- **Speed**: Typically completes in **< 1 minute**.
+- **Optimization**: Uses the pre-built **CI image** (`ghcr.io/<repo>-ci:latest`) so no setup step runs on each PR; the image already contains Rust, cargo-nextest, and system deps.
+- **Verification**: Runs fmt, clippy, test (nextest), and smoke-test inside that container.
+- **Speed**: Typically completes in **< 1 minute** (after image pull).
 
-### 2. Base Image Management
+#### What runs when you open a PR (no setup)
+
+| Step | What runs |
+| :--- | :--- |
+| 1 | **ci-build.yml** triggers on `pull_request` to `main`. |
+| 2 | Each job (fmt, clippy, test, smoke-test) runs **inside** the CI container image; no `./dflow setup` or install step. |
+| 3 | Jobs: `cargo fmt --all --check`, `cargo clippy ...`, `cargo nextest run --locked`, `make smoke-test`. |
+| 4 | The CI image is built by **base-image.yml** (on push to main when Dockerfile/Makefile/src-scripts change, or manual). So PRs use an already-built image; setup is baked into the image, not run on every PR. |
+
+### 2. Base & CI Image Management
 **File**: [.github/workflows/base-image.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/base-image.yml)
 
-- **Triggers**: Manual trigger or changes to `Dockerfile`, `package.json`, or the workflow itself.
-- **Goal**: Pre-package heavy system dependencies (Chromium, Node, Fonts, Graphviz) into a reusable layer.
-- **Registry**: Pushes to `ghcr.io/softmentor/kroki-rs-base:latest`.
-- **Impact**: Removing these steps from the main CI path is what allows for sub-minute verification loops.
+- **Triggers**: Manual trigger or changes to `Dockerfile`, `Makefile`, `install.sh`, `src-scripts/**`, or the workflow itself.
+- **Goal**: Build and push the **base** image (system deps) and the **CI** image (base + Rust, cargo-nextest). PR runs use the CI image.
+- **Registry**: Pushes `ghcr.io/<repo>-base:<fingerprint>`, `ghcr.io/<repo>-base:latest`, `ghcr.io/<repo>-ci:<fingerprint>`, `ghcr.io/<repo>-ci:latest`.
+- **Impact**: PR jobs run inside the pre-built CI image, so no setup runs on each PR; that keeps CI fast.
 
 ### 3. Release & Distribution (CD)
 **File**: [.github/workflows/release.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/release.yml) and [.github/workflows/pages.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/pages.yml)
@@ -35,14 +44,29 @@ The pipeline is split into three distinct functional areas to optimize for devel
     4.  Deploys the versioned Rustdoc and MyST documentation to GitHub Pages.
 - **Traceability**: Ensures that 1 Tag = 1 Commit = 1 Set of Binaries = 1 Docker Image Hash.
 
-## Local Performance Optimization
-**Script**: [scripts/fetch-binary.sh](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/scripts/fetch-binary.sh)
+## CI Build Optimization
 
-For developers on Mac (ARM64), building a Linux Docker image from source can take 10+ minutes. You can achieve **instant builds** locally by leveraging the CI:
+To minimize build times and optimize resource usage, we employ a sophisticated caching strategy combining **`cargo-chef`**, **BuildKit cache mounts**, and **persistent volumes**.
 
-1.  **Tag/Push**: Push a version tag and wait for `release.yml` to finish.
-2.  **Fetch**: Run `./scripts/fetch-binary.sh` to download the verified Linux binary from the release.
-3.  **Pack**: Run `make docker-pack`. This will inject the downloaded binary into the container instead of compiling it.
+### 1. `cargo-chef` Layering
+We use a multi-stage Docker build with `cargo-chef` to separate the compilation of dependencies from the application source. This ensures that a single code change does not trigger a full recompilation of all 100+ dependencies.
+
+### 2. BuildKit Cache Mounts
+The `Dockerfile` utilizes `--mount=type=cache` for the Cargo registry and `target` directory. This allows for granular persistence of downloaded crates and intermediate artifacts across different build stages and runs.
+
+### 3. Local Persistent Volumes
+Our local verification script (`./dflow ci-verify`) maps the `/app/target` directory to a named volume (`kroki-rs-target`).
+- **Cold Rebuild**: ~16 minutes (Full dependency compilation).
+- **Warm Rebuild**: ~45 seconds (**21x speedup** for iterative changes).
+
+> [!TIP]
+> Always use `./dflow ci-verify` for final container validation. The persistent volume ensures that subsequent runs are near-instant while maintaining full environment isolation.
+
+## Multi-Architecture Support
+We provide native images for both **`linux/amd64`** (Intel/AMD) and **`linux/arm64`** (Apple Silicon/AWS Graviton). The builds are managed via `docker buildx` in the `Makefile`:
+```bash
+make docker-multiarch VERSION=0.0.5
+```
 
 ## End-to-End Development Lifecycle
 
@@ -79,7 +103,7 @@ graph TD
     make docker-build && make docker-test
     
     # Or, for an instant build if a tag already exists:
-    ./scripts/fetch-binary.sh && make docker-pack && make docker-test
+    make docker-base && make docker-build
     ```
 
 ### Stage 2: Pull & Resolve

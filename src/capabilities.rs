@@ -7,7 +7,6 @@ use which::which;
 pub struct Capabilities {
     pub graphviz: Option<PathBuf>,
     pub mermaid: Option<PathBuf>,
-    pub plantuml: Option<PathBuf>,
     pub vega: Option<PathBuf>,     // vg2svg
     pub vegalite: Option<PathBuf>, // vl2vg
     pub wavedrom: Option<PathBuf>,
@@ -21,15 +20,22 @@ pub struct Capabilities {
 impl Capabilities {
     /// Discovers available tools based on configuration and system PATH.
     pub fn discover(config: &Config) -> Self {
+        #[cfg(feature = "native-browser")]
+        let (mermaid, bpmn) = (Some(PathBuf::from("native")), Some(PathBuf::from("native")));
+
+        #[cfg(not(feature = "native-browser"))]
+        let (mermaid, bpmn) = (
+            Self::find_tool(&None, "node"),
+            Self::find_tool(&None, "node"),
+        );
+
         let caps = Self {
             graphviz: Self::find_tool(&config.graphviz.bin_path, "dot"),
-            // Playwright integrated tools rely purely on the Node.js global binaries
-            mermaid: Self::find_tool(&None, "node"),
-            plantuml: Self::find_tool(&config.plantuml.bin_path, "plantuml"),
+            mermaid,
             vega: Self::find_tool(&config.vega.bin_path, "vg2svg"),
             vegalite: Self::find_tool(&config.vegalite.bin_path, "vl2vg"),
             wavedrom: Self::find_tool(&config.wavedrom.bin_path, "wavedrom-cli"),
-            bpmn: Self::find_tool(&None, "node"),
+            bpmn,
             d2: Self::find_tool(&config.d2.bin_path, "d2"),
             ditaa: Self::find_tool(&config.ditaa.bin_path, "ditaa"),
             excalidraw: Self::find_tool(&config.excalidraw.bin_path, "excalidraw-to-svg"),
@@ -38,7 +44,6 @@ impl Capabilities {
         let found: Vec<&str> = [
             caps.graphviz.as_ref().map(|_| "graphviz"),
             caps.mermaid.as_ref().map(|_| "mermaid"),
-            caps.plantuml.as_ref().map(|_| "plantuml"),
             caps.vega.as_ref().map(|_| "vega"),
             caps.vegalite.as_ref().map(|_| "vegalite"),
             caps.wavedrom.as_ref().map(|_| "wavedrom"),

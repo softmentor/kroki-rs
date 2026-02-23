@@ -32,6 +32,8 @@ impl DiagramProvider for WavedromProvider {
 
         let mut cmd = Command::new(&self.bin_path);
         cmd.arg("-i").arg(input_file.path());
+        cmd.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
 
         match format {
             "svg" => {

@@ -11,7 +11,8 @@ This guide is for developers who want to contribute to **Kroki-rs** or understan
 In this section, you will find:
 - **[How to build and contribute](#kroki-rs.developer-guide.build-contribute)**: Deep dive into the Provider Pattern, project structure, and guidelines for adding new providers.
 - **[How to package, release, deploy and operate](#kroki-rs.developer-guide.release-deploy)**: Instructions for building, packaging, and distributing release artifacts.
-- [**Browser Rendering**](#kroki-rs.developer-guide.browser-rendering): Architecture of the native Rust browser engine and Java-free PlantUML integration.
+- **[PIPELINE & CI/CD](#kroki-rs.developer-guide.pipeline)**: Details on feature flags, build parallelism (`JOBS`), and Podman storage optimization.
+- [**Browser Rendering**](#kroki-rs.developer-guide.browser-rendering): Architecture of the native Rust browser engine and Java-free implementation.
 - [**Coding Patterns**](#kroki-rs.developer-guide.coding-patterns): Established coding conventions — process execution, provider implementation, error handling, async I/O, and configuration.
 - **[Development Protocol](#kroki-rs.developer-guide.protocol)**: Strict rules for branching, PRs, and atomic releases (Kroki-Flow).
 - **[Docker Guide](#kroki-rs.developer-guide.docker)**: Build, test, debug, and operate Kroki-rs in OCI containers.

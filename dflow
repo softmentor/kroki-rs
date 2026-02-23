@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+# dflow: Professional Developer Flow CLI
+# Commands match flow names (setup, develop, ci-verify, gh, teardown). Short aliases supported.
+
+set -e
+
+MAKE_TARGET=""
+PURGE_DISK="false"
+DEBUG_LOG="false"
+VERBOSE="false"
+NO_NETWORK="false"
+LOAD_TEST="false"
+JOBS=""
+FEATURES="native-browser"
+
+show_help() {
+    cat << EOF
+Usage: dflow <command> [options]
+
+Developer Flow CLI — commands match Kroki-Flow phases
+
+Commands:
+  setup        Initialize environment (setup phase)
+  develop      Local build and test (develop phase)  [alias: dev]
+  ci-verify    Containerized CI verification        [alias: repro]
+  ci-shell     Interactive shell in CI container    [alias: shell] — fast incremental test fixes
+  gh           Production CI (GitHub Actions / remote)
+  teardown     Reclaim build and container disk      [alias: clean]
+
+Options:
+  -p, --purge           Clean all caches before running
+  -d, --debug           Enable debug-level logging (RUST_LOG=debug)
+  -v, --verbose         Enable verbose tool output
+  -n, --no-network      Run in offline mode
+  -t <type>, --test=<type>   Include tests (e.g., -t load)
+  -j <n>, --jobs=<n>    Limit parallelism to n threads
+  --lean                Build lean core without browser engine
+  -h, --help            Show this help message
+
+Examples:
+  dflow develop -p -d
+  dflow ci-verify --test load -j 1
+  dflow ci-shell -j 1
+  dflow setup --lean
+  dflow teardown
+EOF
+}
+
+if [[ $# -eq 0 ]]; then
+    show_help
+    exit 0
+fi
+
+# Parse command (primary names and aliases)
+case "$1" in
+    setup)      MAKE_TARGET="setup" ;;
+    develop|dev) MAKE_TARGET="devrun" ;;
+    ci-verify|repro) MAKE_TARGET="cirun" ;;
+    ci-shell|shell) MAKE_TARGET="cishell" ;;
+    gh)         MAKE_TARGET="ghrun" ;;
+    teardown|clean) MAKE_TARGET="teardown" ;;
+    -h|--help)  show_help; exit 0 ;;
+    *)          echo "Unknown command: $1"; show_help; exit 1 ;;
+esac
+shift
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -p|--purge)      PURGE_DISK="true"; shift ;;
+        -d|--debug)      DEBUG_LOG="true"; shift ;;
+        -v|--verbose)    VERBOSE="true"; shift ;;
+        -n|--no-network) NO_NETWORK="true"; shift ;;
+        -t|--test)
+            if [[ "$2" == "load" ]]; then LOAD_TEST="true"; fi
+            shift 2 ;;
+        --test=load)     LOAD_TEST="true"; shift ;;
+        -j|--jobs)       JOBS="$2"; shift 2 ;;
+        --jobs=*)        JOBS="${1#*=}"; shift ;;
+        --lean)          FEATURES=""; shift ;;
+        -h|--help)       show_help; exit 0 ;;
+        *)               echo "Unknown option: $1"; show_help; exit 1 ;;
+    esac
+done
+
+CMD="make $MAKE_TARGET"
+CMD="$CMD PURGE_DISK=$PURGE_DISK"
+CMD="$CMD DEBUG_LOG=$DEBUG_LOG"
+CMD="$CMD VERBOSE=$VERBOSE"
+CMD="$CMD NO_NETWORK=$NO_NETWORK"
+CMD="$CMD LOAD_TEST=$LOAD_TEST"
+CMD="$CMD FEATURES=\"$FEATURES\""
+
+if [[ -n "$JOBS" ]]; then
+    CMD="$CMD JOBS=$JOBS"
+fi
+
+echo "🚀 Executing: $CMD $@"
+eval "$CMD $@"

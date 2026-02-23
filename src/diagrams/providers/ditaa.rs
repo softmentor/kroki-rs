@@ -40,9 +40,30 @@ impl DiagramProvider for DitaaProvider {
         })?;
         let output_path = output_file_with_ext.path().to_path_buf();
 
-        let mut cmd = Command::new(&self.bin_path);
+        // Detect if the binary is actually a JAR file (common in Debian/Ubuntu)
+        let is_jar = std::fs::File::open(&self.bin_path)
+            .map(|mut f| {
+                let mut buf = [0u8; 2];
+                use std::io::Read;
+                let _ = f.read_exact(&mut buf);
+                buf == *b"PK"
+            })
+            .unwrap_or(false);
+
+        let mut cmd = if is_jar {
+            let mut c = Command::new("java");
+            c.arg("-Djava.awt.headless=true")
+                .arg("-jar")
+                .arg(&self.bin_path);
+            c
+        } else {
+            Command::new(&self.bin_path)
+        };
+
         cmd.arg(input_file.path());
         cmd.arg(&output_path);
+        cmd.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
 
         let output = crate::diagrams::run_process_with_timeout(
             "ditaa",
@@ -55,9 +76,10 @@ impl DiagramProvider for DitaaProvider {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
             return Err(DiagramError::ProcessFailed(format!(
-                "Ditaa conversion failed: {}",
-                stderr
+                "Ditaa conversion failed. stderr: {}, stdout: {}",
+                stderr, stdout
             )));
         }
 

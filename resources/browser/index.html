@@ -5,6 +5,10 @@
     <meta charset="utf-8">
     <title>Kroki-rs Native Browser Engine</title>
 </head>
+<style id="kroki-fonts">
+    /* Injected at runtime via NativeBackend */
+</style>
+<!-- KROKI_SCRIPTS -->
 
 <body>
     <div id="graphDiv"></div>
@@ -12,104 +16,12 @@
     <script>
         // Global state
         window.kroki = {
-            isPlantUmlInitialized: false,
-            isPlantUmlCoreLoaded: false,
             lastError: null,
             debugLog: [],
 
             debug(msg) {
                 this.debugLog.push(msg);
                 console.log('[kroki-debug]', msg);
-            },
-
-            async initPlantUml() {
-                if (this.isPlantUmlInitialized) {
-                    this.debug('PlantUML already initialized');
-                    return;
-                }
-
-                this.debug('Checking for cheerpjInit...');
-                // More detailed check for CheerpJ availability
-                this.debug('typeof cheerpjInit=' + typeof cheerpjInit);
-                this.debug('typeof window.cheerpjInit=' + typeof window.cheerpjInit);
-
-                if (typeof cheerpjInit === 'undefined') {
-                    throw new Error("CheerpJ loader not found. Link https://cjrtnc.leaningtech.com/2.0/loader.js first.");
-                }
-
-                this.debug('Calling cheerpjInit()...');
-                this.debug('cheerpjInit type: ' + typeof cheerpjInit);
-                this.debug('isSecureContext: ' + window.isSecureContext);
-                try {
-                    await cheerpjInit({ disableServiceWorker: true });
-                    this.debug('cheerpjInit() completed');
-                } catch (error) {
-                    // Try multiple ways to extract error information
-                    let errorMsg = 'Unknown error';
-                    let errorType = typeof error;
-                    let errorDetails = '';
-
-                    // Handle primitive string (CheerpJ can throw empty string)
-                    if (typeof error === 'string') {
-                        errorMsg = error && error.length > 0 ? error : '(empty string thrown by CheerpJ)';
-                    } else if (error?.message) {
-                        errorMsg = error.message;
-                    } else if (error?.toString) {
-                        try {
-                            const str = error.toString();
-                            if (str && str.length > 0 && str !== '[object Object]') {
-                                errorMsg = str;
-                            }
-                        } catch (e) {
-                            errorMsg = 'Error toString() failed';
-                        }
-                    }
-
-                    // Try to identify error type better
-                    if (typeof error === 'string') {
-                        errorType = 'String';
-                    } else if (error?.constructor?.name) {
-                        errorType = error.constructor.name;
-                    }
-
-                    // Try JSON stringify
-                    try {
-                        const stringified = JSON.stringify(error);
-                        if (stringified && stringified !== '{}' && stringified !== '""') {
-                            errorDetails = '. JSON: ' + stringified;
-                        }
-                    } catch (e) {
-                        // Ignore stringify failures
-                    }
-
-                    // Get keys even if empty
-                    const keys = error ? Object.keys(error).join(',') || 'no enumerable keys' : 'null';
-
-                    this.debug('cheerpjInit() failed: ' + errorMsg);
-                    this.debug('Error type: ' + errorType);
-                    this.debug('Error keys: ' + keys);
-                    if (error?.stack) {
-                        this.debug('Error stack: ' + error.stack);
-                    }
-                    if (errorDetails) {
-                        this.debug('Error details' + errorDetails);
-                    }
-
-                    throw new Error('Failed to initialize CheerpJ: ' + errorMsg + ' (' + errorType + ')');
-                }
-
-                // Wait for cjCall to be available (allows classloading to complete)
-                this.debug('Waiting for cjCall to be available...');
-                const startTime = Date.now();
-                while (typeof cjCall === 'undefined' && (Date.now() - startTime) < 5000) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-                if (typeof cjCall === 'undefined') {
-                    throw new Error("CheerpJ cjCall function not available after initialization");
-                }
-                this.debug('cjCall is available');
-
-                this.isPlantUmlInitialized = true;
             },
 
             async renderMermaid(source) {
@@ -129,63 +41,6 @@
                         viewer.saveSVG({ format: true }).then((r) => resolve(r.svg)).catch(reject);
                     }).catch(reject);
                 });
-            },
-
-            async renderPlantUml(source) {
-                try {
-                    this.debug('Starting PlantUML render...');
-                    this.debug('Source length: ' + (source ? source.length : 'null'));
-
-                    await this.initPlantUml();
-                    this.debug('PlantUML initialized');
-
-                    if (!this.isPlantUmlCoreLoaded) {
-                        this.debug('Checking for PlantUML classes (com namespace)...');
-
-                        // Ensure PlantUML classes are available
-                        const classCheckStartTime = Date.now();
-                        while (typeof com === 'undefined' && (Date.now() - classCheckStartTime) < 5000) {
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                        }
-                        if (typeof com === 'undefined') {
-                            this.debug('ERROR: com namespace not available after 5s');
-                            throw new Error("PlantUML classes not available after loading core. com=" + typeof com);
-                        }
-                        this.debug('PlantUML classes found. com.plantuml=' + (typeof com.plantuml));
-                        this.isPlantUmlCoreLoaded = true;
-                    }
-
-                    this.debug('Calling cjCall for PlantUML conversion...');
-                    // API: com.plantuml.api.cheerpj.v1.Svg.convert("light", text)
-                    let result;
-                    try {
-                        result = await cjCall("com.plantuml.api.cheerpj.v1.Svg", "convert", "light", source);
-                    } catch (callError) {
-                        const callErrorMsg = callError?.message || callError?.toString?.() || 'Unknown cjCall error';
-                        this.debug('cjCall threw error: ' + callErrorMsg);
-                        this.debug('cjCall error stack: ' + (callError?.stack || 'No stack'));
-                        throw new Error('PlantUML rendering failed: ' + callErrorMsg);
-                    }
-
-                    this.debug('cjCall returned, result type=' + typeof result + ', length=' + (result ? result.length : 'null'));
-
-                    if (!result) {
-                        throw new Error("PlantUML returned empty/null result");
-                    }
-                    if (typeof result !== 'string') {
-                        throw new Error("PlantUML returned non-string: " + typeof result);
-                    }
-
-                    this.debug('PlantUML render successful, output size=' + result.length);
-                    return result;
-                } catch (error) {
-                    const errorMsg = error?.message || error?.toString?.() || 'Unknown error during PlantUML render';
-                    this.lastError = errorMsg;
-                    this.debug('RENDER ERROR: ' + errorMsg);
-                    this.debug('RENDER ERROR stack: ' + (error?.stack || 'No stack'));
-                    this.debug('Final debug log: ' + JSON.stringify(this.debugLog));
-                    throw error;
-                }
             }
         };
     </script>

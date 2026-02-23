@@ -1,28 +1,24 @@
 ARG BASE_IMAGE=base
 
-# Stage 1: Base - System and Node.js dependencies
-# This stage can be pre-built and pushed to GHCR to accelerate CI
+# Stage 1: Base - System dependencies
+# This stage contains essential diagram tools and the headless browser environment.
 FROM debian:bookworm-slim AS base
-LABEL org.opencontainers.image.description="Base image for kroki-rs containing all diagram tool dependencies"
+LABEL org.opencontainers.image.name="softmentor/kroki-rs-base"
+LABEL org.opencontainers.image.description="Consolidated base image for kroki-rs (Graphviz, D2, Ditaa, and Headless Browser for Mermaid/BPMN)"
 
+# Install core tools + Chromium for headless rendering (git for GHA checkout in container jobs)
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
+    git \
     graphviz \
     ditaa \
-    plantuml \
     make \
     build-essential \
-    python3 \
-    default-jre \
-    libcairo2-dev \
-    libpango1.0-dev \
-    libjpeg-dev \
-    libgif-dev \
-    librsvg2-dev \
+    fontconfig \
+    fonts-liberation \
     chromium \
     libnss3 \
-    libnspr4 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
     libcups2 \
@@ -35,74 +31,68 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     libasound2 \
     libxshmfence1 \
-    fontconfig \
-    fonts-liberation \
+    libpangocairo-1.0-0 \
+    libpango-1.0-0 \
+    libcairo2 \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# Install modern Node.js 22.x and D2
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/* && \
-    ln -s /usr/bin/chromium /usr/bin/chromium-browser || true && \
-    curl -fsSL https://d2lang.com/install.sh | sh
+# Install D2
+RUN curl -fsSL https://d2lang.com/install.sh | sh
 
 WORKDIR /app
 
-# Install isolated Node.js dependencies (Puppeteer/Playwright tools)
-# This is also part of the base as it changes infrequently
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+# Stage 2: CI - Development & Testing environment
+FROM base AS ci
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+# Install nextest for faster CI tests and cargo-chef for build optimization
+RUN cargo install --locked cargo-nextest cargo-chef
 
-# Link NPM binaries to /usr/local/bin for global reach
-RUN ln -s /app/node_modules/.bin/* /usr/local/bin/ || true
-
-# Stage 2: Builder (selective binary injection or full build)
-FROM rust:slim-bookworm AS builder
-ARG TARGETARCH
+# Stage 3: Planner (cargo-chef)
+FROM rust:slim-bookworm AS chef
+RUN cargo install cargo-chef
 WORKDIR /app
 
-# Copy all files (respecting .dockerignore)
+FROM chef AS planner
 COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
-# 1. First, check if there's an arch-specific binary in dist-amd64/ or dist-arm64/
-# 2. Second, check if there's a generic binary in dist/
-# 3. Finally, build from source if nothing found
-RUN if [ "$TARGETARCH" = "amd64" ] && [ -f ./dist-amd64/kroki-rs-linux-amd64 ]; then \
-      echo "Injecting pre-built Linux AMD64 binary..."; \
-      mkdir -p dist && cp ./dist-amd64/kroki-rs-linux-amd64 dist/kroki-rs; \
-    elif [ "$TARGETARCH" = "arm64" ] && [ -f ./dist-arm64/kroki-rs-linux-arm64 ]; then \
-      echo "Injecting pre-built Linux ARM64 binary..."; \
-      mkdir -p dist && cp ./dist-arm64/kroki-rs-linux-arm64 dist/kroki-rs; \
-    elif [ -f ./dist/kroki-rs ]; then \
-      echo "Using generic pre-built binary in ./dist/kroki-rs"; \
-    else \
-      echo "No pre-built binary found for $TARGETARCH. Building from source..."; \
-      apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/* && \
-      cargo build --release && \
-      mkdir -p dist && cp target/release/kroki-rs dist/kroki-rs; \
-    fi
+# Stage 4: Builder
+FROM chef AS builder
+ARG FEATURES="native-browser"
+COPY --from=planner /app/recipe.json recipe.json
 
-# Stage 3: Final runtime image
+# Build dependencies - leveraging BuildKit cache mounts
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target \
+    cargo chef cook --release --features "$FEATURES" --recipe-path recipe.json
+
+# Now copy source and build the app
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target \
+    cargo build --release --features "$FEATURES" && \
+    mkdir -p dist && cp target/release/kroki-rs dist/kroki-rs
+
+# Stage 5: Final runtime image
 FROM ${BASE_IMAGE}
 
-# Set up environment variables
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV PLAYWRIGHT_EXECUTABLE_PATH=/usr/bin/chromium
 ENV KROKI_PORT=8000
 ENV KROKI_ADMIN_PORT=8081
+ENV CHROME_BIN=/usr/bin/chromium
+ENV JAVA_AWT_HEADLESS=true
 
 WORKDIR /app
 
-# Copy binary from builder stage
 COPY --from=builder /app/dist/kroki-rs /usr/local/bin/kroki-rs
 
-# Copy the Playwright worker script
-# The server expects it at ./src/browser/worker.js relative to the binary or WORKDIR
-COPY src/browser ./src/browser
+# Healthcheck to verify the binary is functional
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD kroki-rs --version || exit 1
 
-# Expose ports for Server API and Admin API
 EXPOSE 8000 8081
 
-# Run the server on 0.0.0.0 (internal binding)
 CMD ["kroki-rs", "serve"]

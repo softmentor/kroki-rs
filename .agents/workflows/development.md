@@ -6,82 +6,63 @@ description: Kroki-Flow development protocol — mandatory steps for all code ch
 
 **This workflow is MANDATORY for all code changes.** Follow these steps exactly.
 
+## Verification philosophy
+
+**CI parity = container only.** The only way to verify in the same environment as GitHub Actions is to run inside the **CI container** (`./dflow ci-verify`). Native runs on the host (`./dflow develop`) are for fast iteration and optional sanity only — they do *not* guarantee "passes locally ⇒ passes in CI."
+
 ## Before Writing Any Code
 
-1. Read `docs/developer-guide/protocol.md` for full context
-2. Create a feature branch: `git checkout -b feat/your-feature`
+1. Create/Sync a feature branch: `git checkout main && git pull origin main && git checkout -b feat/your-feature`
 
 ## Development Loop (Local First!)
 
-// turbo-all
-
-1. Make your code changes
-2. Run format check:
+1. Make your code changes.
+2. Run local iteration:
    ```bash
-   cargo fmt --all --check
+   ./dflow develop
    ```
-3. Run clippy lint:
+   *Fast feedback (fmt, clippy, parallel tests) on your native OS.*
+3. **CI parity (mandatory before push):**
    ```bash
-   cargo clippy --all-targets -- -D warnings
+   ./dflow ci-verify
    ```
-4. Run tests locally with nextest:
+   *Runs the pipeline inside the CI container — same environment as GHA.*
+
+## Release Branch Verification (Bundling)
+
+If you are preparing a versioned release (e.g., `release/v0.0.5`):
+
+1. **Native Full Check**:
    ```bash
-   cargo nextest run --locked
+   ./dflow develop -p
    ```
-5. Generate source code documentation (user, developer, source docs), update changelog:
+   *Equivalent to `make all` with a full purge. Ensures a clean native state.*
+2. **Local CI-verify**:
    ```bash
-   cargo doc --no-deps --document-private-items
+   ./dflow ci-verify
    ```
-6. If tests involve Docker, verify locally:
+   *Incremental container check to ensure local parity before pushing.*
+3. **Push to Remote Release Branch**:
    ```bash
-   make docker-build && make docker-test
+   git push origin release/v0.0.5
    ```
+4. **Raise PR against `main`**.
+5. **Verify GH Run**: Ensure all GHA checks pass on the PR.
 
-> **CRITICAL**: You MUST verify all changes pass locally (steps 2-5) BEFORE pushing to any branch or opening a PR. Never push untested code to CI. The CI is a safety net, not a development tool.
+## Manual Tagging (After PR Success)
 
-## Full Local Verification
+Once the PR to `main` is merged and the GH build succeeds:
 
-For a complete lifecycle check (before merging to release branch):
-```bash
-make all
-```
-This runs: `deps → clean → fmt → lint → test-ci (nextest) → doc → verify (release build + dist) → test-load`
-
-## Committing & Pushing
-
-7. Only after ALL local checks pass, commit:
+1. Sync local `main`: `git checkout main && git pull origin main`
+2. Run tagging utility:
    ```bash
-   git add . && git commit -m "type(scope): description"
+   bash src-scripts/gh-tasks/tag-release.sh
    ```
-8. Push to the feature branch:
-   ```bash
-   git push origin feat/your-feature
-   ```
-
-## PR & Merge Process
-
-9. Open a PR to `main` (or to a release branch like `v0.0.4`)
-10. Wait for CI checks to pass (clippy, fmt, test, smoke-test)
-11. PR requires at least 1 approving review before merge
-12. Merge to `main` uses `--no-ff` merge commits for traceability
-
-## Release Process
-
-13. Create release branch: `git checkout -b v0.0.X` from `main`
-14. Buffer features via squash merges into the release branch
-15. Full verify: `make all` (includes load tests + doc generation)
-16. Merge to main: `git merge v0.0.X --no-ff`
-17. Tag: `git tag v0.0.X && git push origin main --tags`
-18. Cleanup: `git branch -d v0.0.X`
+   *This script verifies the main checkout and documentation build before tagging.*
 
 ## Key Rules
 
-- **NEVER** push directly to `main`
-- **ALWAYS** test locally before pushing (steps 2-5 above)
-- **ALWAYS** use `--locked` flag in CI to catch dependency drift
-- **ALWAYS** generate docs (`cargo doc`) during development and before releases
-- The `Makefile` has two test targets:
-  - `make test` — release mode, for local development (serial)
-  - `make test-ci` — debug mode with nextest (parallel, used by CI and `make all`)
-- `Cargo.toml` already has `opt-level = 3` for dependencies in dev/test profiles
-- `Cargo.lock` is committed to the repo (required for `--locked` flag)
+- **NEVER** push directly to `main`.
+- **ALWAYS** run `./dflow ci-verify` before pushing.
+- **ALWAYS** bump version in `Cargo.toml` before tagging (use `make bump VERSION=X.Y.Z`).
+- **ALWAYS** use `--locked` flag in CI to catch dependency drift.

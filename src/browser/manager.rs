@@ -1,12 +1,12 @@
 use crate::browser::backend::BrowserBackend;
+#[cfg(feature = "native-browser")]
 use crate::browser::native::NativeBackend;
-use crate::browser::playwright::PlaywrightBackend;
 use crate::diagrams::DiagramResult;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::sync::Arc;
 
 /// Unified manager for browser-based rendering backends.
-/// Abstracts away the specific implementation (Native or Playwright).
+/// Abstracts away the specific implementation (Native).
 #[derive(Clone)]
 pub struct BrowserManager {
     backend: Arc<dyn BrowserBackend>,
@@ -14,30 +14,25 @@ pub struct BrowserManager {
 
 impl BrowserManager {
     /// Launches the preferred browser backend.
-    /// Prefers Native (headless_chrome) if available, falling back to Playwright if needed.
-    pub async fn start(pool_size: usize, context_ttl: usize) -> Result<Self> {
-        // 1. Try Native Backend (v0.0.5 target)
-        match NativeBackend::new().await {
-            Ok(backend) => {
-                tracing::info!("Initialized native browser backend (headless_chrome)");
-                return Ok(Self {
-                    backend: Arc::new(backend),
-                });
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Native browser backend failed: {}. Falling back to Playwright.",
-                    e
-                );
+    /// Prefers Native (headless_chrome) if available.
+    pub async fn start(_pool_size: usize, _context_ttl: usize) -> Result<Self> {
+        #[cfg(feature = "native-browser")]
+        {
+            match NativeBackend::new(_pool_size).await {
+                Ok(backend) => {
+                    tracing::info!("Initialized native browser backend (headless_chrome)");
+                    Ok(Self {
+                        backend: Arc::new(backend),
+                    })
+                }
+                Err(e) => Err(anyhow!("Native browser backend failed to start: {}", e)),
             }
         }
 
-        // 2. Fallback to Playwright Backend (v0.0.4 legacy)
-        let backend = PlaywrightBackend::start(pool_size, context_ttl).await?;
-        tracing::info!("Initialized legacy browser backend (Playwright/Node.js)");
-        Ok(Self {
-            backend: Arc::new(backend),
-        })
+        #[cfg(not(feature = "native-browser"))]
+        {
+            Err(anyhow!("Browser-based rendering is disabled in this build. Rebuild with --features native-browser."))
+        }
     }
 
     /// Evaluate diagram code inside the preferred browser backend.

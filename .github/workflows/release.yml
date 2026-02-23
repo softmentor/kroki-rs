@@ -33,8 +33,8 @@ jobs:
       
       - name: Verify Version Synchronicity
         run: |
-          chmod +x scripts/verify-version.sh
-          ./scripts/verify-version.sh
+          chmod +x src-scripts/ci-verify/repro-ci.sh
+          ./src-scripts/ci-verify/repro-ci.sh --version-check
 
       - name: Setup Environment
         uses: ./.github/actions/setup-kroki
@@ -42,6 +42,7 @@ jobs:
           rust-targets: ${{ matrix.target }}
           install-node: 'false'
           install-playwright: ${{ matrix.os == 'ubuntu-latest' && matrix.target != 'aarch64-unknown-linux-gnu' && 'true' || 'false' }}
+          use-cache: 'false'
 
       - name: Set up QEMU (ARM64 only)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
