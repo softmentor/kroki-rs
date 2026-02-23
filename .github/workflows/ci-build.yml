@@ -35,30 +35,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "CI: Registry Check"
-        id: registry_check
+      - name: "CI: Registry Check & Image Cache"
+        id: image_cache
+        uses: actions/cache@v4
+        with:
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+
+      - name: "CI: Load or Build Image"
+        id: image_logic
         run: |
           FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
           IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           echo "fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
-          if docker pull "$IMAGE" 2>/dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
+          
+          # 1. Try Loading from Cache
+          if [ -f ci-image.tar ]; then
+            echo "📦 Loading image from cache..."
+            docker load -i ci-image.tar
+            echo "loaded=true" >> $GITHUB_OUTPUT
+            exit 0
           fi
+          
+          # 2. Try Pulling from GHCR
+          if docker pull "$IMAGE" 2>/dev/null; then
+            echo "✅ Image $FINGERPRINT found in registry."
+            docker save -o ci-image.tar "$IMAGE"
+            echo "loaded=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # 3. Build-on-Demand (Safe Fallback)
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "loaded=false" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
-        if: steps.registry_check.outputs.exists == 'false'
+        if: steps.image_logic.outputs.loaded == 'false'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        if: steps.registry_check.outputs.exists == 'false'
+        if: steps.image_logic.outputs.loaded == 'false'
         uses: docker/setup-buildx-action@v3
         with:
           driver: docker-container
 
       - name: Log in to the Container registry
-        if: steps.registry_check.outputs.exists == 'false'
+        if: steps.image_logic.outputs.loaded == 'false'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -66,7 +88,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Build-on-Demand: Build and push CI image"
-        if: steps.registry_check.outputs.exists == 'false'
+        if: steps.image_logic.outputs.loaded == 'false'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -75,10 +97,16 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}-ci:${{ steps.registry_check.outputs.fingerprint }}
+            ghcr.io/${{ github.repository }}-ci:${{ steps.image_logic.outputs.fingerprint }}
             ghcr.io/${{ github.repository }}-ci:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: "Post-Build: Save Image to Cache"
+        if: steps.image_logic.outputs.loaded == 'false'
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}-ci:${{ steps.image_logic.outputs.fingerprint }}"
+          docker save -o ci-image.tar "$IMAGE"
 
       - name: Set up Podman
         run: |
@@ -94,8 +122,6 @@ jobs:
             .cargo-cache/registry
             .cargo-cache/git
             target
-          # Using run_id ensures we can save the cache and have it be distinct, 
-          # while restore-keys allows us to pick up the latest valid one.
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
@@ -111,6 +137,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: "CI: Image Cache (Restore)"
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+
+      - name: "CI: Load Image"
+        run: |
+          if [ -f ci-image.tar ]; then
+            docker load -i ci-image.tar
+          else
+            # Fallback to pull if cache is missing (safety)
+            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          fi
       - name: Set up Podman
         run: sudo apt-get update && sudo apt-get install -y podman
       - name: Cache Cargo (Restore)
@@ -135,6 +177,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: "CI: Image Cache (Restore)"
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+
+      - name: "CI: Load Image"
+        run: |
+          if [ -f ci-image.tar ]; then
+            docker load -i ci-image.tar
+          else
+            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          fi
+
       - name: Set up Podman
         run: sudo apt-get update && sudo apt-get install -y podman
       - name: Cache Cargo (Restore)
