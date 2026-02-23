@@ -26,7 +26,7 @@ DIST_DIR = dist
 PLATFORM = $(shell uname | tr '[:upper:]' '[:lower:]')
 ARCHIVE_NAME = $(BINARY_NAME)-$(PLATFORM).tar.gz
 VERSION ?= $(shell grep '^version =' Cargo.toml 2>/dev/null | head -n 1 | cut -d '"' -f 2)
-RUST_VERSION := 1.85
+RUST_VERSION := $(shell grep '^channel =' rust-toolchain.toml | cut -d '"' -f 2)
 
 # --- Build configuration (override via make VAR=value) ---
 FEATURES ?= native-browser
