@@ -44,16 +44,32 @@ jobs:
           IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           echo "Fingerprint: $FINGERPRINT"
           
+          # Check if image exists
           if ! docker pull "$IMAGE" 2>/dev/null; then
             echo "⚠️  Image $FINGERPRINT missing in GHCR."
+            
+            # Trigger build if needed
             IN_PROGRESS=$(gh run list --workflow "Build Base Image" --status in_progress --json databaseId -q '.[0].databaseId')
-            if [ -n "$IN_PROGRESS" ]; then
-              echo "⏳ Base image build ($IN_PROGRESS) is already in progress."
-            else
+            if [ -z "$IN_PROGRESS" ]; then
               echo "🚀 Triggering remote build (base-image.yml)..."
               gh workflow run base-image.yml --ref ${{ github.event.pull_request.head.ref || github.ref_name }}
+              sleep 10 # Give it a moment to register
             fi
-            exit 1
+            
+            # Polling loop (max 20 minutes)
+            echo "⏳ Waiting for base image build to complete..."
+            limit=40 # 40 * 30s = 20 minutes
+            count=0
+            while ! docker pull "$IMAGE" 2>/dev/null; do
+              count=$((count + 1))
+              if [ $count -ge $limit ]; then
+                echo "❌ Timeout waiting for base image."
+                exit 1
+              fi
+              echo "   ($count/$limit) Retrying in 30s..."
+              sleep 30
+            done
+            echo "✅ Image $FINGERPRINT is now ready."
           fi
 
       - name: Set up Podman
