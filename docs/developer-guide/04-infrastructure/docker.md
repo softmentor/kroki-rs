@@ -60,7 +60,7 @@ make docker-pack
 
 ## 2. Testing & Verification
 
-Once built, you should verify the containerized services and Playwright worker.
+Once built, you should verify the containerized services and native browser pool.
 
 ### Running & Testing
 
@@ -74,11 +74,11 @@ make docker-run
 
 ### End-to-End Verification
 
-1.  **Health Check**: Verify the server and its browser pool are operational.
+1.  **Health Check**: Verify the server and its native browser pool are operational.
     ```bash
     curl http://localhost:8081/health
     ```
-2.  **Diagram Rendering**: Test a Mermaid diagram to ensure Playwright and Chromium are correctly configured.
+2.  **Diagram Rendering**: Test a Mermaid diagram to ensure `headless_chrome` and the internal browser worker are correctly configured.
     ```bash
     # Content: graph TD; A-->B;
     curl http://localhost:8000/mermaid/svg/Z3JhcGggVEQ7IEEtLT5COw
@@ -154,12 +154,12 @@ make docker-all
 
 The image exposes a dedicated Admin server on port `8081`. 
 - **Endpoint**: `/health`
-- **Metrics**: Returns the status of the browser pool (active/spare/pending connections).
+- **Metrics**: Returns the status of the native browser pool (active/spare/pending connections).
 
 ### CI/CD Pipeline
 The project uses a high-performance 3-tier pipeline:
-- **Verification ([ci-build.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/ci-build.yml))**: Extremely fast (sub-minute) smoke tests on PRs using the pre-built base image.
-- **Base Image ([base-image.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/base-image.yml))**: Automated dependency management.
+- **Verification ([ci-build.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/ci-build.yml))**: Parallelized workflow with Build-on-Demand image sync and zero-pull local caching targeting ~5 min PR check-ins.
+- **Base Image ([base-image.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/base-image.yml))**: Content-addressed dependency management.
 - **Distribution ([release.yml](file:///Users/jinythattil/jt/code/softmentor/kroki-rs/.github/workflows/release.yml))**: Atomic release of multi-platform binaries and verified multi-arch Docker images on version tags.
 
 ## 5. Maintenance

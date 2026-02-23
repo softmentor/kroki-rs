@@ -10,14 +10,13 @@ Kroki-rs uses a 3-tier pipeline architecture optimized for speed and atomic rele
 ## 1. Continuous Integration (CI)
 **Workflow**: `ci-build.yml`
 - Runs on every PR.
-- Executes inside the pre-built CI container for < 1 min feedback.
-- Uses `cargo-nextest` and shared BuildKit caches.
+- **"Compile Once, Check Parallel"**: A single sequential `Build` job prepares artifacts, followed by three parallel verification jobs (`Lint & Format`, `Tests`, `Smoke & Verify`).
+- Provides individual status bubbles on GitHub PRs for granular tracking.
 
 ## 2. Base & CI Image Management
-**Workflow**: `base-image.yml`
-- Triggers on infrastructure changes (Dockerfile, Makefile, etc.).
-- Computes content-based fingerprints for immutable images.
-- Pushes to GHCR.
+**Workflow**: `base-image.yml` (and inline in `CI-Build`)
+- **Build-on-Demand**: CI automatically detects `Dockerfile` fingerprint changes and builds multi-arch images inline if missing.
+- **Zero-Pull Caching**: Uses `actions/cache` to store the fingerprinted CI image as a `.tar` file, allowing parallel jobs to restore it instantly.
 
 ## 3. Distribution (CD)
 **Workflow**: `release.yml`
@@ -27,7 +26,8 @@ Kroki-rs uses a 3-tier pipeline architecture optimized for speed and atomic rele
 
 ## Build Optimization
 
+- **`sccache`**: Multi-arch compilation cache used as a secondary safety net across jobs.
 - **`cargo-chef`**: Layered builds for super-fast dependency caching.
-- **Cache Mounts**: The Dockerfile uses `--mount=type=cache` for the Cargo registry and target.
+- **Host-Mount Caching**: The runner persists `.cargo-cache` and `target` directories between runs for maximum speed.
 
 For deployment details, see [Deployments & Distribution](#kroki-rs.developer-guide.deployments).
