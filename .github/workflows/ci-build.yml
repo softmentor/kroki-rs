@@ -35,6 +35,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: "CI: Prune Redundant Caches"
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧹 Checking for redundant caches on ${{ github.ref }}..."
+          # Prune all but the latest Cargo cache for this ref
+          gh cache list --ref "${{ github.ref }}" --key "${{ runner.os }}-cargo-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
+          # Prune all but the latest Docker image cache for this ref
+          gh cache list --ref "${{ github.ref }}" --key "${{ runner.os }}-docker-image-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
+
       - name: "CI: Registry Check & Image Cache"
         id: image_cache
         uses: actions/cache@v4
