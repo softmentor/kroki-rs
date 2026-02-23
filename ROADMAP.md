@@ -58,20 +58,19 @@ Incremental production-grade hardening of the existing server architecture. All 
 - [x] **Enhanced Admin API**: `/health`, `/metrics`, `/config` (sanitized), `/providers` endpoints.
 - [x] **Admin Dashboard**: Live health indicators, request volume, circuit breaker states per provider.
 
-## 🟡 v0.0.5: Rust-Native Core — Eliminate Runtime Dependencies
+## 🟢 v0.0.5: Rust-Native Core — Eliminate Runtime Dependencies (Completed)
 
 Major internal architecture shift. Remove Node.js and Java runtime dependencies in favor of pure-Rust alternatives, enabling single-binary deployment.
 
 ### Browser Automation (Eliminate Node.js)
-- [ ] **Rust Browser Automation Experiment**: Evaluate `fantoccini` (WebDriver), `headless_chrome` (CDP), and `chromiumoxide` (CDP) as replacements for Node.js + Playwright (ADR 0008). Benchmark: binary size, cold start latency, per-diagram render latency, memory under load.
-- [ ] **RustBrowserManager**: Implement winning approach behind `native-browser` feature flag, with fallback to Node.js `BrowserManager`.
+- [x] **Rust Browser Automation Experiment**: Evaluate `fantoccini` (WebDriver), `headless_chrome` (CDP), and `chromiumoxide` (CDP) as replacements for Node.js + Playwright (ADR 0008).
+- [x] **Native Backend**: Implement pure-Rust browser automation using `headless_chrome` with automated fallback to the legacy Playwright backend.
 
 ### PlantUML without Java
-- [ ] **PlantUML via WASM/JS**: Use `plantuml-core` (CheerpJ pre-compiled Java→JS, no Java needed at runtime) with Rust browser automation or embedded JS runtime (`rustyscript`/`deno_core`). Users download `plantuml-core.jar.js` separately (license consideration).
 
-### Design Preparation for v0.0.6
-- [ ] **BrowserBackend Trait**: Abstract browser implementations behind a trait for future crate separation.
-- [ ] **Server Independence**: Ensure `DiagramProvider`, registry, and plugin system have no server dependencies. Add `#[cfg(feature = "server")]` gates.
+### Design & Architecture
+- [x] **BrowserBackend Trait**: Abstract browser implementations behind a trait for future crate separation (ADR 0008.1).
+- [x] **Composite CI/CD**: Standardized setup across workflows using a reusable composite action (ADR 0010).
 
 ## 🔮 v0.0.6: Modular Crate Workspace
 

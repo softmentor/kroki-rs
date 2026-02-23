@@ -47,7 +47,7 @@ This guide is designed to get you from zero to production quickly:
 - **[Discover](#kroki-rs.user-guide.features)**: Why Kroki-rs is the right choice for your stack.
 - **[Understand](#kroki-rs.user-guide.supported-diagrams)**: Explore the supported engines and tool requirements.
 - **[Apply](#kroki-rs.user-guide.usage)**: Practical patterns for CLI and Server usage.
-- **[Reflect](#kroki-rs.developer-guide.developer-index)**: Deep dive into the rust-native architecture.
+- **[Developer Guide](#kroki-rs.developer-guide.index)**: Deep dive into the rust-native architecture.
 
 > **Information is visual. Rendering should be effortless.**
 

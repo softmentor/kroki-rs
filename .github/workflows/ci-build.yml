@@ -1,79 +1,298 @@
 # Continuous Integration (PR-Gate)
-# Performs fast verification on every PR to ensure main stability.
+# Runs inside the fingerprinted CI container for 100% parity with local repro (repro-ci.sh).
 name: CI-Build
 
 on:
   push:
     branches: [ "main" ]
+    tags-ignore: [ "v*" ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
+
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
-  fmt:
-    name: fmt
+  # Job 1: Build dependencies and the application
+  build:
+    name: "Build"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-      - run: cargo fmt --all --check
 
-  clippy:
-    name: clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets -- -D warnings
+      - name: "CI: Prune Redundant Caches"
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧹 Proactive Repo-wide Cache Cleanup..."
+          # 1. Prune redundant Cargo and Docker caches across ALL refs
+          # We keep only the single most recently accessed one per ref for these specific types.
+          for ref in $(gh cache list --limit 100 --json ref --jq '.[].ref' | sort | uniq); do
+            echo "  Checking ref: $ref"
+            # Cargo: keep 1
+            gh cache list --ref "$ref" --key "${{ runner.os }}-cargo-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
+            # Docker Image: keep 1
+            gh cache list --ref "$ref" --key "${{ runner.os }}-docker-image-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
+            # Buildkit blobs: be more generous, keep 10 most recent layers to avoid broken Buildx cache
+            gh cache list --ref "$ref" --key "buildkit-" --json id --jq '.[10:] | .[].id' | xargs -I {} gh cache delete {} || true
+          done
+          
+          # 2. Aggressive PR cleanup: delete all caches for pull requests that haven't been touched in 24h
+          # (Excluding current PR which will be refreshed anyway)
+          CURRENT_PR="refs/pull/${{ github.event.pull_request.number }}/merge"
+          gh cache list --limit 100 --json id,ref,lastAccessedAt | jq -r --arg current "$CURRENT_PR" '
+            .[] | select(.ref | startswith("refs/pull/")) | select(.ref != $current) | .id' | xargs -I {} gh cache delete {} || true
 
-  test:
-    name: test
-    needs: [fmt, clippy]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-      - name: Install nextest
-        uses: taiki-e/install-action@nextest
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-      - name: Install system dependencies for canvas
-        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
-      - name: Install dependencies
-        run: npm ci
-      - name: Cache Playwright Browsers
-        id: playwright-cache
+      - name: "CI: Registry Check & Image Cache"
+        id: image_cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('package-lock.json') }}
-      - name: Install Playwright Browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-      - name: Install Playwright System Deps (cached browsers)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
-      - name: Run tests with nextest
-        run: cargo nextest run --locked
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
 
-  smoke-test:
-    name: smoke-test
-    needs: [test]
+      - name: "CI: Load or Build Image"
+        id: image_logic
+        run: |
+          FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+          IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          echo "fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
+          
+          # 1. Try Loading from Cache
+          if [ -f ci-image.tar ]; then
+            echo "📦 Loading image from cache..."
+            docker load -i ci-image.tar
+            echo "loaded=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # 2. Try Pulling from GHCR
+          if docker pull "$IMAGE" 2>/dev/null; then
+            echo "✅ Image $FINGERPRINT found in registry."
+            docker save -o ci-image.tar "$IMAGE"
+            echo "loaded=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # 3. Build-on-Demand (Safe Fallback)
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "loaded=false" >> $GITHUB_OUTPUT
+
+      - name: Set up QEMU
+        if: steps.image_logic.outputs.loaded == 'false'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.image_logic.outputs.loaded == 'false'
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Log in to the Container registry
+        if: steps.image_logic.outputs.loaded == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build-on-Demand: Build and push CI image"
+        if: steps.image_logic.outputs.loaded == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          target: ci
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-ci:${{ steps.image_logic.outputs.fingerprint }}
+            ghcr.io/${{ github.repository }}-ci:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: "Post-Build: Save Image to Cache"
+        if: steps.image_logic.outputs.loaded == 'false'
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}-ci:${{ steps.image_logic.outputs.fingerprint }}"
+          echo "📦 Pulling built image to local daemon for caching..."
+          docker pull "$IMAGE"
+          docker save -o ci-image.tar "$IMAGE"
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Cache Cargo (registry, git, target)
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-
+
+      - name: "CI: Build"
+        run: ./dflow ci-verify build
+
+  # Job 2: Format Check
+  fmt:
+    name: "fmt"
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Install system dependencies for rendering
-        run: sudo apt-get update && sudo apt-get install -y build-essential graphviz
-      - name: Run native smoke test
-        run: make smoke-test
+
+      - name: "CI: Image Cache (Restore)"
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+
+      - name: "CI: Load Image"
+        run: |
+          if [ -f ci-image.tar ]; then
+            docker load -i ci-image.tar
+          else
+            # Fallback to pull if cache is missing (safety)
+            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          fi
+      - name: Cache Cargo (Restore)
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+      - name: "CI: Format Check"
+        run: ./dflow ci-verify fmt
+
+  # Job 3: Clippy (Lint)
+  clippy:
+    name: "clippy"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "CI: Image Cache (Restore)"
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+
+      - name: "CI: Load Image"
+        run: |
+          if [ -f ci-image.tar ]; then
+            docker load -i ci-image.tar
+          else
+            # Fallback to pull if cache is missing (safety)
+            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          fi
+      - name: Cache Cargo (Restore)
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+      - name: "CI: Lint (Clippy)"
+        run: ./dflow ci-verify lint
+
+  # Job 4: Tests
+  test:
+    name: "test"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "CI: Image Cache (Restore)"
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+
+      - name: "CI: Load Image"
+        run: |
+          if [ -f ci-image.tar ]; then
+            docker load -i ci-image.tar
+          else
+            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          fi
+
+      - name: Cache Cargo (Restore)
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+      - name: "CI: Tests"
+        run: ./dflow ci-verify test-ci
+
+  # Job 5: Smoke Test and Final Verification
+  smoke-test:
+    name: "smoke-test"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "CI: Image Cache (Restore)"
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+
+      - name: "CI: Load Image"
+        run: |
+          if [ -f ci-image.tar ]; then
+            docker load -i ci-image.tar
+          else
+            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          fi
+
+      - name: Cache Cargo (Restore)
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+      - name: "CI: Smoke Test"
+        run: ./dflow ci-verify smoke-test
+      - name: "CI: Final Verification"
+        run: ./dflow ci-verify verify

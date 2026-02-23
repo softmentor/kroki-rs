@@ -8,5 +8,6 @@ pub mod capabilities;
 pub mod cli;
 pub mod config;
 pub mod diagrams;
+pub mod interface;
 pub mod server;
 pub mod utils;

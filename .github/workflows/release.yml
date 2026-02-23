@@ -33,53 +33,28 @@ jobs:
       
       - name: Verify Version Synchronicity
         run: |
-          chmod +x scripts/verify-version.sh
-          ./scripts/verify-version.sh
+          chmod +x src-scripts/ci-verify/repro-ci.sh
+          ./src-scripts/ci-verify/repro-ci.sh --version-check
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Environment
+        uses: ./.github/actions/setup-kroki
         with:
-          targets: ${{ matrix.target }}
-
-      - name: Setup Rust Cache
-        uses: Swatinem/rust-cache@v2
+          rust-targets: ${{ matrix.target }}
+          install-node: 'false'
+          install-playwright: ${{ matrix.os == 'ubuntu-latest' && matrix.target != 'aarch64-unknown-linux-gnu' && 'true' || 'false' }}
+          use-cache: 'false'
 
       - name: Set up QEMU (ARM64 only)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         uses: docker/setup-qemu-action@v3
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install System Dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install pkg-config cairo pango libpng jpeg-turbo giflib librsvg graphviz d2
-          brew install --cask chromium
-          echo "PKG_CONFIG_PATH=$(brew --prefix jpeg-turbo)/lib/pkgconfig:$(brew --prefix libpng)/lib/pkgconfig:$(brew --prefix zlib)/lib/pkgconfig" >> $GITHUB_ENV
-          echo "LDFLAGS=-L$(brew --prefix jpeg-turbo)/lib" >> $GITHUB_ENV
-          echo "CPPFLAGS=-I$(brew --prefix jpeg-turbo)/include" >> $GITHUB_ENV
-          echo "$(brew --prefix jpeg-turbo)/bin" >> $GITHUB_PATH
-          echo "PLAYWRIGHT_EXECUTABLE_PATH=/Applications/Chromium.app/Contents/MacOS/Chromium" >> $GITHUB_ENV
-          echo "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1" >> $GITHUB_ENV
-
-      - name: Install System Dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install ARM64 Cross Linker (Linux ARM64 only)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config libssl-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev graphviz
-          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu
-            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-          else
-            # Install Chromium and all system dependencies via Playwright's official installer
-            npx playwright install --with-deps chromium
-          fi
-
-      - name: Install dependencies
-        run: npm install
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
       - name: Build Binary
         run: |
@@ -149,24 +124,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Environment
+        uses: ./.github/actions/setup-kroki
         with:
-          node-version: '22'
-
-      - name: Install system dependencies for node-canvas
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup Rust Cache
-        uses: Swatinem/rust-cache@v2
+          install-node: 'true'
+          install-playwright: 'false'
 
       - name: Build Rustdoc
         run: make doc

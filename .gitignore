@@ -1,5 +1,6 @@
 # Rust
 /target
+/.cargo-cache
 
 # Node.js
 node_modules
@@ -28,3 +29,6 @@ kroki.toml
 # jupyter
 .ipynb_checkpoints
 .jupyter
+
+# claude
+.claude

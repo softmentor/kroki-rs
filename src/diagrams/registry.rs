@@ -8,7 +8,6 @@ use crate::diagrams::{
         ditaa::DitaaProvider,
         excalidraw::ExcalidrawProvider,
         mermaid::MermaidProvider,
-        plantuml::PlantUmlProvider,
         vega::{VegaLiteProvider, VegaProvider},
         wavedrom::WavedromProvider,
     },
@@ -46,15 +45,6 @@ impl DiagramRegistry {
             providers.insert("mermaid".to_string(), provider);
         }
 
-        if let Some(path) = &capabilities.plantuml {
-            let provider = Arc::new(PlantUmlProvider::new(
-                path.clone(),
-                config.plantuml.timeout_ms,
-            )) as Arc<dyn DiagramProvider + Send + Sync>;
-            providers.insert("plantuml".to_string(), provider.clone());
-            providers.insert("c4plantuml".to_string(), provider);
-        }
-
         if let Some(path) = &capabilities.vega {
             let provider = Arc::new(VegaProvider::new(path.clone(), config.vega.timeout_ms))
                 as Arc<dyn DiagramProvider + Send + Sync>;
@@ -62,10 +52,6 @@ impl DiagramRegistry {
         }
 
         if let Some(vl_path) = &capabilities.vegalite {
-            // We need vg2svg for vegalite too.
-            // In a robust implementation we should ensure capabilities.vega is set,
-            // or deduce it from vegalite path if possible.
-            // For now, requiring both to be present for vegalite.
             if let Some(vg_path) = &capabilities.vega {
                 let provider = Arc::new(VegaLiteProvider::new(
                     vl_path.clone(),

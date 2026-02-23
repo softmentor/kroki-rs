@@ -1,11 +1,13 @@
-use crate::config::SUPPORTED_FORMATS;
+// use crate::config::SUPPORTED_FORMATS;
+use crate::interface::{DiagramRequest, ProblemDetails, RenderRequestDto};
 use crate::server::AppState;
 use crate::utils::decode;
 use crate::utils::image_converter;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
+    Json,
 };
 
 use axum::response::Html;
@@ -258,77 +260,105 @@ pub async fn root(State(state): State<AppState>) -> impl IntoResponse {
     Html(html)
 }
 
-/// Handler for retrieving diagrams via the Kroki GET API.
 pub async fn get_diagram(
     Path((type_, format, source_encoded)): Path<(String, String, String)>,
     State(state): State<AppState>,
-) -> impl IntoResponse {
+) -> Response {
     let start_time = std::time::Instant::now();
-    tracing::info!("Request: type={}, format={}", type_, format);
 
-    // 0. Initial metrics
-    if state.config.server.metrics.enabled {
-        crate::server::metrics::Metrics::increment_requests(&type_, &format);
-    }
-
-    // 1. Validate format against whitelist (TD-21)
-    if !SUPPORTED_FORMATS.contains(&format.as_str()) {
-        if state.config.server.metrics.enabled {
-            crate::server::metrics::Metrics::increment_errors(
-                &type_,
-                &format,
-                "unsupported_format",
-            );
-        }
-        return (
-            StatusCode::BAD_REQUEST,
-            format!(
-                "Unsupported format '{}'. Supported: {}",
-                format,
-                SUPPORTED_FORMATS.join(", ")
-            ),
-        )
-            .into_response();
-    }
-
-    // 2. Decode payload
-    let source = match decode(&source_encoded) {
-        Ok(s) => s,
+    // 1. Initial mapping to Domain Request
+    let request = match decode(&source_encoded) {
+        Ok(source) => DiagramRequest {
+            source,
+            format,
+            provider: type_,
+        },
         Err(e) => {
-            tracing::warn!("Failed to decode source: {}", e);
-            if state.config.server.metrics.enabled {
-                crate::server::metrics::Metrics::increment_errors(&type_, &format, "decode_error");
-            }
             return (
                 StatusCode::BAD_REQUEST,
-                format!("Failed to decode source: {}", e),
+                Json(
+                    ProblemDetails::new(
+                        "https://kroki.io/errors/decode-failed",
+                        "Input Decoding Failed",
+                        400,
+                    )
+                    .with_detail(&e.to_string()),
+                ),
             )
                 .into_response();
         }
     };
 
+    render_diagram(request, state, start_time).await
+}
+
+/// Handler for retrieving diagrams via JSON POST request.
+pub async fn post_render(
+    Path((type_, format)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(dto): Json<RenderRequestDto>,
+) -> Response {
+    let start_time = std::time::Instant::now();
+
+    let request = DiagramRequest {
+        source: dto.source,
+        format: dto.format.unwrap_or(format),
+        provider: dto.provider.unwrap_or(type_),
+    };
+
+    render_diagram(request, state, start_time).await
+}
+
+async fn render_diagram(
+    request: DiagramRequest,
+    state: AppState,
+    start_time: std::time::Instant,
+) -> Response {
+    tracing::info!(
+        "Request: type={}, format={}",
+        request.provider,
+        request.format
+    );
+
+    // 2. Metrics
     if state.config.server.metrics.enabled {
-        crate::server::metrics::Metrics::record_payload_size(&type_, &format, source.len() as f64);
+        crate::server::metrics::Metrics::increment_requests(&request.provider, &request.format);
+        crate::server::metrics::Metrics::record_payload_size(
+            &request.provider,
+            &request.format,
+            request.source.len() as f64,
+        );
     }
 
     // 3. Validate input size (TD-19)
-    if source.len() > state.config.server.max_input_size {
+    if request.source.len() > state.config.server.max_input_size {
         if state.config.server.metrics.enabled {
-            crate::server::metrics::Metrics::increment_errors(&type_, &format, "payload_too_large");
+            crate::server::metrics::Metrics::increment_errors(
+                &request.provider,
+                &request.format,
+                "payload_too_large",
+            );
         }
         return (
             StatusCode::PAYLOAD_TOO_LARGE,
-            format!(
-                "Input too large ({} bytes). Maximum allowed: {} bytes",
-                source.len(),
-                state.config.server.max_input_size
+            Json(
+                ProblemDetails::new(
+                    "https://kroki.io/errors/payload-too-large",
+                    "Payload Too Large",
+                    413,
+                )
+                .with_detail(&format!(
+                    "Input too large ({} bytes). Maximum allowed: {} bytes",
+                    request.source.len(),
+                    state.config.server.max_input_size
+                )),
             ),
         )
             .into_response();
     }
 
     // 4. Find provider from pre-built registry (TD-04)
-    let provider = match state.registry.get(&type_) {
+    let provider = match state.registry.get(&request.provider) {
         Some(p) => p,
         None => {
             let known = state.registry.known_types();
@@ -337,78 +367,94 @@ pub async fn get_diagram(
             } else {
                 format!(
                     "Diagram type '{}' is not available. Supported types: {}",
-                    type_,
+                    request.provider,
                     known.join(", ")
                 )
             };
             tracing::warn!("{}", msg);
             if state.config.server.metrics.enabled {
                 crate::server::metrics::Metrics::increment_errors(
-                    &type_,
-                    &format,
+                    &request.provider,
+                    &request.format,
                     "provider_not_found",
                 );
             }
-            return (StatusCode::NOT_FOUND, msg).into_response();
+            return (
+                StatusCode::NOT_FOUND,
+                Json(
+                    ProblemDetails::new(
+                        "https://kroki.io/errors/provider-not-found",
+                        "Provider Not Found",
+                        404,
+                    )
+                    .with_detail(&msg),
+                ),
+            )
+                .into_response();
         }
     };
 
     // 5. Check circuit breaker for this provider type
     if let Some(ref cb) = state.circuit_breaker {
-        if !cb.should_allow(&type_) {
+        if !cb.should_allow(&request.provider) {
             tracing::warn!(
                 "Circuit breaker OPEN for provider '{}' — rejecting request",
-                type_
+                request.provider
             );
             if state.config.server.metrics.enabled {
                 crate::server::metrics::Metrics::increment_errors(
-                    &type_,
-                    &format,
+                    &request.provider,
+                    &request.format,
                     "circuit_breaker_open",
                 );
-                crate::server::metrics::Metrics::set_circuit_breaker_state(&type_, 1.0);
-                // 1 = Open
+                crate::server::metrics::Metrics::set_circuit_breaker_state(&request.provider, 1.0);
             }
             return (
                 StatusCode::SERVICE_UNAVAILABLE,
-                format!(
+                Json(ProblemDetails::new(
+                    "https://kroki.io/errors/circuit-breaker-open",
+                    "Service Unavailable",
+                    503,
+                ).with_detail(&format!(
                     "Provider '{}' is temporarily unavailable due to repeated failures. Please retry later.",
-                    type_
-                ),
-            )
-                .into_response();
+                    request.provider
+                )))
+            ).into_response();
         }
     }
 
-    let is_webp = format.to_lowercase() == "webp";
+    let is_webp = request.format.to_lowercase() == "webp";
     let base_format = if is_webp {
-        if type_.to_lowercase() == "ditaa" {
+        if request.provider.to_lowercase() == "ditaa" {
             "png"
         } else {
             "svg"
         }
     } else {
-        &format
+        &request.format
     };
 
     // 6. Generate
     let render_start = std::time::Instant::now();
-    match provider.generate(&source, base_format).await {
+    match provider.generate(&request.source, base_format).await {
         Ok(mut bytes) => {
             let render_duration = render_start.elapsed().as_secs_f64();
             if state.config.server.metrics.enabled {
                 crate::server::metrics::Metrics::record_conversion_time(
-                    &type_,
-                    &format,
+                    &request.provider,
+                    &request.format,
                     render_duration,
                 );
             }
 
             // Record success for circuit breaker
             if let Some(ref cb) = state.circuit_breaker {
-                cb.record_success(&type_);
+                cb.record_success(&request.provider);
                 if state.config.server.metrics.enabled {
-                    crate::server::metrics::Metrics::set_circuit_breaker_state(&type_, 0.0);
+                    crate::server::metrics::Metrics::set_circuit_breaker_state(
+                        &request.provider,
+                        0.0,
+                    );
                     // 0 = Closed
                 }
             }
@@ -419,23 +465,26 @@ pub async fn get_diagram(
                     "Output too large ({} bytes, max: {} bytes) for type={}",
                     bytes.len(),
                     state.config.server.max_output_size,
-                    type_
+                    request.provider
                 );
                 if state.config.server.metrics.enabled {
                     crate::server::metrics::Metrics::increment_errors(
-                        &type_,
-                        &format,
+                        &request.provider,
+                        &request.format,
                         "output_too_large",
                     );
                 }
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!(
+                    Json(ProblemDetails::new(
+                        "https://kroki.io/errors/output-too-large",
+                        "Output Too Large",
+                        500,
+                    ).with_detail(&format!(
                         "Generated output exceeds size limit ({} bytes). Consider simplifying the diagram.",
                         bytes.len()
-                    ),
-                )
-                    .into_response();
+                    )))
+                ).into_response();
             }
 
             if is_webp {
@@ -460,24 +509,31 @@ pub async fn get_diagram(
                         bytes = webp_bytes;
                     }
                     Err(e) => {
-                        tracing::error!("WebP conversion failed for {}: {}", type_, e);
+                        tracing::error!("WebP conversion failed for {}: {}", request.provider, e);
                         if state.config.server.metrics.enabled {
                             crate::server::metrics::Metrics::increment_errors(
-                                &type_,
-                                &format,
+                                &request.provider,
+                                &request.format,
                                 "webp_conversion_error",
                             );
                         }
                         return (
                             StatusCode::INTERNAL_SERVER_ERROR,
-                            "Diagram generation failed. Check server logs for details.".to_string(),
+                            Json(
+                                ProblemDetails::new(
+                                    "https://kroki.io/errors/conversion-failed",
+                                    "WebP Conversion Failed",
+                                    500,
+                                )
+                                .with_detail(&e.to_string()),
+                            ),
                         )
                             .into_response();
                     }
                 }
             }
 
-            let content_type = match format.as_str() {
+            let content_type = match request.format.as_str() {
                 "svg" => "image/svg+xml",
                 "png" => "image/png",
                 "pdf" => "application/pdf",
@@ -488,7 +544,11 @@ pub async fn get_diagram(
 
             let total_duration = start_time.elapsed().as_secs_f64();
             if state.config.server.metrics.enabled {
-                crate::server::metrics::Metrics::record_duration(&type_, &format, total_duration);
+                crate::server::metrics::Metrics::record_duration(
+                    &request.provider,
+                    &request.format,
+                    total_duration,
+                );
             }
 
             (
@@ -501,45 +561,30 @@ pub async fn get_diagram(
         Err(e) => {
             // Record failure for circuit breaker
             if let Some(ref cb) = state.circuit_breaker {
-                cb.record_failure(&type_);
+                cb.record_failure(&request.provider);
                 if state.config.server.metrics.enabled {
-                    crate::server::metrics::Metrics::set_circuit_breaker_state(&type_, 1.0);
-                    // Simplified state tracking
+                    crate::server::metrics::Metrics::set_circuit_breaker_state(
+                        &request.provider,
+                        1.0,
+                    );
                 }
             }
-
-            let error_kind = match &e {
-                crate::diagrams::DiagramError::ValidationFailed(_) => "validation_failed",
-                crate::diagrams::DiagramError::UnsupportedFormat { .. } => "unsupported_format",
-                crate::diagrams::DiagramError::ToolNotFound(_) => "tool_not_found",
-                crate::diagrams::DiagramError::ExecutionTimeout { .. } => "timeout",
-                _ => "internal_error",
-            };
 
             if state.config.server.metrics.enabled {
-                crate::server::metrics::Metrics::increment_errors(&type_, &format, error_kind);
+                crate::server::metrics::Metrics::increment_errors(
+                    &request.provider,
+                    &request.format,
+                    "render_error",
+                );
             }
 
-            tracing::error!("Generation failed for {}: {}", type_, e);
-            let (status, msg) = match e {
-                crate::diagrams::DiagramError::ValidationFailed(msg) => {
-                    (StatusCode::BAD_REQUEST, msg)
-                }
-                crate::diagrams::DiagramError::UnsupportedFormat { .. } => {
-                    (StatusCode::BAD_REQUEST, e.to_string())
-                }
-                crate::diagrams::DiagramError::ToolNotFound(_) => {
-                    (StatusCode::SERVICE_UNAVAILABLE, e.to_string())
-                }
-                crate::diagrams::DiagramError::ExecutionTimeout { .. } => {
-                    (StatusCode::GATEWAY_TIMEOUT, e.to_string())
-                }
-                _ => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Diagram generation failed. Check server logs for details.".to_string(),
-                ),
-            };
-            (status, msg).into_response()
+            tracing::error!("Generation failed for {}: {}", request.provider, e);
+            let problem: ProblemDetails = e.into();
+            (
+                StatusCode::from_u16(problem.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                Json(problem),
+            )
+                .into_response()
         }
     }
 }

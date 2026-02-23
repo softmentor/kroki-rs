@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2026-02-22
+
+### Added
+- **Native Browser Engine (v2)**: Fully stabilized pure-Rust `headless_chrome` implementation for Mermaid and BPMN, replacing Node.js/Playwright ecosystem.
+- **Robust Font Integration**: Dynamic font injection and pixel-perfect SVG rendering with OS-agnostic hinting.
+- **Professional Unified Workflow**: Redesigned `Makefile` with standardized targets (`devrun`, `cirun`, `ghrun`, `teardown`) and professional modifier flags (`PURGE_DISK`, `DEBUG_LOG`, `LOAD_TEST`).
+- **Secure Remote CI**: Repository-driven synchronization with SSH Agent Forwarding for private repo verification on remote build servers.
+- **Parallelized CI Architecture**: Redesigned `ci-build.yml` using a "Compile Once, Check Parallel" structure across four distinct jobs for instant PR status feedback.
+- **Zero-Pull CI Startup**: Integrated `actions/cache` to store fingerprinted Docker images as tarballs, enabling near-instant job startup without pulling from GHCR.
+- **Self-Healing Registry Sync**: Automated "Build-on-Demand" strategy that detects Dockerfile mismatches and builds/pushes multi-arch images inline.
+- **sccache Safety Net**: Integrated multi-arch `sccache` as a secondary compilation cache to ensure build parity across local and remote environments.
+- **Resource Recovery**: Automated pruning of container objects and native caches via `make teardown`.
+
+### Changed
+- **Memory Optimization**: Reduced linker memory requirements by 70%—configured `debug=0` for dev/test profiles to prevent OOM in resource-constrained environments.
+- **Storage Strategy**: Relocated Podman machine storage to external volumes on macOS via `src-scripts/setup/podman-setup/podman-storage.sh`.
+- **Documentation Overhaul**: Consolidated all developer workflows, CI/CD architectures, and contribution guides into a unified structure.
+- **Infrastructure**: Standardized all verification scripts (`repro-ci.sh`, `remote-ci.sh`) to share identical containerized environments.
+
+### Verification
+- **rel/0.0.5 Verified** (2026-02-23): Cold repro and full diagram suite passed. See [docs/releases/rel-0.0.5-verified.md](docs/releases/rel-0.0.5-verified.md).
+
 ## [0.0.4] - 2026-02-21
 
 ### Added

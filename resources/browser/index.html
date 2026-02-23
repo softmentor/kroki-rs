@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Kroki-rs Native Browser Engine</title>
+</head>
+<style id="kroki-fonts">
+    /* Injected at runtime via NativeBackend */
+</style>
+<!-- KROKI_SCRIPTS -->
+
+<body>
+    <div id="graphDiv"></div>
+    <div id="container"></div>
+    <script>
+        // Global state
+        window.kroki = {
+            lastError: null,
+            debugLog: [],
+
+            debug(msg) {
+                this.debugLog.push(msg);
+                console.log('[kroki-debug]', msg);
+            },
+
+            async renderMermaid(source) {
+                if (!window.mermaid) throw new Error("Mermaid library not loaded");
+                document.body.innerHTML = '<div id="graphDiv"></div>';
+                window.mermaid.initialize({ startOnLoad: false });
+                const { svg } = await window.mermaid.render('mermaid-' + Date.now(), source);
+                return svg;
+            },
+
+            async renderBpmn(source) {
+                if (!window.BpmnJS) throw new Error("BpmnJS library not loaded");
+                document.body.innerHTML = '<div id="container"></div>';
+                return new Promise((resolve, reject) => {
+                    const viewer = new window.BpmnJS({ container: '#container' });
+                    viewer.importXML(source).then(() => {
+                        viewer.saveSVG({ format: true }).then((r) => resolve(r.svg)).catch(reject);
+                    }).catch(reject);
+                });
+            }
+        };
+    </script>
+</body>
+
+</html>

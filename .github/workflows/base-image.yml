@@ -1,24 +1,19 @@
-# Build Base Image
-# This workflow pre-builds a Docker image containing all heavy system dependencies
-# (Chromium, Node.js, Fonts, Graphviz) to accelerate subsequent CI runs.
+# Build Base and CI Images (content-addressable fingerprint)
+# Pre-builds Docker images for local repro and GHA so both share the same environment.
 name: Build Base Image
 
 on:
-  workflow_dispatch: # Allows manual trigger from GitHub UI
-  # schedule:
-  #   - cron: '0 0 * * 0' # Every Sunday at midnight (Weekly security refresh)
-  # push:
-  #   branches: ["main"]
-  #   # Trigger only when dependency-related files or this workflow change
-  #   paths:
-  #     - 'Dockerfile'
-  #     - 'package.json'
-  #     - 'package-lock.json'
-  #     - '.github/workflows/base-image.yml'
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - 'Dockerfile'
+      - 'Dockerfile.pack'
+      - '.dockerignore'
+      - '.github/workflows/base-image.yml'
 
 jobs:
-  build-base:
-    # Runs on Ubuntu, building for both AMD64 and ARM64
+  build-images:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,11 +23,20 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Compute fingerprint
+        id: fingerprint
+        run: |
+          HASH=$(cat Dockerfile Dockerfile.pack .dockerignore 2>/dev/null | openssl dgst -sha256 | sed 's/.* //' | cut -c1-12)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "Fingerprint: $HASH"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -41,15 +45,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Base Image
+      - name: Build and push Base image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          target: base # Specifically builds the 'base' stage of the Dockerfile
+          target: base
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/${{ github.repository }}-base:latest
-          # Use GHA cache to speed up multi-stage dependency installs
+          tags: |
+            ghcr.io/${{ github.repository }}-base:${{ steps.fingerprint.outputs.hash }}
+            ghcr.io/${{ github.repository }}-base:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push CI image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          target: ci
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-ci:${{ steps.fingerprint.outputs.hash }}
+            ghcr.io/${{ github.repository }}-ci:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
