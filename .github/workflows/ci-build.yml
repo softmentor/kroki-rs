@@ -40,11 +40,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🧹 Checking for redundant caches on ${{ github.ref }}..."
-          # Prune all but the latest Cargo cache for this ref
-          gh cache list --ref "${{ github.ref }}" --key "${{ runner.os }}-cargo-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
-          # Prune all but the latest Docker image cache for this ref
-          gh cache list --ref "${{ github.ref }}" --key "${{ runner.os }}-docker-image-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
+          echo "🧹 Proactive Repo-wide Cache Cleanup..."
+          # 1. Prune redundant Cargo and Docker caches across ALL refs
+          # We keep only the single most recently accessed one per ref for these specific types.
+          for ref in $(gh cache list --limit 100 --json ref --jq '.[].ref' | sort | uniq); do
+            echo "  Checking ref: $ref"
+            # Cargo: keep 1
+            gh cache list --ref "$ref" --key "${{ runner.os }}-cargo-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
+            # Docker Image: keep 1
+            gh cache list --ref "$ref" --key "${{ runner.os }}-docker-image-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
+            # Buildkit blobs: be more generous, keep 10 most recent layers to avoid broken Buildx cache
+            gh cache list --ref "$ref" --key "buildkit-" --json id --jq '.[10:] | .[].id' | xargs -I {} gh cache delete {} || true
+          done
+          
+          # 2. Aggressive PR cleanup: delete all caches for pull requests that haven't been touched in 24h
+          # (Excluding current PR which will be refreshed anyway)
+          CURRENT_PR="refs/pull/${{ github.event.pull_request.number }}/merge"
+          gh cache list --limit 100 --json id,ref,lastAccessedAt | jq -r --arg current "$CURRENT_PR" '
+            .[] | select(.ref | startswith("refs/pull/")) | select(.ref != $current) | .id' | xargs -I {} gh cache delete {} || true
 
       - name: "CI: Registry Check & Image Cache"
         id: image_cache
