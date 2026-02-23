@@ -1,6 +1,6 @@
 ---
 title: Contributing to Kroki-rs
-label: kroki-rs.contributing
+label: kroki-rs.developer-guide.contributing
 ---
 # Contributing to Kroki-rs
 

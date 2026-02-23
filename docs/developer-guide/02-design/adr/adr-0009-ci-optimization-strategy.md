@@ -1,3 +1,7 @@
+---
+title: "ADR 0009: CI Build Optimization Strategy"
+label: kroki-rs.adr.0009
+---
 # ADR 0009: CI Build Optimization Strategy
 
 ## Status

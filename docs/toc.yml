@@ -13,26 +13,53 @@ project:
         - file: user-guide/configuration.md
         - file: user-guide/security.md
     - title: Developer Guide
-      file: developer-guide/developer-index.md
+      file: developer-guide/index.md
       children:
-        - file: developer-guide/development.md
-        - file: developer-guide/pipeline.md
-        - file: developer-guide/browser-rendering.md
-        - file: developer-guide/distribution.md
-        - file: developer-guide/coding-patterns.md
-        - file: developer-guide/tech-debt-tracking.md
-        - file: developer-guide/brainstorm-re-architecture.md
-        - file: developer-guide/brainstorm-implementation.md
-        - file: developer-guide/design-decisions/0001-native-webp-conversion.md
-        - file: developer-guide/design-decisions/0002-dynamic-font-loading.md
-        - file: developer-guide/design-decisions/0003-async-subprocess-timeouts.md
-        - file: developer-guide/design-decisions/adr-0004-playwright-pooling.md
-        - file: developer-guide/design-decisions/adr-0005-authentication-model.md
-        - file: developer-guide/design-decisions/adr-0006-observability-metrics.md
-        - file: developer-guide/design-decisions/adr-0007-custom-plugin-api.md
-        - file: developer-guide/design-decisions/adr-0008-rust-browser-automation.md
-        - file: ../ROADMAP.md
-        - file: ../CONTRIBUTING.md
+        - title: 🚀 Getting Started
+          children:
+            - file: developer-guide/01-getting-started/quickstart.md
+            - file: developer-guide/01-getting-started/contributing.md
+        - title: 🏗️ Design
+          children:
+            - file: developer-guide/02-design/architecture.md
+            - file: developer-guide/02-design/providers.md
+            - file: developer-guide/02-design/browser-rendering.md
+            - title: Design Decisions (ADRs)
+              file: developer-guide/02-design/adr/index.md
+              children:
+                - file: developer-guide/02-design/adr/adr-0001-native-webp-conversion.md
+                - file: developer-guide/02-design/adr/adr-0002-dynamic-font-loading.md
+                - file: developer-guide/02-design/adr/adr-0003-async-subprocess-timeouts.md
+                - file: developer-guide/02-design/adr/adr-0004-playwright-pooling.md
+                - file: developer-guide/02-design/adr/adr-0005-authentication-model.md
+                - file: developer-guide/02-design/adr/adr-0006-observability-metrics.md
+                - file: developer-guide/02-design/adr/adr-0007-custom-plugin-api.md
+                - file: developer-guide/02-design/adr/adr-0008-rust-browser-automation.md
+                - file: developer-guide/02-design/adr/adr-0008.1-browser-backend-evaluation.md
+                - file: developer-guide/02-design/adr/adr-0009-ci-optimization-strategy.md
+        - title: 🛠️ Development
+          children:
+            - file: developer-guide/03-development/workflow.md
+            - file: developer-guide/03-development/local-dev.md
+            - file: developer-guide/03-development/coding-standards.md
+        - title: 🌐 Infrastructure
+          children:
+            - file: developer-guide/04-infrastructure/pipelines.md
+            - file: developer-guide/04-infrastructure/docker.md
+            - file: developer-guide/04-infrastructure/deployments.md
+        - title: 🩺 Operations
+          children:
+            - file: developer-guide/05-operations/observability.md
+            - file: developer-guide/05-operations/troubleshooting.md
+        - title: 🗺️ Roadmap
+          children:
+            - file: developer-guide/06-roadmap/index.md
+            - file: developer-guide/06-roadmap/tech-debt.md
+            - file: developer-guide/06-roadmap/brainstorm-implementation.md
+            - file: developer-guide/06-roadmap/brainstorm-re-architecture.md
+        - title: 📚 Resources
+          children:
+            - file: developer-guide/07-resources/references.md
     - title: Reference
       file: reference.md
       children:

@@ -1,3 +1,7 @@
+---
+title: Technical Debt Tracking
+label: kroki-rs.developer-guide.tech-debt
+---
 # Tech Debts — Kroki-rs v0.0.2
 
 Identified during pre-release code review. Ordered by impact × effort.

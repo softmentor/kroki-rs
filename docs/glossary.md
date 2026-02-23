@@ -28,4 +28,16 @@ PNG
 
 WebP
 : Web Picture format - A modern image format that provides superior lossless and lossy compression for images on the web.
+
+Kroki-Flow
+: The standardized development and release protocol for Kroki-rs, emphasizing PR-gates and containerized verification.
+
+dflow
+: The professional developer flow CLI used to orchestrate setup, development, and CI verification tasks.
+
+Provider Pattern
+: A design pattern used in Kroki-rs to decouple the core API from specific rendering engine implementations.
+
+Capability Discovery
+: The mechanism by which Kroki-rs identifies available rendering tools and their supported formats at runtime.
 :::
