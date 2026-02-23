@@ -13,6 +13,10 @@ jobs:
   ci-verify:
     name: "PR-Verify"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+      packages: read
     steps:
       - uses: actions/checkout@v4
 
