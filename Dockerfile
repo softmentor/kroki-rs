@@ -45,9 +45,10 @@ WORKDIR /app
 
 # Stage 2: CI - Development & Testing environment
 FROM base AS ci
+ARG RUST_VERSION=1.85
 # Inject pre-built Rust toolchain instead of slow rustup installer
-COPY --from=rust:1.85-slim-bookworm /usr/local/rustup /usr/local/rustup
-COPY --from=rust:1.85-slim-bookworm /usr/local/cargo /usr/local/cargo
+COPY --from=rust:${RUST_VERSION}-slim-bookworm /usr/local/rustup /usr/local/rustup
+COPY --from=rust:${RUST_VERSION}-slim-bookworm /usr/local/cargo /usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
