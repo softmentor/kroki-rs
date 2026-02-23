@@ -35,42 +35,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "CI: Registry Check & Sync"
+      - name: "CI: Registry Check"
         id: registry_check
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
           IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
-          echo "Fingerprint: $FINGERPRINT"
-          
-          # Check if image exists
-          if ! docker pull "$IMAGE" 2>/dev/null; then
-            echo "⚠️  Image $FINGERPRINT missing in GHCR."
-            
-            # Trigger build if needed
-            IN_PROGRESS=$(gh run list --workflow "Build Base Image" --status in_progress --json databaseId -q '.[0].databaseId')
-            if [ -z "$IN_PROGRESS" ]; then
-              echo "🚀 Triggering remote build (base-image.yml)..."
-              gh workflow run base-image.yml --ref ${{ github.event.pull_request.head.ref || github.ref_name }}
-              sleep 10 # Give it a moment to register
-            fi
-            
-            # Polling loop (max 20 minutes)
-            echo "⏳ Waiting for base image build to complete..."
-            limit=40 # 40 * 30s = 20 minutes
-            count=0
-            while ! docker pull "$IMAGE" 2>/dev/null; do
-              count=$((count + 1))
-              if [ $count -ge $limit ]; then
-                echo "❌ Timeout waiting for base image."
-                exit 1
-              fi
-              echo "   ($count/$limit) Retrying in 30s..."
-              sleep 30
-            done
-            echo "✅ Image $FINGERPRINT is now ready."
+          echo "fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
+          if docker pull "$IMAGE" 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Set up QEMU
+        if: steps.registry_check.outputs.exists == 'false'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.registry_check.outputs.exists == 'false'
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Log in to the Container registry
+        if: steps.registry_check.outputs.exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build-on-Demand: Build and push CI image"
+        if: steps.registry_check.outputs.exists == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          target: ci
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-ci:${{ steps.registry_check.outputs.fingerprint }}
+            ghcr.io/${{ github.repository }}-ci:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Set up Podman
         run: |
