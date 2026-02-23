@@ -45,8 +45,13 @@ WORKDIR /app
 
 # Stage 2: CI - Development & Testing environment
 FROM base AS ci
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Inject pre-built Rust toolchain instead of slow rustup installer
+COPY --from=rust:1.85-slim-bookworm /usr/local/rustup /usr/local/rustup
+COPY --from=rust:1.85-slim-bookworm /usr/local/cargo /usr/local/cargo
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+
 # Install nextest, cargo-chef, and sccache via pre-built binaries for speed
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
@@ -63,8 +68,8 @@ RUN ARCH=$(uname -m) && \
     curl -LsSf https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-v0.8.1-$SCCACHE_ARCH.tar.gz | tar zxf - --strip-components=1 -C /usr/local/bin sccache-v0.8.1-$SCCACHE_ARCH/sccache
 
 # Stage 3: Planner (cargo-chef)
-FROM rust:slim-bookworm AS chef
-RUN cargo install cargo-chef
+FROM ci AS chef
+# No need to cargo install cargo-chef, it's already in /usr/local/bin from the ci stage
 WORKDIR /app
 
 FROM chef AS planner
