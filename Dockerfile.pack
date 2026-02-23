@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=softmentor/kroki-rs-base:latest
+ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 ENV KROKI_PORT=8000

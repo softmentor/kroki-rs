@@ -28,7 +28,9 @@ docker-build:
 .PHONY: docker-pack
 docker-pack:
 	@if [ ! -f dist/$(BINARY_NAME) ]; then echo "❌ Error: dist/$(BINARY_NAME) not found. Build it first!"; exit 1; fi
-	$(CONTAINER_ENGINE) build --build-arg BASE_IMAGE=$(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) -f Dockerfile.pack -t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest .
+	@echo "📦 Pulling fingerprinted base from GHCR (fingerprint: $(BASE_IMAGE_FINGERPRINT))..."
+	$(CONTAINER_ENGINE) pull ghcr.io/$(DOCKER_IMAGE)-base:$(BASE_IMAGE_FINGERPRINT)
+	$(CONTAINER_ENGINE) build --build-arg BASE_IMAGE=ghcr.io/$(DOCKER_IMAGE)-base:$(BASE_IMAGE_FINGERPRINT) -f Dockerfile.pack -t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest .
 
 .PHONY: docker-multiarch
 docker-multiarch:
