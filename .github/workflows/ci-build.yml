@@ -25,7 +25,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          FINGERPRINT=$( (cat Dockerfile Makefile install.sh 2>/dev/null; find src-scripts -type f ! -path "*/gh-tasks/*" 2>/dev/null | LC_ALL=C sort | xargs cat 2>/dev/null) | openssl dgst -sha256 2>/dev/null | sed 's/.* //' | cut -c1-12)
+          FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
           IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           echo "Fingerprint: $FINGERPRINT"
           
@@ -53,13 +53,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y podman
 
-      - name: Cache Cargo target
+      - name: Cache Cargo (registry, git, target)
         uses: actions/cache@v4
         with:
-          path: target
-          key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-target-
+            ${{ runner.os }}-cargo-
 
       - name: "CI: Format Check"
         run: ./dflow ci-verify fmt

@@ -59,10 +59,14 @@ if [ "${1:-}" = "--shell" ]; then
         $DOCKER_CMD build --target ci -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
     fi
     echo "🐚 Opening shell in CI environment. Repo at /app (mounted); target at /app/target (volume)."
+    echo "   Cargo registry/git cached at .cargo-cache/ for fast incremental builds."
     echo "   Run 'make ghrun' or 'cargo test' for incremental fixes. Exit with 'exit'."
+    mkdir -p "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git"
     exec $DOCKER_CMD run --rm -it \
         -v "$(pwd):/app" \
-        -v "kroki-rs-target:/app/target" \
+        -v "$(pwd)/target:/app/target" \
+        -v "$(pwd)/.cargo-cache/registry:/root/.cargo/registry" \
+        -v "$(pwd)/.cargo-cache/git:/root/.cargo/git" \
         -w /app \
         -e JOBS="${JOBS:-1}" \
         -e FEATURES="${FEATURES:-native-browser}" \
@@ -114,9 +118,12 @@ else
 fi
 
 echo "🧪 Running CI target '$TARGET' inside container..."
+mkdir -p "$(pwd)/target" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git"
 $DOCKER_CMD run --rm \
     -v "$(pwd):/app" \
-    -v "kroki-rs-target:/app/target" \
+    -v "$(pwd)/target:/app/target" \
+    -v "$(pwd)/.cargo-cache/registry:/root/.cargo/registry" \
+    -v "$(pwd)/.cargo-cache/git:/root/.cargo/git" \
     -w /app \
     -e JOBS \
     -e PURGE_DISK \
@@ -131,7 +138,7 @@ $DOCKER_CMD run --rm \
 if [ "$PURGE_DISK" = "true" ]; then
     echo "🧹 Cleaning up images and builder cache..."
     $DOCKER_CMD system prune -f
-    $DOCKER_CMD volume rm kroki-rs-target || true
+    rm -rf "$(pwd)/target" "$(pwd)/.cargo-cache"
 fi
 
 echo "✅ Local CI verification (ci-verify) completed successfully."

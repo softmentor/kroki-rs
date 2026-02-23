@@ -10,13 +10,14 @@
 #   - Root Makefile (include)
 #   - native.mk, container.mk, repro.mk (consume variables defined here)
 #   - src-scripts/ci-verify/repro-ci.sh and .github/workflows/base-image.yml
-#     must use the same fingerprint algorithm (hash of Dockerfile, Makefile,
-#     install.sh, src-scripts/).
+#     must use the same fingerprint algorithm (SHA256 of Dockerfile).
 #
 # Fingerprint:
-#   BASE_IMAGE_FINGERPRINT is the first 12 characters of SHA256 over the
-#   concatenated contents of Dockerfile, Makefile, install.sh, and all files
-#   under src-scripts/ (sorted). Used to tag images as <name>:<fingerprint> and :latest.
+#   BASE_IMAGE_FINGERPRINT is the first 12 characters of SHA256(Dockerfile).
+#   Only the Dockerfile is hashed because it is the sole file baked into the
+#   image; all other inputs (Makefile, src-scripts/, install.sh) are
+#   bind-mounted at runtime and do not affect the image contents.
+#   Used to tag images as <name>:<fingerprint> and :latest.
 # ------------------------------------------------------------------------------
 
 # --- Project identity and paths ---
@@ -72,8 +73,9 @@ else
 endif
 
 # --- Content-addressable base image fingerprint ---
-# Inputs: Dockerfile, Makefile, install.sh, and all files under src-scripts/ (excluding host-side tasks).
-BASE_IMAGE_FINGERPRINT := $(shell (cat Dockerfile Makefile install.sh 2>/dev/null; find src-scripts -type f ! -path "*/gh-tasks/*" 2>/dev/null | LC_ALL=C sort | xargs cat 2>/dev/null) | openssl dgst -sha256 2>/dev/null | sed 's/.* //' | cut -c1-12)
+# Input: Dockerfile only. This is the sole file baked into the image; everything
+# else (Makefile, src-scripts/, install.sh) is bind-mounted at runtime.
+BASE_IMAGE_FINGERPRINT := $(shell openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
 
 # --- Container image names ---
 CONTAINER_ENGINE ?= $(shell which podman 2>/dev/null || which docker 2>/dev/null)
