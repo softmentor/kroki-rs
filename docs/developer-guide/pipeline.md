@@ -10,6 +10,22 @@ Kroki-rs uses Cargo features to manage binary size and system dependencies.
 | :--- | :--- | :--- | :--- |
 | `native-browser` | Essential for Mermaid/BPMN rendering. | **Enabled** | Headless Chromium + libs |
 | (empty) | Lean core with only Stable CLI providers (Graphviz, D2, Ditaa). | - | CLI tools only |
+ 
+## System Dependencies
+ 
+Kroki-rs delegates rendering to specialized external tools. The following table summarizes the runtime requirements for each provider:
+ 
+| Provider | Runtime / Category | External Dependency | Notes |
+| :--- | :--- | :--- | :--- |
+| **Graphviz** | Native (C) | `graphviz` (dot) | Core dependency. |
+| **D2** | Native (Go) | `d2` | Installed via install.sh. |
+| **Ditaa** | **JRE (Java)** | `ditaa` / `openjdk-17-jre-headless` | **Sole remaining Java dependency.** |
+| **Mermaid** | Browser (JavaScript) | `chromium` / Playwright | Requires `native-browser` feature. |
+| **BPMN** | Browser (JavaScript) | `chromium` | Requires `native-browser` feature. |
+| **Vega** | Browser (JavaScript) | `chromium` / `vega-cli` | Node.js tools as fallback. |
+ 
+> [!NOTE]
+> The JRE is maintained specifically to support **Ditaa**. If a completely Java-free footprint is required, Ditaa support would need to be disabled.
 
 ## Build Parallelism (`JOBS`)
 
