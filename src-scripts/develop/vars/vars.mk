@@ -32,6 +32,10 @@ RUST_VERSION := $(shell grep '^channel =' rust-toolchain.toml | cut -d '"' -f 2)
 print-rust-version:
 	@echo $(RUST_VERSION)
 
+.PHONY: print-container-engine
+print-container-engine:
+	@echo $(CONTAINER_ENGINE)
+
 # --- Build configuration (override via make VAR=value) ---
 FEATURES ?= native-browser
 JOBS ?=
@@ -84,11 +88,6 @@ BASE_IMAGE_FINGERPRINT := $(shell openssl dgst -sha256 Dockerfile 2>/dev/null | 
 
 # --- Container image names ---
 CONTAINER_ENGINE ?= $(shell which podman 2>/dev/null || which docker 2>/dev/null)
-ifneq ($(PODMAN_STORAGE_DIR),)
-    ifneq ($(findstring podman,$(CONTAINER_ENGINE)),)
-        CONTAINER_ENGINE += --root $(PODMAN_STORAGE_DIR)
-    endif
-endif
 DOCKER_ORG = softmentor
 DOCKER_IMAGE = $(DOCKER_ORG)/kroki-rs
 DOCKER_IMAGE_BASE = $(DOCKER_IMAGE)-base

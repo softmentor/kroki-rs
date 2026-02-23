@@ -45,7 +45,8 @@ fi
 # Mode: interactive shell in CI container (same mounts as ci-verify for fast incremental fixes)
 if [ "${1:-}" = "--shell" ]; then
     export DOCKER_BUILDKIT=1
-    DOCKER_CMD=$(command -v podman || command -v docker)
+    export DOCKER_BUILDKIT=1
+    DOCKER_CMD=$(make -s print-container-engine)
     [ -z "$DOCKER_CMD" ] && { echo "❌ Error: Podman or Docker not found."; exit 1; }
     CI_FINGERPRINT=$(make -s print-base-fingerprint)
     CI_IMAGE_LOCAL="softmentor/kroki-rs-ci"
@@ -56,7 +57,8 @@ if [ "${1:-}" = "--shell" ]; then
         $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
     else
         echo "📦 CI image not in registry; building locally..."
-        $DOCKER_CMD build --target ci -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
+        RUST_VER=$(make -s print-rust-version)
+        $DOCKER_CMD build --target ci --build-arg RUST_VERSION="$RUST_VER" -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
     fi
     echo "🐚 Opening shell in CI environment. Repo at /app (mounted); target at /app/target (volume)."
     echo "   Cargo registry/git/sccache cached at .cargo-cache/ for fast incremental builds."
@@ -96,9 +98,9 @@ if [[ $# -gt 0 && ! "$1" =~ ^-- ]]; then
     shift
 fi
 
-DOCKER_CMD=$(command -v podman || command -v docker)
+DOCKER_CMD=$(make -s print-container-engine)
 if [ -z "$DOCKER_CMD" ]; then
-    echo "❌ Error: Podman or Docker not found in PATH."
+    echo "❌ Error: Podman or Docker not found."
     exit 1
 fi
 
@@ -117,7 +119,8 @@ if $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
 else
     echo "⚠️  CI image not in registry (${CI_FINGERPRINT})."
     echo "📦 Building CI image locally (target: ci)..."
-    $DOCKER_CMD build --target ci -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
+    RUST_VER=$(make -s print-rust-version)
+    $DOCKER_CMD build --target ci --build-arg RUST_VERSION="$RUST_VER" -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
 fi
 
 echo "🧪 Running CI target '$TARGET' inside container..."
