@@ -1,4 +1,8 @@
 ARG BASE_IMAGE=base
+ARG RUST_VERSION=1.85
+
+# Stage 0: Toolchain source
+FROM rust:${RUST_VERSION}-slim-bookworm AS toolchain
 
 # Stage 1: Base - System dependencies
 # This stage contains essential diagram tools and the headless browser environment.
@@ -45,10 +49,9 @@ WORKDIR /app
 
 # Stage 2: CI - Development & Testing environment
 FROM base AS ci
-ARG RUST_VERSION=1.85
 # Inject pre-built Rust toolchain instead of slow rustup installer
-COPY --from=rust:${RUST_VERSION}-slim-bookworm /usr/local/rustup /usr/local/rustup
-COPY --from=rust:${RUST_VERSION}-slim-bookworm /usr/local/cargo /usr/local/cargo
+COPY --from=toolchain /usr/local/rustup /usr/local/rustup
+COPY --from=toolchain /usr/local/cargo /usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
