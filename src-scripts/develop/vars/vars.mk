@@ -73,9 +73,9 @@ else
 endif
 
 # --- Content-addressable base image fingerprint ---
-# Input: Dockerfile only. This is the sole file baked into the image; everything
-# else (Makefile, src-scripts/, install.sh) is bind-mounted at runtime.
-BASE_IMAGE_FINGERPRINT := $(shell openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+# Input: All Docker-related control files. This ensures that any change to the
+# build stages or fast-packaging logic results in a new fingerprint.
+BASE_IMAGE_FINGERPRINT := $(shell cat Dockerfile Dockerfile.pack .dockerignore 2>/dev/null | openssl dgst -sha256 2>/dev/null | sed 's/.* //' | cut -c1-12)
 
 # --- Container image names ---
 CONTAINER_ENGINE ?= $(shell which podman 2>/dev/null || which docker 2>/dev/null)

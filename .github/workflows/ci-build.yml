@@ -40,12 +40,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ci-image.tar
-          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile', 'Dockerfile.pack', '.dockerignore') }}
 
       - name: "CI: Load or Build Image"
         id: image_logic
         run: |
-          FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+          FINGERPRINT=$(cat Dockerfile Dockerfile.pack .dockerignore 2>/dev/null | openssl dgst -sha256 | sed 's/.* //' | cut -c1-12)
           IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           echo "fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
           
@@ -142,15 +142,14 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ci-image.tar
-          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile', 'Dockerfile.pack', '.dockerignore') }}
 
       - name: "CI: Load Image"
         run: |
           if [ -f ci-image.tar ]; then
             docker load -i ci-image.tar
           else
-            # Fallback to pull if cache is missing (safety)
-            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+            FINGERPRINT=$(cat Dockerfile Dockerfile.pack .dockerignore 2>/dev/null | openssl dgst -sha256 | sed 's/.* //' | cut -c1-12)
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
       - name: Set up Podman
@@ -181,7 +180,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ci-image.tar
-          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile', 'Dockerfile.pack', '.dockerignore') }}
 
       - name: "CI: Load Image"
         run: |
@@ -219,7 +218,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ci-image.tar
-          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile', 'Dockerfile.pack', '.dockerignore') }}
 
       - name: "CI: Load Image"
         run: |

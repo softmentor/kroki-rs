@@ -8,6 +8,8 @@ on:
     branches: ["main"]
     paths:
       - 'Dockerfile'
+      - 'Dockerfile.pack'
+      - '.dockerignore'
       - '.github/workflows/base-image.yml'
 
 jobs:
@@ -24,7 +26,7 @@ jobs:
       - name: Compute fingerprint
         id: fingerprint
         run: |
-          HASH=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+          HASH=$(cat Dockerfile Dockerfile.pack .dockerignore 2>/dev/null | openssl dgst -sha256 | sed 's/.* //' | cut -c1-12)
           echo "hash=$HASH" >> $GITHUB_OUTPUT
           echo "Fingerprint: $HASH"
 
