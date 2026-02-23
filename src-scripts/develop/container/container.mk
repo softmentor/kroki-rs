@@ -16,14 +16,14 @@
 .PHONY: docker-base
 docker-base:
 ifneq ($(CONTAINER_ENGINE),)
-	$(CONTAINER_ENGINE) build --target base -t $(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) -t $(DOCKER_IMAGE_BASE):latest .
+	$(CONTAINER_ENGINE) build --build-arg RUST_VERSION=$(RUST_VERSION) --target base -t $(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) -t $(DOCKER_IMAGE_BASE):latest .
 else
 	@echo "No container engine found (podman or docker). Skipping docker-base build."
 endif
 
 .PHONY: docker-build
 docker-build:
-	$(CONTAINER_ENGINE) build -t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest .
+	$(CONTAINER_ENGINE) build --build-arg RUST_VERSION=$(RUST_VERSION) -t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest .
 
 .PHONY: docker-pack
 docker-pack:
@@ -36,11 +36,13 @@ docker-pack:
 docker-multiarch:
 	@if [ "$(CONTAINER_ENGINE)" = "*docker*" ]; then \
 		docker buildx build --platform linux/amd64,linux/arm64 \
+			--build-arg RUST_VERSION=$(RUST_VERSION) \
 			-t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest \
 			$(if $(BUILDX_PUSH),--push,--load) .; \
 	else \
 		echo "Building multi-arch images..."; \
 		$(CONTAINER_ENGINE) build --platform linux/amd64,linux/arm64 \
+			--build-arg RUST_VERSION=$(RUST_VERSION) \
 			-t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest .; \
 	fi
 

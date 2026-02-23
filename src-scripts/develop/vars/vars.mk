@@ -28,6 +28,10 @@ ARCHIVE_NAME = $(BINARY_NAME)-$(PLATFORM).tar.gz
 VERSION ?= $(shell grep '^version =' Cargo.toml 2>/dev/null | head -n 1 | cut -d '"' -f 2)
 RUST_VERSION := $(shell grep '^channel =' rust-toolchain.toml | cut -d '"' -f 2)
 
+.PHONY: print-rust-version
+print-rust-version:
+	@echo $(RUST_VERSION)
+
 # --- Build configuration (override via make VAR=value) ---
 FEATURES ?= native-browser
 JOBS ?=
