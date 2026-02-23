@@ -16,6 +16,7 @@
 .PHONY: docker-base
 docker-base:
 ifneq ($(CONTAINER_ENGINE),)
+	@if [ "$(IS_CONTAINER)" != "true" ]; then echo "🧹 Pruning old layers..."; $(CONTAINER_ENGINE) system prune -f; fi
 	$(CONTAINER_ENGINE) build --build-arg RUST_VERSION=$(RUST_VERSION) --target base -t $(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) -t $(DOCKER_IMAGE_BASE):latest .
 else
 	@echo "No container engine found (podman or docker). Skipping docker-base build."
@@ -23,6 +24,7 @@ endif
 
 .PHONY: docker-build
 docker-build:
+	@if [ "$(IS_CONTAINER)" != "true" ]; then echo "🧹 Pruning old layers..."; $(CONTAINER_ENGINE) system prune -f; fi
 	$(CONTAINER_ENGINE) build --build-arg RUST_VERSION=$(RUST_VERSION) -t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest .
 
 .PHONY: docker-pack
