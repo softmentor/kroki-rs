@@ -29,3 +29,6 @@ kroki.toml
 # jupyter
 .ipynb_checkpoints
 .jupyter
+
+# claude
+.claude

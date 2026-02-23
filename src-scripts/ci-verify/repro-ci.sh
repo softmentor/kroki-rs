@@ -59,17 +59,20 @@ if [ "${1:-}" = "--shell" ]; then
         $DOCKER_CMD build --target ci -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
     fi
     echo "🐚 Opening shell in CI environment. Repo at /app (mounted); target at /app/target (volume)."
-    echo "   Cargo registry/git cached at .cargo-cache/ for fast incremental builds."
+    echo "   Cargo registry/git/sccache cached at .cargo-cache/ for fast incremental builds."
     echo "   Run 'make ghrun' or 'cargo test' for incremental fixes. Exit with 'exit'."
-    mkdir -p "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git"
+    mkdir -p "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
     exec $DOCKER_CMD run --rm -it \
         -v "$(pwd):/app" \
         -v "$(pwd)/target:/app/target" \
         -v "$(pwd)/.cargo-cache/registry:/root/.cargo/registry" \
         -v "$(pwd)/.cargo-cache/git:/root/.cargo/git" \
+        -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
         -w /app \
         -e JOBS="${JOBS:-1}" \
         -e FEATURES="${FEATURES:-native-browser}" \
+        -e SCCACHE_DIR=/root/.cache/sccache \
+        -e RUSTC_WRAPPER=sccache \
         -e PURGE_DISK \
         -e DEBUG_LOG \
         -e VERBOSE \
@@ -118,12 +121,13 @@ else
 fi
 
 echo "🧪 Running CI target '$TARGET' inside container..."
-mkdir -p "$(pwd)/target" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git"
+mkdir -p "$(pwd)/target" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
 $DOCKER_CMD run --rm \
     -v "$(pwd):/app" \
     -v "$(pwd)/target:/app/target" \
     -v "$(pwd)/.cargo-cache/registry:/root/.cargo/registry" \
     -v "$(pwd)/.cargo-cache/git:/root/.cargo/git" \
+    -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
     -w /app \
     -e JOBS \
     -e PURGE_DISK \
@@ -131,6 +135,8 @@ $DOCKER_CMD run --rm \
     -e VERBOSE \
     -e NO_NETWORK \
     -e LOAD_TEST \
+    -e SCCACHE_DIR=/root/.cache/sccache \
+    -e RUSTC_WRAPPER=sccache \
     --security-opt seccomp=unconfined \
     "$CI_IMAGE_LOCAL" \
     make $TARGET JOBS=${JOBS:-1} "$@"

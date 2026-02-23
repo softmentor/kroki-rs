@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y \
     libpangocairo-1.0-0 \
     libpango-1.0-0 \
     libcairo2 \
+    lsof \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
@@ -46,9 +47,20 @@ WORKDIR /app
 FROM base AS ci
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
-# Install nextest and cargo-chef via pre-built binaries for speed
-RUN curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C /usr/local/bin && \
-    curl -LsSf https://github.com/LukeMathWalker/cargo-chef/releases/latest/download/cargo-chef-x86_64-unknown-linux-musl.tar.gz | tar zxf - -C /usr/local/bin
+# Install nextest, cargo-chef, and sccache via pre-built binaries for speed
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        CHEF_ARCH="x86_64-unknown-linux-musl"; \
+        SCCACHE_ARCH="x86_64-unknown-linux-musl"; \
+        NEXTEST_URL="https://get.nexte.st/latest/linux"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        CHEF_ARCH="aarch64-unknown-linux-gnu"; \
+        SCCACHE_ARCH="aarch64-unknown-linux-musl"; \
+        NEXTEST_URL="https://get.nexte.st/latest/linux-arm"; \
+    fi && \
+    curl -LsSf "$NEXTEST_URL" | tar zxf - -C /usr/local/bin && \
+    curl -LsSf https://github.com/LukeMathWalker/cargo-chef/releases/latest/download/cargo-chef-$CHEF_ARCH.tar.gz | tar zxf - -C /usr/local/bin && \
+    curl -LsSf https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-v0.8.1-$SCCACHE_ARCH.tar.gz | tar zxf - --strip-components=1 -C /usr/local/bin sccache-v0.8.1-$SCCACHE_ARCH/sccache
 
 # Stage 3: Planner (cargo-chef)
 FROM rust:slim-bookworm AS chef
