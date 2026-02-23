@@ -16,7 +16,7 @@
 .PHONY: docker-base
 docker-base:
 ifneq ($(CONTAINER_ENGINE),)
-	@if [ "$(IS_CONTAINER)" != "true" ]; then echo "🧹 Pruning old layers..."; $(CONTAINER_ENGINE) system prune -f; fi
+	@if [ "$(IS_CONTAINER)" != "true" ]; then $(MAKE) docker-prune-legacy; fi
 	$(CONTAINER_ENGINE) build --build-arg RUST_VERSION=$(RUST_VERSION) --target base -t $(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) -t $(DOCKER_IMAGE_BASE):latest .
 else
 	@echo "No container engine found (podman or docker). Skipping docker-base build."
@@ -24,7 +24,7 @@ endif
 
 .PHONY: docker-build
 docker-build:
-	@if [ "$(IS_CONTAINER)" != "true" ]; then echo "🧹 Pruning old layers..."; $(CONTAINER_ENGINE) system prune -f; fi
+	@if [ "$(IS_CONTAINER)" != "true" ]; then $(MAKE) docker-prune-legacy; fi
 	$(CONTAINER_ENGINE) build --build-arg RUST_VERSION=$(RUST_VERSION) -t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest .
 
 .PHONY: docker-pack
@@ -66,4 +66,16 @@ prune:
 		$(CONTAINER_ENGINE) system prune -a --volumes -f; \
 	else \
 		echo "Skipping prune inside container."; \
+	fi
+
+.PHONY: docker-prune-legacy
+docker-prune-legacy:
+	@echo "🧹 Pruning legacy project images (keeping :$(BASE_IMAGE_FINGERPRINT) and :latest)..."
+	@if [ -n "$(CONTAINER_ENGINE)" ]; then \
+		$(CONTAINER_ENGINE) system prune -f; \
+		IDS=$$($(CONTAINER_ENGINE) images --format "{{.Repository}}:{{.Tag}}" | grep "$(DOCKER_ORG)/kroki-rs" | grep -v "$(BASE_IMAGE_FINGERPRINT)" | grep -v "latest" || true); \
+		if [ -n "$$IDS" ]; then \
+			echo "Removing: $$IDS"; \
+			echo "$$IDS" | xargs $(CONTAINER_ENGINE) rmi || true; \
+		fi \
 	fi
