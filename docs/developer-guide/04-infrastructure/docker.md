@@ -43,18 +43,18 @@ make docker-clean
 
 Compiling Rust and its dependencies can be memory-intensive. For environments with limited RAM (e.g., 2GB Podman machines), the `Dockerfile` is configured to limit parallel jobs:
 
-- **Base Image Strategy**: The Dockerfile is split into a `base` stage (dependencies) and a `builder` stage. By pre-building the base, CI verification time is reduced to < 1 min.
+- **Base Image Strategy**: The Dockerfile is split into a `base` stage (dependencies) and a `builder` stage. By pre-building the base, CI verification time is significantly reduced.
 - **Cargo Jobs**: The build stage uses `cargo build --release` (on high-capacity CI) or `-j 2` locally to prevent OOM.
 - **Context Optimization**: A `.dockerignore` file is used to exclude `target/`, `node_modules/`, and `.git/`.
 
 ### Fast Local Packaging (Binary Injection)
-If you already have a Linux binary (either built locally on Linux or downloaded from the CI), you can skip the Rust compilation entirely:
+If you already have a Linux binary (either built locally on Linux or downloaded from CI artifacts), you can skip the Rust compilation entirely:
 
 ```bash
-# Downloads the Linux binary for your architecture from GitHub Releases
+# Builds the base image with all diagram tools
 make docker-base
 
-# Packages the image in < 5 seconds
+# Packages the image in < 5 seconds using dist/kroki-rs
 make docker-pack
 ```
 
@@ -96,7 +96,7 @@ podman run -it --rm -e RUST_LOG=debug kroki-rs:local-test
 
 ### Inspecting logs
 
-Use `podman logs` to view output from both the Rust server and the Node.js background worker:
+Use `podman logs` to view output from the Rust server:
 
 ```bash
 podman logs kroki-test
@@ -104,7 +104,7 @@ podman logs kroki-test
 
 ### Common Pitfalls
 
-- **Chromium Sandbox**: In some container environments, the Chromium sandbox must be disabled. The internal worker automatically uses `--no-sandbox` for compatibility.
+- **Chromium Sandbox**: In some container environments, the Chromium sandbox must be disabled. The internal server automatically uses `--no-sandbox` via the `headless_chrome` configuration.
 - **Architecture Mismatch**: Ensure you are building for the correct architecture. The image supports both `amd64` and `arm64`.
 
 ## 6. Local CI Testing (GitHub Actions)
@@ -127,22 +127,13 @@ brew install act
 export DOCKER_HOST=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')
 ```
 
-### 3. Run the Docker Workflow
+### 3. Run the CI Workflow Locally
 
-To run the Docker-specific workflow:
-
-```bash
-# Automates socket configuration and act execution
-# Mimics: Image Build -> Load -> Smoke Test (Health + Rendering)
-make ci-local
-```
-
-### Complete Lifecycle
-
-To build, test, and verify CI locally in one shot:
+To run the full verification pipeline (Setup -> Lint -> Build -> Test -> Smoke):
 
 ```bash
-make docker-all
+# Mimics exactly what happens in GitHub Actions
+make ghrun
 ```
 
 > [!NOTE]
@@ -164,4 +155,4 @@ The project uses a high-performance 3-tier pipeline:
 
 ## 5. Maintenance
 
-When adding new providers that require native Node.js modules (like `canvas`), you must ensure that `build-essential` and `python3` are available in the build stage of the `Dockerfile` to satisfy `node-gyp`.
+When adding new providers that require native system libraries (like `pixman` or `cairo`), ensure they are added to the `base` stage of the `Dockerfile`.

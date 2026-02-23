@@ -25,6 +25,11 @@ endif
 docker-build:
 	$(CONTAINER_ENGINE) build -t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest .
 
+.PHONY: docker-pack
+docker-pack:
+	@if [ ! -f dist/$(BINARY_NAME) ]; then echo "❌ Error: dist/$(BINARY_NAME) not found. Build it first!"; exit 1; fi
+	$(CONTAINER_ENGINE) build --build-arg BASE_IMAGE=$(DOCKER_IMAGE_BASE):latest -f Dockerfile.pack -t $(DOCKER_IMAGE):v$(VERSION) -t $(DOCKER_IMAGE):latest .
+
 .PHONY: docker-multiarch
 docker-multiarch:
 	@if [ "$(CONTAINER_ENGINE)" = "*docker*" ]; then \
