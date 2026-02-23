@@ -152,9 +152,9 @@ jobs:
       - name: "CI: Build"
         run: ./dflow ci-verify build
 
-  # Job 2: Lint and Format
-  lint-fmt:
-    name: "Lint & Format"
+  # Job 2: Format Check
+  fmt:
+    name: "fmt"
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -187,12 +187,46 @@ jobs:
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
       - name: "CI: Format Check"
         run: ./dflow ci-verify fmt
+
+  # Job 3: Clippy (Lint)
+  clippy:
+    name: "clippy"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "CI: Image Cache (Restore)"
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+
+      - name: "CI: Load Image"
+        run: |
+          if [ -f ci-image.tar ]; then
+            docker load -i ci-image.tar
+          else
+            # Fallback to pull if cache is missing (safety)
+            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          fi
+      - name: Cache Cargo (Restore)
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
       - name: "CI: Lint (Clippy)"
         run: ./dflow ci-verify lint
 
-  # Job 3: Tests
-  tests:
-    name: "Tests (nextest)"
+  # Job 4: Tests
+  test:
+    name: "test"
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -225,9 +259,9 @@ jobs:
       - name: "CI: Tests"
         run: ./dflow ci-verify test-ci
 
-  # Job 4: Smoke Test and Final Verification
-  smoke-verify:
-    name: "Smoke & Verify"
+  # Job 5: Smoke Test and Final Verification
+  smoke-test:
+    name: "smoke-test"
     needs: build
     runs-on: ubuntu-latest
     steps:
