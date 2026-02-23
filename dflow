@@ -11,6 +11,7 @@ DEBUG_LOG="false"
 VERBOSE="false"
 NO_NETWORK="false"
 LOAD_TEST="false"
+FULL_CLEANUP="false"
 JOBS=""
 FEATURES="native-browser"
 
@@ -35,6 +36,7 @@ Options:
   -n, --no-network      Run in offline mode
   -t <type>, --test=<type>   Include tests (e.g., -t load)
   -j <n>, --jobs=<n>    Limit parallelism to n threads
+  -f, --full            Full cleanup (including Podman storage)  [teardown only]
   --lean                Build lean core without browser engine
   -h, --help            Show this help message
 
@@ -44,6 +46,7 @@ Examples:
   dflow ci-shell -j 1
   dflow setup --lean
   dflow teardown
+  dflow teardown -f
 EOF
 }
 
@@ -71,6 +74,7 @@ while [[ $# -gt 0 ]]; do
         -d|--debug)      DEBUG_LOG="true"; shift ;;
         -v|--verbose)    VERBOSE="true"; shift ;;
         -n|--no-network) NO_NETWORK="true"; shift ;;
+        -f|--full)       FULL_CLEANUP="true"; shift ;;
         -t|--test)
             if [[ "$2" == "load" ]]; then LOAD_TEST="true"; fi
             shift 2 ;;
@@ -93,6 +97,7 @@ CMD="$CMD DEBUG_LOG=$DEBUG_LOG"
 CMD="$CMD VERBOSE=$VERBOSE"
 CMD="$CMD NO_NETWORK=$NO_NETWORK"
 CMD="$CMD LOAD_TEST=$LOAD_TEST"
+CMD="$CMD FULL_CLEANUP=$FULL_CLEANUP"
 CMD="$CMD FEATURES=\"$FEATURES\""
 CMD="$CMD CI_ARGS=\"$POS_ARGS\""
 

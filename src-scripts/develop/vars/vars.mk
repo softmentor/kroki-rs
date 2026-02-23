@@ -47,6 +47,7 @@ IS_CONTAINER ?= $(shell [ -f /.dockerenv ] || [ -f /run/.containerenv ] && echo 
 # --- Modifier flags ---
 CARGO_FLAGS :=
 TEST_FLAGS :=
+FULL_CLEANUP ?= false
 
 ifeq ($(PURGE_DISK),true)
     _PRE_CLEAN := clean prune
