@@ -119,10 +119,6 @@ jobs:
           IMAGE="ghcr.io/${{ github.repository }}-ci:${{ steps.image_logic.outputs.fingerprint }}"
           docker save -o ci-image.tar "$IMAGE"
 
-      - name: Set up Podman
-        run: |
-          sudo apt-get update && sudo apt-get install -y podman
-
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
@@ -164,8 +160,6 @@ jobs:
             FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
-      - name: Set up Podman
-        run: sudo apt-get update && sudo apt-get install -y podman
       - name: Cache Cargo (Restore)
         uses: actions/cache/restore@v4
         with:
@@ -203,8 +197,6 @@ jobs:
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
 
-      - name: Set up Podman
-        run: sudo apt-get update && sudo apt-get install -y podman
       - name: Cache Cargo (Restore)
         uses: actions/cache/restore@v4
         with:
@@ -241,8 +233,6 @@ jobs:
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
 
-      - name: Set up Podman
-        run: sudo apt-get update && sudo apt-get install -y podman
       - name: Cache Cargo (Restore)
         uses: actions/cache/restore@v4
         with:
