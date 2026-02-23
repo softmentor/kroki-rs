@@ -214,6 +214,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: "CI: Image Cache (Restore)"
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-image.tar
+          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+
+      - name: "CI: Load Image"
+        run: |
+          if [ -f ci-image.tar ]; then
+            docker load -i ci-image.tar
+          else
+            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
+          fi
+
       - name: Set up Podman
         run: sudo apt-get update && sudo apt-get install -y podman
       - name: Cache Cargo (Restore)
