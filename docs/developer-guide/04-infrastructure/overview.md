@@ -45,8 +45,9 @@ graph TD
 
 ### Core Principles
 1. **Remote-First Identity**: GitHub Actions is the master of fingerprints. Local machines pull verified images from GHCR to ensure bit-identical environments.
-2. **Zero-Clobber Isolation**: Containerized builds use dedicated directories (`target/ci`) to avoid polluting the host's native build artifacts.
-3. **High-Performance Parity**: Local Podman VMs are tuned (12GB RAM, 5 CPUs) to match the heavy requirements of Rust compilation and browser-based rendering.
+2. **Toolchain Synchronization**: Rust versions are synchronized between `Dockerfile` and `rust-toolchain.toml`, with automated guards to prevent environmental drift.
+3. **Zero-Clobber Isolation**: Containerized builds use dedicated directories (`target/ci`) to avoid polluting the host's native build artifacts.
+4. **High-Performance Parity**: Local Podman VMs are tuned (12GB RAM, 5 CPUs) to match the heavy requirements of Rust compilation and browser-based rendering.
 
 ---
 **Next Steps**:

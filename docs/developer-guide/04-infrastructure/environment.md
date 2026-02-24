@@ -33,10 +33,14 @@ We use content-addressable versioning to ensure that every developer and every C
 
 ### The Image Fingerprint
 The system's identity is derived from its `Dockerfile`.
-- **Calculation**: First 12 characters of the SHA-256 hash of the `Dockerfile`.
+- **Calculation**: Centralized in `vars.mk`. The first 12 characters of the SHA-256 hash of the `Dockerfile` are retrieved via `make -s print-base-fingerprint`.
 - **Source of Truth**: GitHub Actions is the master of fingerprints.
-- **Remote-First Strategy**: The build system preferentially pulls fingerprinted images from GHCR. Local builds only occur as a fallback if the registry version is missing.
+- **Remote-First Strategy**: The build system strictly pulls fingerprinted images from GHCR. Local builds of the base image are disabled to prevent environmental drift.
 
+### Toolchain Verification Guard
+To ensure absolute parity, the `repro-ci.sh` script includes a build-time guard. It verifies that the project's required Rust version (from `rust-toolchain.toml`) matches the version baked into the container.
+
+If a mismatch is detected, the build fails with instructions to update the `Dockerfile` and rebuild the base image, preventing "invisible" toolchain downloads during CI.
 ### Local Fingerprint Caching
 The `repro-ci.sh` script automatically tags pulled images with their fingerprint locally. This enables instant container startup on subsequent runs by skipping network checks.
 
@@ -48,9 +52,10 @@ The `dflow` script is the primary entry point for the infrastructure lifecycle.
 | :--- | :--- |
 | `./dflow setup` | Initializes the Podman VM and prepares the environment. |
 | `./dflow teardown` | Removes containers/images. Use `-f` for a **1TB Deep Cleanup**. |
-| `./dflow ci-verify` | Performs the full containerized CI check. |
-| `./dflow ci-verify <target>` | Runs a specific sub-target (e.g. `lint`, `test-ci`, `smoke-test`). |
-| `./dflow ci-shell` | Opens an interactive bash shell inside the fingerprinted container. |
+| `./dflow ci-verify` | Performs containerized CI check with toolchain validation. |
+| `./dflow ci-verify <target>` | Runs a specific sub-target (e.g. `lint`, `test-ci`). |
+| `./dflow ci-shell` | Opens an interactive bash shell inside the CI container. |
+| `gh-tasks/trigger-base-build.sh` | Manually triggers the GHA base build if fingerprint is missing. |
 
 ### Target Isolation (`target/ci`)
 To prevent "Exec format errors" caused by host/container artifact clobbering, all containerized builds use `target/ci`. The host's native `target/` directory remains untouched.

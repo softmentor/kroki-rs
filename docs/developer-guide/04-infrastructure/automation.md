@@ -55,23 +55,28 @@ sequenceDiagram
     participant Registry as GHCR (Source of Truth)
 
     Dev->>Script: ./dflow ci-verify
-    Script->>Script: Generate Fingerprint from Dockerfile
+    Script->>Script: Fetch Fingerprint (Makefile print-base-fingerprint)
     
-    alt Image exists locally
-        Script->>Podman: Inspect local image:fingerprint
-        Podman-->>Script: ✅ Found
-    else Image missing
+    alt Image missing or Fingerprint mismatch
         Script->>Registry: Pull image:fingerprint
         Registry-->>Script: 📦 Pull complete
-        Script->>Podman: Tag for persistent local reuse
+    else Image exists locally
+        Script->>Podman: Inspect local image:fingerprint
+        Podman-->>Script: ✅ Found
     end
+    
+    Script->>Script: Toolchain Verification Guard
+    Note over Script: Fail if baked Rust != project Rust
     
     Script->>Podman: Run Container (Mount target/ci, .cargo-cache)
     Podman->>Podman: Execute make ghrun
     Podman-->>Dev: Verification results
 ```
 
-## 4. Build Optimizations
+### Absolute Remote Truth & Skip Logic
+To maximize efficiency and maintain environment parity:
+- **Registry Skip**: Both manual triggers and automated workflows check GHCR first. If an image with the current fingerprint already exists, the build is skipped entirely.
+- **Enforced Pulls**: Local environments cannot build the base image manually; they must pull the fingerprinted version from GHCR to ensure 100% parity with CI.
 
 ### Disk-Based `sccache`
 To avoid 400 errors from GHA proxies inside containers, we standardized on a **Disk-Based Cache**.
