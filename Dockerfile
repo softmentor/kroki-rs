@@ -5,6 +5,7 @@ ARG RUST_VERSION=1.93.1
 
 # Stage 0: Toolchain source
 FROM rust:${RUST_VERSION}-slim-bookworm AS toolchain
+RUN rustup component add rustfmt clippy
 
 # Stage 1: Base - System dependencies
 # This stage contains essential diagram tools and the headless browser environment.
