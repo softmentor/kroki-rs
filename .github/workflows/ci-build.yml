@@ -20,7 +20,7 @@ on:
       - 'LICENSE'
 
 env:
-  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_GHA_ENABLED: "false"
   RUSTC_WRAPPER: "sccache"
 
 jobs:
@@ -134,15 +134,13 @@ jobs:
           docker pull "$IMAGE"
           docker save -o ci-image.tar "$IMAGE"
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
-
-      - name: Cache Cargo (registry, git, target/ci)
+      - name: Cache Cargo (registry, git, target/ci, sccache)
         uses: actions/cache@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
+            .cargo-cache/sccache
             target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
@@ -175,19 +173,17 @@ jobs:
             FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
-      - name: Cache Cargo (Restore target/ci)
+      - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
+            .cargo-cache/sccache
             target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-
-      - name: Run sccache-cache (Initialize env)
-        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: "CI: Format Check"
         run: ./dflow ci-verify fmt
@@ -215,19 +211,17 @@ jobs:
             FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
-      - name: Cache Cargo (Restore target/ci)
+      - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
+            .cargo-cache/sccache
             target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-
-      - name: Run sccache-cache (Initialize env)
-        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: "CI: Lint (Clippy)"
         run: ./dflow ci-verify lint
@@ -254,19 +248,17 @@ jobs:
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
 
-      - name: Cache Cargo (Restore target/ci)
+      - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
+            .cargo-cache/sccache
             target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-
-      - name: Run sccache-cache (Initialize env)
-        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: "CI: Tests"
         run: ./dflow ci-verify test-ci
@@ -294,19 +286,17 @@ jobs:
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
 
-      - name: Cache Cargo (Restore target/ci)
+      - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
+            .cargo-cache/sccache
             target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-
-      - name: Run sccache-cache (Initialize env)
-        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: "CI: Smoke Test"
         run: ./dflow ci-verify smoke-test

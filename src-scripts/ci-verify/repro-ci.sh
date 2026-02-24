@@ -148,9 +148,7 @@ $DOCKER_CMD run --rm \
     -e CARGO_TARGET_DIR=/app/target-ci \
     -e SCCACHE_DIR=/root/.cache/sccache \
     -e RUSTC_WRAPPER=sccache \
-    -e SCCACHE_GHA_ENABLED \
-    -e ACTIONS_CACHE_URL \
-    -e ACTIONS_RUNTIME_TOKEN \
+    -e SCCACHE_GHA_ENABLED=false \
     --security-opt seccomp=unconfined \
     "$CI_IMAGE_LOCAL" \
     make $TARGET JOBS=${JOBS:-1} "$@"
