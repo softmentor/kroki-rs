@@ -59,8 +59,9 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
 
-# Install nextest, cargo-chef, and sccache via pre-built binaries for speed
+# Install nextest, cargo-chef, sccache, and ARM64 cross-linker for release builds
 RUN ARCH=$(uname -m) && \
+    apt-get update && apt-get install -y gcc-aarch64-linux-gnu && \
     if [ "$ARCH" = "x86_64" ]; then \
         CHEF_ARCH="x86_64-unknown-linux-musl"; \
         SCCACHE_ARCH="x86_64-unknown-linux-musl"; \
