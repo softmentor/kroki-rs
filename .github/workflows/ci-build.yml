@@ -10,14 +10,20 @@ on:
       - 'docs/**'
       - '**.md'
       - '.gitignore'
+      - '.DS_Store'
       - 'LICENSE'
+      - 'package.json'
+      - 'package-lock.json'
   pull_request:
     branches: [ "main" ]
     paths-ignore:
       - 'docs/**'
       - '**.md'
       - '.gitignore'
+      - '.DS_Store'
       - 'LICENSE'
+      - 'package.json'
+      - 'package-lock.json'
 
 env:
   SCCACHE_GHA_ENABLED: "false"

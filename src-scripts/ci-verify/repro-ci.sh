@@ -120,12 +120,12 @@ if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>
     echo "✅ Found CI image locally (fingerprint: ${CI_FINGERPRINT})."
     $DOCKER_CMD tag "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" "$CI_IMAGE_LOCAL"
 elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
-    echo "✅ Pulled CI image from ghcr.io."
+    echo "✅ Pulled CI image from ghcr.io (fingerprint: ${CI_FINGERPRINT})."
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
 else
     echo "⚠️  CI image not in registry (${CI_FINGERPRINT})."
-    echo "📦 Building CI image locally (target: ci)..."
+    echo "📦 Building CI image locally strictly as fallback (target: ci)..."
     RUST_VER=$(make -s print-rust-version)
     $DOCKER_CMD build --target ci --build-arg RUST_VERSION="$RUST_VER" -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
 fi

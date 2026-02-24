@@ -17,7 +17,10 @@
 docker-base:
 ifneq ($(CONTAINER_ENGINE),)
 	@if [ "$(IS_CONTAINER)" != "true" ]; then $(MAKE) docker-prune-legacy; fi
-	$(CONTAINER_ENGINE) build --build-arg RUST_VERSION=$(RUST_VERSION) --target base -t $(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) -t $(DOCKER_IMAGE_BASE):latest .
+	@echo "📦 Pulling fingerprinted base from GHCR (fingerprint: $(BASE_IMAGE_FINGERPRINT))..."
+	$(CONTAINER_ENGINE) pull ghcr.io/$(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) 2>/dev/null || \
+	(echo "⚠️  Base image not found in registry. Building locally..." && \
+	$(CONTAINER_ENGINE) build --build-arg RUST_VERSION=$(RUST_VERSION) --target base -t $(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) -t $(DOCKER_IMAGE_BASE):latest .)
 else
 	@echo "No container engine found (podman or docker). Skipping docker-base build."
 endif
