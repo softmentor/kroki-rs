@@ -12,8 +12,8 @@ MAIN_BRANCH="main"
 echo "🔍 Performing pre-release checks..."
 
 # 1. Check current branch
-CURRENT_BRANCH=$(git rev-parse --abrev-ref HEAD)
-if [ "$CURRENT_BRANCH" != "$MAIN_BRANCH" ]; then
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT_BRANCH" != "$MAIN_BRANCH" ] && [[ "$DRY_RUN" == "false" ]]; then
     echo "❌ Error: You must be on the '$MAIN_BRANCH' branch to tag a release."
     echo "   Current branch: $CURRENT_BRANCH"
     exit 1
