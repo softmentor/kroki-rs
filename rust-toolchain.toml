@@ -1,4 +1,6 @@
 [toolchain]
+# Soft Contract: 'channel' should match RUST_VERSION in Dockerfile.
+# If updated, also update the Dockerfile to ensure toolchain is baked into CI image.
 channel = "1.93.1"
 components = ["rustfmt", "clippy"]
 profile = "minimal"

@@ -164,3 +164,25 @@ Since `kroki-rs` is API-compatible, you can use existing Kroki clients! Just poi
 -   **VS Code**: [Kroki extension](https://marketplace.visualstudio.com/items?itemName=yyi.kroki) (set URL to `http://localhost:8000`)
 -   **Obsidian**: Kroki plugin
 -   **Browser**: Kroki integrations
+
+## Debugging & Troubleshooting
+
+### Enabling Verbose Logs
+If a diagram fails to render, the first step is to increase the logging level:
+```bash
+# For CLI
+RUST_LOG=debug kroki-rs convert -t mermaid -f svg test.mmd
+
+# For Server
+RUST_LOG=debug kroki-rs serve
+```
+
+### Checking Capabilities
+Kroki-rs skips diagram providers if their underlying tools are missing. Verify your installation by running the discovery check:
+```bash
+kroki-rs serve --dry-run
+```
+This will print the discovery log without starting the server, showing which tools were found and where.
+
+### Browser Worker Debugging
+For diagrams using the browser pool (Mermaid, BPMN, PlantUML), ensure your system has a compatible Chromium/Chrome binary. If running on a headless server without a window manager, ensure `Xvfb` is installed or use the official [**Docker Image**](#kroki-rs.user-guide.docker-deployment) which handles these dependencies automatically.

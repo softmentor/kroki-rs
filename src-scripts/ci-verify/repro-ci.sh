@@ -45,18 +45,24 @@ fi
 # Mode: interactive shell in CI container (same mounts as ci-verify for fast incremental fixes)
 if [ "${1:-}" = "--shell" ]; then
     export DOCKER_BUILDKIT=1
-    DOCKER_CMD=$(command -v podman || command -v docker)
+    export DOCKER_BUILDKIT=1
+    DOCKER_CMD=$(make -s print-container-engine)
     [ -z "$DOCKER_CMD" ] && { echo "❌ Error: Podman or Docker not found."; exit 1; }
     CI_FINGERPRINT=$(make -s print-base-fingerprint)
     CI_IMAGE_LOCAL="softmentor/kroki-rs-ci"
     CI_IMAGE_REMOTE="ghcr.io/softmentor/kroki-rs-ci:${CI_FINGERPRINT}"
     echo "📦 Ensuring CI image is ready (fingerprint: ${CI_FINGERPRINT})..."
-    if $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
+    if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>&1; then
+        echo "✅ Found CI image locally (fingerprint: ${CI_FINGERPRINT})."
+        $DOCKER_CMD tag "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" "$CI_IMAGE_LOCAL"
+    elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
         echo "✅ Pulled CI image from ghcr.io."
+        $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
         $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
     else
         echo "📦 CI image not in registry; building locally..."
-        $DOCKER_CMD build --target ci -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
+        RUST_VER=$(make -s print-rust-version)
+        $DOCKER_CMD build --target ci --build-arg RUST_VERSION="$RUST_VER" -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
     fi
     echo "🐚 Opening shell in CI environment. Repo at /app (mounted); target at /app/target (volume)."
     echo "   Cargo registry/git/sccache cached at .cargo-cache/ for fast incremental builds."
@@ -65,8 +71,8 @@ if [ "${1:-}" = "--shell" ]; then
     exec $DOCKER_CMD run --rm -it \
         -v "$(pwd):/app" \
         -v "$(pwd)/target:/app/target" \
-        -v "$(pwd)/.cargo-cache/registry:/root/.cargo/registry" \
-        -v "$(pwd)/.cargo-cache/git:/root/.cargo/git" \
+        -v "$(pwd)/.cargo-cache/registry:/usr/local/cargo/registry" \
+        -v "$(pwd)/.cargo-cache/git:/usr/local/cargo/git" \
         -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
         -w /app \
         -e JOBS="${JOBS:-1}" \
@@ -96,9 +102,9 @@ if [[ $# -gt 0 && ! "$1" =~ ^-- ]]; then
     shift
 fi
 
-DOCKER_CMD=$(command -v podman || command -v docker)
+DOCKER_CMD=$(make -s print-container-engine)
 if [ -z "$DOCKER_CMD" ]; then
-    echo "❌ Error: Podman or Docker not found in PATH."
+    echo "❌ Error: Podman or Docker not found."
     exit 1
 fi
 
@@ -110,23 +116,39 @@ CI_IMAGE_LOCAL="softmentor/kroki-rs-ci"
 CI_IMAGE_REMOTE="ghcr.io/softmentor/kroki-rs-ci:${CI_FINGERPRINT}"
 
 echo "📦 Ensuring CI environment image is ready (fingerprint: ${CI_FINGERPRINT})..."
-echo "🔍 Remote image: ${CI_IMAGE_REMOTE}"
-if $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
-    echo "✅ Pulled CI image from ghcr.io."
+if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>&1; then
+    echo "✅ Found CI image locally (fingerprint: ${CI_FINGERPRINT})."
+    $DOCKER_CMD tag "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" "$CI_IMAGE_LOCAL"
+elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
+    echo "✅ Pulled CI image from ghcr.io (fingerprint: ${CI_FINGERPRINT})."
+    $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
 else
-    echo "⚠️  CI image not in registry (${CI_FINGERPRINT})."
-    echo "📦 Building CI image locally (target: ci)..."
-    $DOCKER_CMD build --target ci -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
+    echo "❌ Error: CI image ${CI_FINGERPRINT} not found in GHCR."
+    echo "   Please ensure the 'Build Base Image' workflow has completed on GitHub."
+    exit 1
 fi
 
+# --- Toolchain Verification Guard ---
+EXPECTED_RUST=$(grep '^channel =' rust-toolchain.toml | cut -d '"' -f 2)
+echo "🔍 Verifying toolchain alignment (expected: ${EXPECTED_RUST})..."
+ACTUAL_RUST=$($DOCKER_CMD run --rm "$CI_IMAGE_LOCAL" rustc --version | awk '{print $2}')
+if [ "$ACTUAL_RUST" != "$EXPECTED_RUST" ]; then
+    echo "❌ Error: Toolchain Mismatch detected!"
+    echo "   Project requires: $EXPECTED_RUST"
+    echo "   CI Image baked with: $ACTUAL_RUST"
+    echo "   Please update RUST_VERSION in Dockerfile to $EXPECTED_RUST and trigger a base image build."
+    exit 1
+fi
+echo "✅ Toolchain alignment verified."
+
 echo "🧪 Running CI target '$TARGET' inside container..."
-mkdir -p "$(pwd)/target" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
+mkdir -p "$(pwd)/target/ci" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
 $DOCKER_CMD run --rm \
     -v "$(pwd):/app" \
-    -v "$(pwd)/target:/app/target" \
-    -v "$(pwd)/.cargo-cache/registry:/root/.cargo/registry" \
-    -v "$(pwd)/.cargo-cache/git:/root/.cargo/git" \
+    -v "$(pwd)/target/ci:/app/target-ci" \
+    -v "$(pwd)/.cargo-cache/registry:/usr/local/cargo/registry" \
+    -v "$(pwd)/.cargo-cache/git:/usr/local/cargo/git" \
     -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
     -w /app \
     -e JOBS \
@@ -135,8 +157,10 @@ $DOCKER_CMD run --rm \
     -e VERBOSE \
     -e NO_NETWORK \
     -e LOAD_TEST \
+    -e CARGO_TARGET_DIR=/app/target-ci \
     -e SCCACHE_DIR=/root/.cache/sccache \
     -e RUSTC_WRAPPER=sccache \
+    -e SCCACHE_GHA_ENABLED=false \
     --security-opt seccomp=unconfined \
     "$CI_IMAGE_LOCAL" \
     make $TARGET JOBS=${JOBS:-1} "$@"
@@ -144,7 +168,11 @@ $DOCKER_CMD run --rm \
 if [ "$PURGE_DISK" = "true" ]; then
     echo "🧹 Cleaning up images and builder cache..."
     $DOCKER_CMD system prune -f
-    rm -rf "$(pwd)/target" "$(pwd)/.cargo-cache"
+    # Clean standard target directories
+    rm -rf "$(pwd)/target" "$(pwd)/target/ci" "$(pwd)/.cargo-cache"
+    # Clean stray directories and logs
+    rm -rf "$(pwd)/target-ci" "$(pwd)/_build"
+    rm -f "$(pwd)"/*.log
 fi
 
 echo "✅ Local CI verification (ci-verify) completed successfully."

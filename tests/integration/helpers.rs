@@ -13,6 +13,18 @@ use std::process::Command;
 pub fn get_binary_path() -> PathBuf {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
+    // Respect CARGO_TARGET_DIR if set (e.g. in CI container)
+    if let Ok(target_dir) = std::env::var("CARGO_TARGET_DIR") {
+        let path = PathBuf::from(&target_dir).join("release/kroki-rs");
+        if path.exists() {
+            return path;
+        }
+        let dev_path = PathBuf::from(&target_dir).join("debug/kroki-rs");
+        if dev_path.exists() {
+            return dev_path;
+        }
+    }
+
     let release_path = root.join("target/release/kroki-rs");
     if release_path.exists() {
         return release_path;

@@ -10,24 +10,45 @@ on:
   workflow_dispatch: # Allows manual trigger if needed
 
 jobs:
+  # Job 0: Compute CI Fingerprint to pull correct image
+  fingerprint:
+    runs-on: ubuntu-latest
+    outputs:
+      hash: ${{ steps.calc.outputs.hash }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute Target CI Hash
+        id: calc
+        run: |
+          HASH=$(make -s print-base-fingerprint)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+
   # Job 1: Build binaries for all supported platforms
   release:
+    needs: fingerprint
     strategy:
       matrix:
         include:
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: kroki-rs-macos
+            use_container: false
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: kroki-rs-linux-amd64
+            use_container: true
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             artifact_name: kroki-rs-linux-arm64
+            use_container: true
 
     runs-on: ${{ matrix.os }}
+    container:
+      image: ${{ matrix.use_container && format('ghcr.io/{0}-ci:{1}', github.repository, needs.fingerprint.outputs.hash) || '' }}
+      options: --user root
     permissions:
       contents: write
+      packages: read
     steps:
       - uses: actions/checkout@v4
       
@@ -36,30 +57,23 @@ jobs:
           chmod +x src-scripts/ci-verify/repro-ci.sh
           ./src-scripts/ci-verify/repro-ci.sh --version-check
 
-      - name: Setup Environment
+      - name: Setup Environment (Native)
+        if: matrix.use_container == false
         uses: ./.github/actions/setup-kroki
         with:
           rust-targets: ${{ matrix.target }}
           install-node: 'false'
-          install-playwright: ${{ matrix.os == 'ubuntu-latest' && matrix.target != 'aarch64-unknown-linux-gnu' && 'true' || 'false' }}
-          use-cache: 'false'
-
-      - name: Set up QEMU (ARM64 only)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        uses: docker/setup-qemu-action@v3
-
-      - name: Install ARM64 Cross Linker (Linux ARM64 only)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          use-cache: 'true'
 
       - name: Build Binary
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: |
+          # Use container's pre-installed toolchain and cross-linkers where possible
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            cargo build --release --target ${{ matrix.target }}
+             # Ensure the ARM64 toolchain is added if not default
+             rustup target add ${{ matrix.target }}
+             cargo build --release --target ${{ matrix.target }}
           else
             make release
           fi
@@ -128,7 +142,7 @@ jobs:
         uses: ./.github/actions/setup-kroki
         with:
           install-node: 'true'
-          install-playwright: 'false'
+          install-nextest: 'false'
 
       - name: Build Rustdoc
         run: make doc

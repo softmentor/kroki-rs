@@ -13,6 +13,9 @@ In this section, you will find:
 - **Usage**: Examples of how to formulate requests via the CLI command or the HTTP web server API.
 - **Supported Diagrams**: A comprehensive list of the active diagram types and syntaxes supported by the tool.
 - **Configuration**: How to configure runtime options like custom font URL caching and process timeouts via `kroki.toml`.
+- **Docker Deployment**: Guidelines for running Kroki-rs in production containers, including health monitoring and metrics.
+- **Releases & Installation**: How to obtain the latest binaries, installers, and OCI images for your platform.
 - **Security**: Best practices for safely deploying Kroki-rs in a public internet environment.
+- **Community & Support**: How to report issues, suggest features, and get help from the community.
 
 If you are looking to contribute to the codebase or extend Kroki-rs with new providers, please proceed to the- [Developer Guide](#kroki-rs.developer-guide.index)

@@ -4,6 +4,8 @@ project:
     - file: index.md
     - title: Getting Started
       file: user-guide/getting-started.md
+    - title: Releases & Installation
+      file: user-guide/releases.md
     - title: User Guide
       file: user-guide/user-index.md
       children:
@@ -11,7 +13,9 @@ project:
         - file: user-guide/usage.md
         - file: user-guide/supported-diagrams.md
         - file: user-guide/configuration.md
+        - file: user-guide/docker-deployment.md
         - file: user-guide/security.md
+        - file: user-guide/community.md
     - title: Developer Guide
       file: developer-guide/index.md
       children:
@@ -44,8 +48,9 @@ project:
             - file: developer-guide/03-development/coding-standards.md
         - title: 🌐 Infrastructure
           children:
-            - file: developer-guide/04-infrastructure/pipelines.md
-            - file: developer-guide/04-infrastructure/docker.md
+            - file: developer-guide/04-infrastructure/overview.md
+            - file: developer-guide/04-infrastructure/environment.md
+            - file: developer-guide/04-infrastructure/automation.md
             - file: developer-guide/04-infrastructure/deployments.md
         - title: 🩺 Operations
           children:

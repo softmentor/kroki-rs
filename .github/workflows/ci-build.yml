@@ -10,6 +10,7 @@ on:
       - 'docs/**'
       - '**.md'
       - '.gitignore'
+      - '.DS_Store'
       - 'LICENSE'
   pull_request:
     branches: [ "main" ]
@@ -17,10 +18,11 @@ on:
       - 'docs/**'
       - '**.md'
       - '.gitignore'
+      - '.DS_Store'
       - 'LICENSE'
 
 env:
-  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_GHA_ENABLED: "false"
   RUSTC_WRAPPER: "sccache"
 
 jobs:
@@ -40,24 +42,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🧹 Proactive Repo-wide Cache Cleanup..."
-          # 1. Prune redundant Cargo and Docker caches across ALL refs
-          # We keep only the single most recently accessed one per ref for these specific types.
-          for ref in $(gh cache list --limit 100 --json ref --jq '.[].ref' | sort | uniq); do
-            echo "  Checking ref: $ref"
-            # Cargo: keep 1
-            gh cache list --ref "$ref" --key "${{ runner.os }}-cargo-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
-            # Docker Image: keep 1
-            gh cache list --ref "$ref" --key "${{ runner.os }}-docker-image-" --json id --jq '.[1:] | .[].id' | xargs -I {} gh cache delete {} || true
-            # Buildkit blobs: be more generous, keep 10 most recent layers to avoid broken Buildx cache
-            gh cache list --ref "$ref" --key "buildkit-" --json id --jq '.[10:] | .[].id' | xargs -I {} gh cache delete {} || true
-          done
-          
-          # 2. Aggressive PR cleanup: delete all caches for pull requests that haven't been touched in 24h
-          # (Excluding current PR which will be refreshed anyway)
-          CURRENT_PR="refs/pull/${{ github.event.pull_request.number }}/merge"
-          gh cache list --limit 100 --json id,ref,lastAccessedAt | jq -r --arg current "$CURRENT_PR" '
-            .[] | select(.ref | startswith("refs/pull/")) | select(.ref != $current) | .id' | xargs -I {} gh cache delete {} || true
+          bash src-scripts/gh-tasks/prune-gha-cache.sh
 
       - name: "CI: Registry Check & Image Cache"
         id: image_cache
@@ -69,7 +54,7 @@ jobs:
       - name: "CI: Load or Build Image"
         id: image_logic
         run: |
-          FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+          FINGERPRINT=$(make -s print-base-fingerprint)
           IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           echo "fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
           
@@ -134,23 +119,21 @@ jobs:
           docker pull "$IMAGE"
           docker save -o ci-image.tar "$IMAGE"
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
-
-      - name: Cache Cargo (registry, git, target)
+      - name: Cache Cargo (registry, git, target/ci, sccache)
         uses: actions/cache@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
-            target
+            .cargo-cache/sccache
+            target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
             ${{ runner.os }}-cargo-
 
-      - name: "CI: Build"
-        run: ./dflow ci-verify build
+      - name: "CI: Build (Pre-warm sccache)"
+        run: ./dflow ci-verify build-all
 
   # Job 2: Format Check
   fmt:
@@ -175,16 +158,18 @@ jobs:
             FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
-      - name: Cache Cargo (Restore)
+      - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
-            target
+            .cargo-cache/sccache
+            target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+
       - name: "CI: Format Check"
         run: ./dflow ci-verify fmt
 
@@ -211,16 +196,18 @@ jobs:
             FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
-      - name: Cache Cargo (Restore)
+      - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
-            target
+            .cargo-cache/sccache
+            target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+
       - name: "CI: Lint (Clippy)"
         run: ./dflow ci-verify lint
 
@@ -246,16 +233,18 @@ jobs:
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
 
-      - name: Cache Cargo (Restore)
+      - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
-            target
+            .cargo-cache/sccache
+            target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+
       - name: "CI: Tests"
         run: ./dflow ci-verify test-ci
 
@@ -282,16 +271,18 @@ jobs:
             docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           fi
 
-      - name: Cache Cargo (Restore)
+      - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
           path: |
             .cargo-cache/registry
             .cargo-cache/git
-            target
+            .cargo-cache/sccache
+            target/ci
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+
       - name: "CI: Smoke Test"
         run: ./dflow ci-verify smoke-test
       - name: "CI: Final Verification"

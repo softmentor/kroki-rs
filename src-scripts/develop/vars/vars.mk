@@ -32,17 +32,24 @@ RUST_VERSION := $(shell grep '^channel =' rust-toolchain.toml | cut -d '"' -f 2)
 print-rust-version:
 	@echo $(RUST_VERSION)
 
+.PHONY: print-container-engine
+print-container-engine:
+	@echo $(CONTAINER_ENGINE)
+
 # --- Build configuration (override via make VAR=value) ---
 FEATURES ?= native-browser
 JOBS ?=
 
 # --- Environment detection ---
 PODMAN_STORAGE_DIR ?=
+VM_MEM ?= 12288
+VM_CPUS ?= 5
 IS_CONTAINER ?= $(shell [ -f /.dockerenv ] || [ -f /run/.containerenv ] && echo true || echo false)
 
 # --- Modifier flags ---
 CARGO_FLAGS :=
 TEST_FLAGS :=
+FULL_CLEANUP ?= false
 
 ifeq ($(PURGE_DISK),true)
     _PRE_CLEAN := clean prune
@@ -84,12 +91,12 @@ BASE_IMAGE_FINGERPRINT := $(shell openssl dgst -sha256 Dockerfile 2>/dev/null | 
 
 # --- Container image names ---
 CONTAINER_ENGINE ?= $(shell which podman 2>/dev/null || which docker 2>/dev/null)
-ifneq ($(PODMAN_STORAGE_DIR),)
-    ifneq ($(findstring podman,$(CONTAINER_ENGINE)),)
-        CONTAINER_ENGINE += --root $(PODMAN_STORAGE_DIR)
-    endif
-endif
 DOCKER_ORG = softmentor
 DOCKER_IMAGE = $(DOCKER_ORG)/kroki-rs
 DOCKER_IMAGE_BASE = $(DOCKER_IMAGE)-base
 DOCKER_IMAGE_CI = $(DOCKER_ORG)/kroki-rs-ci
+
+# --- Scripting Utilities ---
+.PHONY: print-base-fingerprint
+print-base-fingerprint:
+	@echo "$(BASE_IMAGE_FINGERPRINT)"

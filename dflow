@@ -11,6 +11,10 @@ DEBUG_LOG="false"
 VERBOSE="false"
 NO_NETWORK="false"
 LOAD_TEST="false"
+FULL_CLEANUP="false"
+YES_BYPASS="false"
+RELEASE_TYPE=""
+DRY_RUN="false"
 JOBS=""
 FEATURES="native-browser"
 
@@ -24,8 +28,9 @@ Commands:
   setup        Initialize environment (setup phase)
   develop      Local build and test (develop phase)  [alias: dev]
   ci-verify    Containerized CI verification        [alias: repro]
-  ci-shell     Interactive shell in CI container    [alias: shell] — fast incremental test fixes
+  ci-shell     Interactive shell in CI container    [alias: shell]
   gh           Production CI (GitHub Actions / remote)
+  release      Release management (propose/tag)
   teardown     Reclaim build and container disk      [alias: clean]
 
 Options:
@@ -35,15 +40,22 @@ Options:
   -n, --no-network      Run in offline mode
   -t <type>, --test=<type>   Include tests (e.g., -t load)
   -j <n>, --jobs=<n>    Limit parallelism to n threads
+  -f, --full            Deep System & Remote Cleanup (GHA caches + Podman) [teardown only]
+  -y, --yes             Bypass all confirmation prompts
+  -b, --branch          Propose a release branch (create PR) [release only]
+  --tag                 Initiate project-wide release tag [release only]
+  --dry-run             Verification mode: skip destructive actions [release only]
   --lean                Build lean core without browser engine
   -h, --help            Show this help message
 
 Examples:
   dflow develop -p -d
   dflow ci-verify --test load -j 1
-  dflow ci-shell -j 1
-  dflow setup --lean
-  dflow teardown
+  dflow teardown -f -y
+  dflow release -b --dry-run
+  dflow release --tag
+
+Docs: https://softmentor.github.io/kroki-rs/developer-guide/04-infrastructure/environment
 EOF
 }
 
@@ -59,6 +71,7 @@ case "$1" in
     ci-verify|repro) MAKE_TARGET="cirun" ;;
     ci-shell|shell) MAKE_TARGET="cishell" ;;
     gh)         MAKE_TARGET="ghrun" ;;
+    release)    MAKE_TARGET="release" ;;
     teardown|clean) MAKE_TARGET="teardown" ;;
     -h|--help)  show_help; exit 0 ;;
     *)          echo "Unknown command: $1"; show_help; exit 1 ;;
@@ -71,6 +84,11 @@ while [[ $# -gt 0 ]]; do
         -d|--debug)      DEBUG_LOG="true"; shift ;;
         -v|--verbose)    VERBOSE="true"; shift ;;
         -n|--no-network) NO_NETWORK="true"; shift ;;
+        -f|--full)       FULL_CLEANUP="true"; shift ;;
+        -y|--yes)        YES_BYPASS="true"; shift ;;
+        -b|--branch)     RELEASE_TYPE="branch"; shift ;;
+        --tag)           RELEASE_TYPE="tag"; shift ;;
+        --dry-run)       DRY_RUN="true"; shift ;;
         -t|--test)
             if [[ "$2" == "load" ]]; then LOAD_TEST="true"; fi
             shift 2 ;;
@@ -84,7 +102,39 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Capture remaining positional arguments for sub-scripts (e.g., ci-verify fmt)
+# --- Execution ---
+
+# 1. Release Flow (Direct script delegation)
+if [[ "$MAKE_TARGET" == "release" ]]; then
+    SCRIPT=""
+    [[ "$RELEASE_TYPE" == "branch" ]] && SCRIPT="src-scripts/gh-tasks/propose-release.sh"
+    [[ "$RELEASE_TYPE" == "tag" ]]    && SCRIPT="src-scripts/gh-tasks/tag-release.sh"
+
+    if [[ -z "$SCRIPT" ]]; then
+        echo "❌ Error: Use -b/--branch or --tag with the release command."
+        exit 1
+    fi
+
+    ARGS=""
+    [[ "$DRY_RUN" == "true" ]] && ARGS="--dry-run"
+    
+    echo "🚀 Executing Release Task: $RELEASE_TYPE ($ARGS)"
+    eval "bash $SCRIPT $ARGS"
+    exit 0
+fi
+
+# 2. Teardown Safety Prompt
+if [[ "$MAKE_TARGET" == "teardown" && "$FULL_CLEANUP" == "true" && "$YES_BYPASS" == "false" ]]; then
+    echo "⚠️  CAUTION: Deep System & Remote Cleanup requested."
+    echo "   This will purge local Podman storage, temp bloat, and REMOTE GHA caches."
+    read -p "🤔 Are you sure you want to proceed? (y/N): " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "🚫 Teardown aborted."
+        exit 0
+    fi
+fi
+
+# 3. Standard Makefile Flow
 POS_ARGS="$@"
 
 CMD="make $MAKE_TARGET"
@@ -93,6 +143,7 @@ CMD="$CMD DEBUG_LOG=$DEBUG_LOG"
 CMD="$CMD VERBOSE=$VERBOSE"
 CMD="$CMD NO_NETWORK=$NO_NETWORK"
 CMD="$CMD LOAD_TEST=$LOAD_TEST"
+CMD="$CMD FULL_CLEANUP=$FULL_CLEANUP"
 CMD="$CMD FEATURES=\"$FEATURES\""
 CMD="$CMD CI_ARGS=\"$POS_ARGS\""
 
