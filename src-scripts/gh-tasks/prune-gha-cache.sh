@@ -27,15 +27,15 @@ for ref in $REFS; do
     
     # 1. Prune Cargo caches (Keep 1)
     echo "   Pruning redundant Cargo caches..."
-    gh cache list --ref "$ref" --json id,key | jq -r 'select(.key | contains("cargo-")) | .id' | tail -n +2 | xargs -I {} gh cache delete {} || true
+    gh cache list --ref "$ref" --json id,key | jq -r '.[] | select(.key | contains("cargo-")) | .id' | tail -n +2 | xargs -I {} gh cache delete {} || true
     
     # 2. Prune Docker Image caches (Keep 1)
     echo "   Pruning redundant Docker image caches..."
-    gh cache list --ref "$ref" --json id,key | jq -r 'select(.key | contains("docker-image-")) | .id' | tail -n +2 | xargs -I {} gh cache delete {} || true
+    gh cache list --ref "$ref" --json id,key | jq -r '.[] | select(.key | contains("docker-image-")) | .id' | tail -n +2 | xargs -I {} gh cache delete {} || true
     
     # 3. Prune Buildkit blobs (Keep 10)
     echo "   Pruning redundant Buildkit blobs (keeping 10)..."
-    gh cache list --ref "$ref" --json id,key | jq -r 'select(.key | contains("buildkit-")) | .id' | tail -n +11 | xargs -I {} gh cache delete {} || true
+    gh cache list --ref "$ref" --json id,key | jq -r '.[] | select(.key | contains("buildkit-")) | .id' | tail -n +11 | xargs -I {} gh cache delete {} || true
 done
 
 # Aggressive PR cleanup: delete all caches for pull requests that haven't been touched in 24h
