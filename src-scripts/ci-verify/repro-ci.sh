@@ -124,10 +124,9 @@ elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
 else
-    echo "⚠️  CI image not in registry (${CI_FINGERPRINT})."
-    echo "📦 Building CI image locally strictly as fallback (target: ci)..."
-    RUST_VER=$(make -s print-rust-version)
-    $DOCKER_CMD build --target ci --build-arg RUST_VERSION="$RUST_VER" -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
+    echo "❌ Error: CI image ${CI_FINGERPRINT} not found in GHCR."
+    echo "   Please ensure the 'Build Base Image' workflow has completed on GitHub."
+    exit 1
 fi
 
 echo "🧪 Running CI target '$TARGET' inside container..."

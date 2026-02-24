@@ -15,14 +15,13 @@
 
 .PHONY: docker-base
 docker-base:
-ifneq ($(CONTAINER_ENGINE),)
-	@if [ "$(IS_CONTAINER)" != "true" ]; then $(MAKE) docker-prune-legacy; fi
 	@echo "📦 Pulling fingerprinted base from GHCR (fingerprint: $(BASE_IMAGE_FINGERPRINT))..."
-	$(CONTAINER_ENGINE) pull ghcr.io/$(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) 2>/dev/null || \
-	(echo "⚠️  Base image not found in registry. Building locally..." && \
-	$(CONTAINER_ENGINE) build --build-arg RUST_VERSION=$(RUST_VERSION) --target base -t $(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) -t $(DOCKER_IMAGE_BASE):latest .)
+	@$(CONTAINER_ENGINE) pull ghcr.io/$(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) 2>/dev/null || \
+	(echo "❌ Error: Base image $(BASE_IMAGE_FINGERPRINT) not found in GHCR." && \
+	 echo "   Infrastructure is remote-first. Please ensure the 'Build Base Image' workflow" && \
+	 echo "   has completed on GitHub for the current Dockerfile state." && exit 1)
 else
-	@echo "No container engine found (podman or docker). Skipping docker-base build."
+	@echo "No container engine found (podman or docker). Skipping docker-base."
 endif
 
 .PHONY: docker-build
