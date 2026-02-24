@@ -24,7 +24,7 @@ jobs:
       - name: Compute fingerprint
         id: fingerprint
         run: |
-          HASH=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+          HASH=$(make -s print-base-fingerprint)
           echo "hash=$HASH" >> $GITHUB_OUTPUT
           echo "Fingerprint: $HASH"
 

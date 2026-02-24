@@ -71,7 +71,7 @@ jobs:
       - name: "CI: Load or Build Image"
         id: image_logic
         run: |
-          FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
+          FINGERPRINT=$(make -s print-base-fingerprint)
           IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
           echo "fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
           

@@ -95,3 +95,8 @@ DOCKER_ORG = softmentor
 DOCKER_IMAGE = $(DOCKER_ORG)/kroki-rs
 DOCKER_IMAGE_BASE = $(DOCKER_IMAGE)-base
 DOCKER_IMAGE_CI = $(DOCKER_ORG)/kroki-rs-ci
+
+# --- Scripting Utilities ---
+.PHONY: print-base-fingerprint
+print-base-fingerprint:
+	@echo "$(BASE_IMAGE_FINGERPRINT)"

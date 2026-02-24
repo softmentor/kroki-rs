@@ -113,10 +113,6 @@ local-temp-clean:
 .PHONY: all
 all: devrun
 
-.PHONY: print-base-fingerprint
-print-base-fingerprint:
-	@echo "$(BASE_IMAGE_FINGERPRINT)"
-
 .PHONY: help
 help:
 	@echo "Usage: make [TARGET] [VARIABLE=VALUE]..."
