@@ -126,7 +126,31 @@ podman logs kroki-test
 - **Chromium Sandbox**: In some container environments, the Chromium sandbox must be disabled. The internal server automatically uses `--no-sandbox` via the `headless_chrome` configuration.
 - **Architecture Mismatch**: Ensure you are building for the correct architecture. The image supports both `amd64` and `arm64`.
 
-## 6. Local CI Testing (GitHub Actions)
+## 4. Deep Dive: Deterministic Infrastructure
+
+To eliminate "works on my machine" bugs, **Kroki-rs** uses a strict content-addressable versioning strategy for its CI/CD environment.
+
+### The Image Fingerprint
+The system environment is mastered strictly in the `Dockerfile`. Any change to this file—even a single comment—results in a new **Fingerprint**.
+
+- **Calculation**: It is the first 12 characters of the SHA-256 hash of the `Dockerfile`.
+- **Logic**: 
+  ```bash
+  # As implemented in vars.mk
+  openssl dgst -sha256 Dockerfile | cut -c1-12
+  ```
+- **Why?**: This ensures that if two developers are running the same `Dockerfile` version, they are guaranteed to be in bit-identical environments, regardless of when they last pulled "latest".
+
+### The `dflow` Interface
+The `dflow` script is the primary entry point for all infrastructure lifecycle operations. It abstracts complex container and system-level cleanup into simple, predictable commands:
+
+- **`./dflow setup`**: Initializes the high-performance Podman VM (12GB RAM, 5 CPUs) and ensures the storage is redirected to high-speed external drives if available.
+- **`./dflow teardown`**: A precision-cleaning tool. Using the `-f` (full) flag reclaims ~1TB of space by targeting hidden Chromium side-caches and stagnant Podman volumes.
+- **`./dflow ci-verify`**: Executes the exact GitHub Actions sequence locally inside the fingerprinted container. It uses `target/ci` for absolute isolation from your host's build artifacts.
+
+## 5. Operations & Monitoring
+
+### Local CI Testing (GitHub Actions)
 
 You can run your GitHub Actions workflows locally using [act](https://github.com/nektos/act). This is useful for verifying the Docker build and test logic without pushing to GitHub.
 
