@@ -1,5 +1,7 @@
 ARG BASE_IMAGE=base
-ARG RUST_VERSION=1.85
+# Soft Contract: RUST_VERSION must match the 'channel' in rust-toolchain.toml.
+# Changing this triggers a new base image build via fingerprint (SHA256 of Dockerfile).
+ARG RUST_VERSION=1.93.1
 
 # Stage 0: Toolchain source
 FROM rust:${RUST_VERSION}-slim-bookworm AS toolchain

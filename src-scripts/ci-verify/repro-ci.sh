@@ -129,6 +129,19 @@ else
     exit 1
 fi
 
+# --- Toolchain Verification Guard ---
+EXPECTED_RUST=$(grep '^channel =' rust-toolchain.toml | cut -d '"' -f 2)
+echo "🔍 Verifying toolchain alignment (expected: ${EXPECTED_RUST})..."
+ACTUAL_RUST=$($DOCKER_CMD run --rm "$CI_IMAGE_LOCAL" rustc --version | awk '{print $2}')
+if [ "$ACTUAL_RUST" != "$EXPECTED_RUST" ]; then
+    echo "❌ Error: Toolchain Mismatch detected!"
+    echo "   Project requires: $EXPECTED_RUST"
+    echo "   CI Image baked with: $ACTUAL_RUST"
+    echo "   Please update RUST_VERSION in Dockerfile to $EXPECTED_RUST and trigger a base image build."
+    exit 1
+fi
+echo "✅ Toolchain alignment verified."
+
 echo "🧪 Running CI target '$TARGET' inside container..."
 mkdir -p "$(pwd)/target/ci" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
 $DOCKER_CMD run --rm \
