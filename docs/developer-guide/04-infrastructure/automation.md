@@ -89,6 +89,32 @@ The initial sequential job compiles **all targets** (application + test suites).
 ### Target Isolation (`target/ci`)
 Containerized builds exclusively use `target/ci` to avoid binary clobbering with host-native `target/` directories (e.g., macOS binaries on Linux containers).
 
+## 4. Internal CI Actions
+
+While developers primarily interact with `dflow`, the GitHub Actions infrastructure relies on internal composite actions to maintain environmental sanity across different runner types.
+
+### `setup-kroki` (Native Environment Bridge)
+
+The `.github/actions/setup-kroki` action is the primary bridge for non-containerized jobs (macOS runners and Documentation deployments).
+
+**Role**: Standardizes the installation of system dependencies (Cairo, Pango, Graphviz) and toolchains across different OS runners (Ubuntu vs. macOS).
+
+#### Inputs
+| Input | Description | Default |
+| :--- | :--- | :--- |
+| `rust-targets` | Additional Rust targets to install. | `""` |
+| `node-version` | Version of Node.js to install. | `22` |
+| `install-node` | Whether to install Node.js and run `npm ci`. | `false` |
+| `install-nextest` | Whether to install `cargo-nextest`. | `true` |
+| `use-cache` | Whether to enable standard Rust caching. | `true` |
+
+#### Hybrid Logic
+- **macOS**: Installs dependencies via `Homebrew` and handles specific `PLAYWRIGHT_EXECUTABLE_PATH` mappings for Chromium.
+- **Linux (VM)**: Uses `apt-get` to install the standard rendering suite (Graphviz, D2, Chromium-browser).
+
+> [!NOTE]
+> This action is **not used** in the primary `CI-Build` workflow for Linux PRs, which instead utilizes the pre-baked CI container for absolute consistency.
+
 ## 5. Remote Cache Maintenance
 
 To prevent GitHub Actions storage bloat and ensure fast restorations, we utilize a unified cache pruning strategy.
