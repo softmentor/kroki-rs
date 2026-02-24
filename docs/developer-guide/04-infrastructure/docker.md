@@ -4,6 +4,22 @@ label: kroki-rs.developer-guide.docker
 ---
 # Docker Developer Guide
 
+## Architecture Overview
+
+```mermaid
+graph TD
+    A[Dockerfile] -->|SHA-256| B(Fingerprint: e.g. e1e807...)
+    B --> C{Base Image in GHCR?}
+    C -- Yes --> D[Pull image:fingerprint]
+    C -- No --> E[Build 'ci' Target]
+    E --> F[Push to GHCR]
+    D --> G[Local Podman / CI Runner]
+    F --> G
+    G --> H[repro-ci.sh / GitHub Actions]
+    H --> I[[Isolated CI Container]]
+    I --> J(Mounts: target/ci, .cargo-cache)
+```
+
 This guide covers building, testing, debugging, and operating **Kroki-rs** within OCI-compliant containers (Docker/Podman).
 
 ## 0. Quick Setup: Podman

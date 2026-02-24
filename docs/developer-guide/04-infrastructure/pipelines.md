@@ -19,6 +19,58 @@ Kroki-rs uses a 3-tier pipeline architecture optimized for speed and atomic rele
 - **Build-on-Demand**: The CI system automatically detects if the `Dockerfile` fingerprint changed and builds the multi-arch images inline if missing from GHCR.
 - **Zero-Pull Caching**: Uses `actions/cache` to store the fingerprinted CI image as a `.tar` file for parallel job speed.
 
+## CI Flow Architecture
+
+### GitHub Actions Workflow (ci-build.yml)
+
+```mermaid
+sequenceDiagram
+    participant PR as Pull Request / Tag
+    participant Build as Job: Build (build-all)
+    participant Cache as Actions Cache (Disk Sccache)
+    participant Parallel as Jobs: Fmt/Lint/Test/Smoke
+
+    PR->>Build: Trigger
+    Build->>Cache: Restore .cargo-cache & target/ci
+    Build->>Build: cargo build --all-targets (Pre-warm)
+    Build->>Cache: Save .cargo-cache & target/ci
+    Build->>Parallel: Trigger (FAN-OUT)
+    
+    rect rgb(240, 240, 240)
+    Note over Parallel: Parallel verification using warm cache
+    Parallel->>Cache: Restore (Read-Only)
+    Parallel->>Parallel: cargo check / test / smoke
+    end
+    
+    Parallel->>PR: Success/Failure status
+```
+
+### Local Reproducible Flow (repro-ci.sh)
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Script as repro-ci.sh
+    participant Podman as Local Podman / Docker
+    participant Registry as GHCR (Source of Truth)
+
+    Dev->>Script: ./dflow ci-verify
+    Script->>Script: Generate Fingerprint from Dockerfile
+    Script->>Podman: Inspect local image:fingerprint
+    
+    alt Image exists locally
+        Podman-->>Script: ✅ Match
+    else Image missing
+        Script->>Registry: Pull image:fingerprint
+        Registry-->>Script: 📦 Pull complete
+        Script->>Podman: Tag for persistent local reuse
+    end
+    
+    Script->>Podman: Run Container (Mount target/ci, .cargo-cache)
+    Podman->>Podman: Execute make ghrun
+    Podman-->>Dev: Fast verification results
+```
+
 ## 3. Distribution (CD)
 **Workflow**: `release.yml`
 - Triggers only on version tags (`v*`).
