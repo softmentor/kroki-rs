@@ -147,11 +147,8 @@ jobs:
       - name: Build Rustdoc
         run: make doc
 
-      - name: Setup MyST
-        run: npm install -g mystmd
-
       - name: Build MyST
-        run: myst build --html
+        run: npx mystmd build --html
         working-directory: docs
         env:
           BASE_URL: "/kroki-rs"

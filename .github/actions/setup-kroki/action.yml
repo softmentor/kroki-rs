@@ -52,11 +52,6 @@ runs:
       if: inputs.use-cache == 'true'
       uses: Swatinem/rust-cache@v2
 
-    - name: Install NPM dependencies (if needed)
-      if: inputs.install-node == 'true'
-      shell: bash
-      run: npm ci
-
     - name: Install nextest (if needed)
       if: inputs.install-nextest == 'true'
       uses: taiki-e/install-action@nextest
