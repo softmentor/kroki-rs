@@ -21,7 +21,6 @@ jobs:
         uses: ./.github/actions/setup-kroki
         with:
           install-node: 'true'
-          install-playwright: 'false'
 
       - name: Build Rustdoc
         run: make doc
