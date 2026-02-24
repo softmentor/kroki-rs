@@ -28,6 +28,18 @@ jobs:
           echo "hash=$HASH" >> $GITHUB_OUTPUT
           echo "Fingerprint: $HASH"
 
+      - name: Check if image exists
+        id: check_image
+        run: |
+          IMAGE_NAME="ghcr.io/${{ github.repository }}-base:${{ steps.fingerprint.outputs.hash }}"
+          if docker manifest inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image $IMAGE_NAME already exists. Skipping build."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Image $IMAGE_NAME not found. Proceeding with build."
+          fi
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -44,6 +56,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Base image
+        if: steps.check_image.outputs.exists != 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -58,6 +71,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push CI image
+        if: steps.check_image.outputs.exists != 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
