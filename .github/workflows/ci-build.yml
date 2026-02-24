@@ -149,8 +149,8 @@ jobs:
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
             ${{ runner.os }}-cargo-
 
-      - name: "CI: Build"
-        run: ./dflow ci-verify build
+      - name: "CI: Build (Pre-warm sccache)"
+        run: ./dflow ci-verify build-all
 
   # Job 2: Format Check
   fmt:

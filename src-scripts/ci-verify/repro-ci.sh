@@ -158,7 +158,11 @@ $DOCKER_CMD run --rm \
 if [ "$PURGE_DISK" = "true" ]; then
     echo "🧹 Cleaning up images and builder cache..."
     $DOCKER_CMD system prune -f
+    # Clean standard target directories
     rm -rf "$(pwd)/target" "$(pwd)/target/ci" "$(pwd)/.cargo-cache"
+    # Clean stray directories and logs
+    rm -rf "$(pwd)/target-ci" "$(pwd)/_build"
+    rm -f "$(pwd)"/*.log
 fi
 
 echo "✅ Local CI verification (ci-verify) completed successfully."

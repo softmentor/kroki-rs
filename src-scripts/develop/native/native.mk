@@ -32,6 +32,10 @@ build:
 release:
 	cargo build --release $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
 
+.PHONY: build-all
+build-all:
+	cargo build --release --all-targets $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
+
 .PHONY: test
 test:
 	cargo test --release $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS) $(TEST_FLAGS)
