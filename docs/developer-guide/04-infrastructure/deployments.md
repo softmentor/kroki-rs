@@ -35,7 +35,7 @@ Images are pushed to `ghcr.io` for every release tag. We support multi-architect
 - `linux/amd64`
 - `linux/arm64`
 
-See the [Docker Guide](#kroki-rs.developer-guide.docker) for deep dives into image optimization.
+See the [Environment Guide](#kroki-rs.developer-guide.environment) for deep dives into image optimization.
 
 ## 3. Security & Integrity
 
@@ -50,4 +50,4 @@ shasum -a 256 kroki-rs-<platform>.tar.gz
 - **GPG**: Release tags and binaries are signed with GPG to prove authenticity.
 
 ### Reproducible Builds
-All public artifacts are built via [GitHub Actions](#kroki-rs.developer-guide.pipelines) using the same fingerprinted CI environment used during development, ensuring the published binary exactly matches the source.
+All public artifacts are built via [GitHub Actions Automation](#kroki-rs.developer-guide.automation) using the same fingerprinted CI environment used during development, ensuring the published binary exactly matches the source.

@@ -23,8 +23,9 @@ Welcome to the **Kroki-rs** Developer Guide. This documentation is organized int
 - [**Coding Standards**](#kroki-rs.developer-guide.coding-patterns): Rust conventions, error handling, and MyST linking rules.
 
 ## 🌐 Infrastructure & CI/CD
-- [**Build Pipelines**](#kroki-rs.developer-guide.pipelines): GHA workflows, caching, and multi-stage builds.
-- [**Docker Guide**](#kroki-rs.developer-guide.docker): Container optimization and multi-arch packaging.
+- [**Infrastructure Overview**](#kroki-rs.developer-guide.infrastructure-overview): Architecture, philosophy, and environmental drift.
+- [**Development Environment**](#kroki-rs.developer-guide.environment): Local setup, Podman, and the dflow toolsuite.
+- [**Automation & Pipelines**](#kroki-rs.developer-guide.automation): CI workflows, sccache, and distribution.
 - [**Packaging & Distribution**](#kroki-rs.developer-guide.deployments): Homebrew, GHCR, and binary distribution.
 
 ## 🩺 Operations & Maintenance
