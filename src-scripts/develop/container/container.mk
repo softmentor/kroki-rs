@@ -15,6 +15,8 @@
 
 .PHONY: docker-base
 docker-base:
+ifneq ($(CONTAINER_ENGINE),)
+	@if [ "$(IS_CONTAINER)" != "true" ]; then $(MAKE) docker-prune-legacy; fi
 	@echo "📦 Pulling fingerprinted base from GHCR (fingerprint: $(BASE_IMAGE_FINGERPRINT))..."
 	@$(CONTAINER_ENGINE) pull ghcr.io/$(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT) 2>/dev/null || \
 	(echo "❌ Error: Base image $(BASE_IMAGE_FINGERPRINT) not found in GHCR." && \
