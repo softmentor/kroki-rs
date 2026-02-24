@@ -82,8 +82,14 @@ teardown: clean
 	@if [ "$(FULL_CLEANUP)" = "true" ]; then \
 		$(MAKE) podman-storage-clean; \
 		$(MAKE) local-temp-clean; \
+		$(MAKE) gha-cache-prune; \
 	fi
 	@echo "🧹 Teardown complete. Disk space recovered."
+
+.PHONY: gha-cache-prune
+gha-cache-prune:
+	@echo "🗑️  Pruning remote GHA caches..."
+	@bash src-scripts/gh-tasks/prune-gha-cache.sh
 
 .PHONY: podman-storage-clean
 podman-storage-clean:
