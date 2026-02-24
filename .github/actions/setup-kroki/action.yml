@@ -31,7 +31,6 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'npm'
 
     - name: Install system dependencies for canvas and rendering
       shell: bash
