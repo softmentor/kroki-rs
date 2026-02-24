@@ -88,3 +88,11 @@ The initial sequential job compiles **all targets** (application + test suites).
 
 ### Target Isolation (`target/ci`)
 Containerized builds exclusively use `target/ci` to avoid binary clobbering with host-native `target/` directories (e.g., macOS binaries on Linux containers).
+
+## 5. Remote Cache Maintenance
+
+To prevent GitHub Actions storage bloat and ensure fast restorations, we utilize a unified cache pruning strategy.
+
+-   **Scripted Logic**: The `src-scripts/gh-tasks/prune-gha-cache.sh` script is the single source of truth for cache lifecycle management.
+-   **CI Integration**: The `CI-Build` workflow calls this script automatically on every run to keep only the most recent caches for each branch/PR.
+-   **Manual Control**: Developers can trigger a remote cleanup locally via `./dflow teardown -f`, which executes the same pruning logic against the GHA repository.
