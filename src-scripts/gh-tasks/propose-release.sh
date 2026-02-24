@@ -36,11 +36,23 @@ fi
 # 4. Verify local state with ci-verify (Recommended)
 echo "🧪 Reminder: Ensure you have passed './dflow ci-verify' before proposing."
 
+# --- Argument Parsing ---
+DRY_RUN="false"
+for arg in "$@"; do
+    if [[ "$arg" == "--dry-run" ]]; then
+        DRY_RUN="true"
+    fi
+done
+
 # --- Execution ---
 
 # 1. Push branch
-echo "📤 Pushing $CURRENT_BRANCH to origin..."
-git push origin "$CURRENT_BRANCH"
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "🏗️  [DRY-RUN] Would push $CURRENT_BRANCH to origin"
+else
+    echo "📤 Pushing $CURRENT_BRANCH to origin..."
+    git push origin "$CURRENT_BRANCH"
+fi
 
 # 2. Create PR
 echo "📝 Creating Pull Request to $MAIN_BRANCH..."
@@ -50,12 +62,16 @@ if [[ "$CURRENT_BRANCH" =~ ^feat/.* ]]; then
     PR_TITLE="feat: ${CURRENT_BRANCH#feat/}"
 fi
 
-# Try to create the PR
-gh pr create \
-    --base "$MAIN_BRANCH" \
-    --head "$CURRENT_BRANCH" \
-    --title "$PR_TITLE" \
-    --body "Automated release proposal from $CURRENT_BRANCH. Includes final cleanup and verification." || \
-echo "⚠️  PR might already exist or creation failed. Check GitHub UI."
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "🏗️  [DRY-RUN] Would create PR: '$PR_TITLE' (Base: $MAIN_BRANCH, Head: $CURRENT_BRANCH)"
+else
+    # Try to create the PR
+    gh pr create \
+        --base "$MAIN_BRANCH" \
+        --head "$CURRENT_BRANCH" \
+        --title "$PR_TITLE" \
+        --body "Automated release proposal from $CURRENT_BRANCH. Includes final cleanup and verification." || \
+    echo "⚠️  PR might already exist or creation failed. Check GitHub UI."
+fi
 
 echo "🎉 Proposal process completed for $CURRENT_BRANCH!"

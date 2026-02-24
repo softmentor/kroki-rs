@@ -52,7 +52,9 @@ The `dflow` script is the primary entry point for the infrastructure lifecycle.
 | :--- | :--- |
 | `./dflow setup` | Initializes the Podman VM and prepares the environment. |
 | `./dflow teardown` | Removes local containers/images. |
-| `./dflow teardown -f` | **Deep System & Remote Cleanup**: Reclaims local disk space and **prunes remote GHA caches**. |
+| `./dflow teardown -f` | **Deep System & Remote Cleanup**: Prompts for consent before purging GHA caches and Podman storage. Use `-y` to bypass. |
+| `./dflow release -b` | **Propose Release**: Pushes the current branch and creates a PR to `main`. |
+| `./dflow release --tag`| **Finalize Release**: Tags the current version and pushes to origin (triggering distribution). |
 | `./dflow ci-verify` | Performs containerized CI check with toolchain validation. |
 | `./dflow ci-verify <target>` | Runs a specific sub-target (e.g. `lint`, `test-ci`). |
 | `./dflow ci-shell` | Opens an interactive bash shell inside the CI container. |

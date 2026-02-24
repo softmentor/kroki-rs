@@ -46,12 +46,26 @@ if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
+# --- Argument Parsing ---
+DRY_RUN="false"
+for arg in "$@"; do
+    if [[ "$arg" == "--dry-run" ]]; then
+        DRY_RUN="true"
+    fi
+done
+
 # --- Execution ---
 TAG="v$CARGO_VERSION"
-echo "🏷️  Tagging $TAG..."
-git tag -a "$TAG" -m "Release $TAG"
 
-echo "📤 Pushing tags to origin..."
-git push origin "$TAG"
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "🏗️  [DRY-RUN] Would tag: $TAG"
+    echo "🏗️  [DRY-RUN] Would push tag $TAG to origin"
+else
+    echo "🏷️  Tagging $TAG..."
+    git tag -a "$TAG" -m "Release $TAG"
+
+    echo "📤 Pushing tags to origin..."
+    git push origin "$TAG"
+fi
 
 echo "🎉 Release $TAG initiated! GHA 'release.yml' will handle distribution."
