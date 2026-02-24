@@ -50,7 +50,7 @@ docker run --rm -p 8000:8000 -p 8081:8081 ghcr.io/softmentor/kroki-rs:latest
 ```
 This runs the main API on port `8000` and the Admin dashboard/health checks on port `8081`. 
 
-For detailed production guidelines, including monitoring and configuration, see the [**Docker Deployment Guide**](#kroki-rs.user-guide.docker-deployment).
+For detailed production guidelines, including monitoring and configuration, see the [**Docker Deployment Guide**](#kroki-rs.user-guide.docker-deployment). For other installation methods, see [**Releases & Installation**](#kroki-rs.user-guide.releases).
 
 ## Running the Application
 

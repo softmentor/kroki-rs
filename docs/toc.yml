@@ -4,6 +4,8 @@ project:
     - file: index.md
     - title: Getting Started
       file: user-guide/getting-started.md
+    - title: Releases & Installation
+      file: user-guide/releases.md
     - title: User Guide
       file: user-guide/user-index.md
       children:
@@ -13,6 +15,7 @@ project:
         - file: user-guide/configuration.md
         - file: user-guide/docker-deployment.md
         - file: user-guide/security.md
+        - file: user-guide/community.md
     - title: Developer Guide
       file: developer-guide/index.md
       children:
