@@ -27,8 +27,9 @@ Kroki-rs uses a 3-tier pipeline architecture optimized for speed and atomic rele
 
 ## Build Optimization
 
-- **`sccache`**: Multi-arch compilation cache used as a secondary safety net across jobs.
-- **`cargo-chef`**: Layered builds for super-fast dependency caching.
-- **Host-Mount Caching**: The runner persists `.cargo-cache` and `target` directories between runs for maximum speed.
+- **`build-all` Pre-warming**: The initial CI job runs `cargo build --all-targets`. This populates the compilation cache for both the application and all test suites upfront, so subsequent parallel jobs only fetch from cache.
+- **Disk-Based `sccache`**: To ensure maximum reliability across containerized environments, we use a disk-based cache (`.cargo-cache/sccache`) instead of the custom GHA backend. This shared directory is host-mounted to the container and preserved via `actions/cache`.
+- **Target Isolation (`target/ci`)**: Containerized builds use a dedicated `target/ci` directory. This provides absolute isolation from native `target/` directories (e.g., on macOS hosts), preventing "Exec format errors" and redundant rebuilds.
+- **Host-Mount Caching**: The runner persists `.cargo-cache` (registry, git, sccache) and `target/ci` directories between runs for maximum speed.
 
 For deployment details, see [Deployments & Distribution](#kroki-rs.developer-guide.deployments).

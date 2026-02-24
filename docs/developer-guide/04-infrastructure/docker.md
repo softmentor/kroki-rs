@@ -13,7 +13,8 @@ If you don't have Podman installed, use the following commands:
 ### macOS (Homebrew)
 ```bash
 brew install podman
-podman machine init --memory=2048 --cpus=2 --disk-size=50
+# Optimized for heavy Rust builds and caching
+podman machine init --memory=12288 --cpus=5 --disk-size=100
 podman machine start
 ```
 
@@ -44,9 +45,10 @@ make docker-clean
 Compiling Rust and its dependencies can be memory-intensive. For environments with limited RAM (e.g., 2GB Podman machines), the `Dockerfile` is configured to limit parallel jobs:
 
 - **Base Image Strategy**: The Dockerfile is split into a `base` stage (dependencies) and a `builder` stage. By pre-building the base on GitHub Actions, CI verification time is significantly reduced.
-- **Source of Truth**: GitHub Actions is the **sole source of truth** for base image fingerprints. This ensures absolute consistency and portability; every environment (local or remote) pulls from the same verified pool of images in GHCR, eliminating "works on my machine" identity divergence.
-- **Cargo Jobs**: The build stage uses `cargo build --release` (on high-capacity CI) or `-j 2` locally to prevent OOM.
-- **Context Optimization**: A `.dockerignore` file is used to exclude `target/`, `node_modules/`, and `.git/`.
+- **Local Fingerprint Caching**: `repro-ci.sh` maintains a local tag `${IMAGE}:${FINGERPRINT}`. On invocation, it skips network registry checks if the local fingerprint matches the current `Dockerfile`, enabling instant container spin-up.
+- **Bit-Identical Parity**: GitHub Actions is the **sole source of truth** for base image fingerprints. Every environment (local or remote) pulls from the same verified pool of images in GHCR, eliminating "works on my machine" identity divergence.
+- **Resource Allocation**: Podman VMs are initialized with **12GB RAM** (configurable via `VM_MEM`) to prevent OOM errors during memory-intensive compilation of crates like `headless_chrome`.
+- **Target Isolation**: Container builds use `target/ci` exclusively to avoid artifact clobbering (and "Exec format errors") when alternating between Darwin-native and Linux-container builds.
 
 ### Fast Local Packaging (Binary Injection)
 If you already have a Linux binary (either built locally on Linux or downloaded from CI artifacts), you can skip the Rust compilation entirely. 
