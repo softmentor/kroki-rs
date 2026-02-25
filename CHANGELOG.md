@@ -9,9 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Documentation Infrastructure**: Integrated Node.js and MyST into the CI container for self-contained, offline-capable verification.
 - **Automated Doc Validation**: Integrated `make doc-myst` into the `ci-verify` flow (conditional in GHA) to prevent documentation regressions.
+- **Package Distribution**: Introduced `publish-packages.yml` for automated production OCI image builds, multi-arch support, and diagram smoke testing.
+
+### Changed
+- **CI Architecture**: Consolidated the CI pipeline into a 3-job "Prep-Build-Verify" structure, reducing overhead and improving failure visibility via backgrounded parallel checks.
+- **Cache Optimization**: Implemented capacity-aware GHA cache pruning to maintain high performance and avoid storage limits.
 
 ### Fixed
 - **CI Reliability**: Finalized transition to Commit Statuses API and robust SHA alignment for PR checks.
+- **PR Container Pulls**: Resolved "manifest unknown" errors by adding credentials and ensuring transient CI images are pushed to GHCR on-demand.
 - **Repository Integrity**: Retroactively tagged `v0.0.6` and `v0.0.7` to maintain version history.
 
 ## [0.0.7] - 2026-02-25

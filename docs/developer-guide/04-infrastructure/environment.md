@@ -93,7 +93,7 @@ Verification steps (fmt, lint, build) run in parallel by default to maximize res
 
 | Type | Control Flag | Purpose | Default |
 | :--- | :--- | :--- | :--- |
-| **Steps Parallelism** | `--steps-parallel` (`-sp`) | Concurrent execution of `fmt`, `clippy`, and `cargo build` | `true` |
+| **Steps Parallelism** | `--steps-parallel` (`-sp`) | Concurrent execution of `fmt`, `clippy`, `test`, and `smoke-test` | `true` |
 | **Jobs Parallelism** | `--jobs` (`-j`) | Internal parallelism within `cargo` or `make` | Host-based |
 
 #### Usage Examples
@@ -143,5 +143,5 @@ make test-ci
 ```
 
 ### Common Issues
-- **Stale Caches**: If your `Dockerfile` changes aren't reflected, run `./dflow ci-verify --purge`.
+- **Stale Caches**: If your `Dockerfile` changes aren't reflected, run `./dflow ci-verify -p`.
 - **Permission Denied**: If mounting `.cargo-cache` fails on Linux, ensure your user has appropriate permissions or run with `podman unshare`.

@@ -7,7 +7,7 @@ set -e
 
 if [ -z "$REMOTE_HOST" ]; then
     echo "❌ Error: REMOTE_HOST is not set."
-    echo "Usage: REMOTE_HOST=\"user@remote-ip\" [BRANCH=\"feature/v0.0.5\"] [REPO_URL=\"...\"] bash src-scripts/ci-verify/remote-ci.sh"
+    echo "Usage: REMOTE_HOST=\"user@remote-ip\" [BRANCH=\"release/v0.0.8\"] [REPO_URL=\"...\"] bash src-scripts/ci-verify/remote-ci.sh"
     exit 1
 fi
 

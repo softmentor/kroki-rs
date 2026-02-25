@@ -7,6 +7,15 @@ label: kroki-rs.developer-guide.deployments
 
 This guide outlines how to package, distribute, and verify **Kroki-rs** artifacts.
 
+## 1. Release Flow
+
+Kroki-rs follows a binary release flow coordinated by `dflow`:
+
+1.  **Proposal**: Run `./dflow release -b`. This uses `src-scripts/gh-tasks/propose-release.sh` to bump the version in `Cargo.toml`, update `CHANGELOG.md`, and create a `release/vX.X.X` PR branch.
+2.  **Verification**: GitHub Actions runs the full `CI-Build` verification on the release PR.
+3.  **Approval**: Once checks pass, the maintainer merges the PR.
+4.  **Tagging**: Run `./dflow release --tag`. This uses `src-scripts/gh-tasks/tag-release.sh` to create an official Git tag and push it, triggering the distribution workflows (`release.yml` and `publish-packages.yml`).
+
 ## Distribution Channels
 
 | Channel | Format | Recommended For |
@@ -31,11 +40,19 @@ This creates a `dist/` directory containing:
 
 ## 2. GitHub Container Registry (Docker)
 
-Images are pushed to `ghcr.io` for every release tag. We support multi-architecture builds:
-- `linux/amd64`
-- `linux/arm64`
+Images are published to `ghcr.io` for every release tag via the `publish-packages.yml` workflow. This workflow builds the final production image and verifies its integrity before pushing.
 
-See the [Environment Guide](#kroki-rs.developer-guide.environment) for deep dives into image optimization.
+### Production Image Structure
+The production image (`ghcr.io/softmentor/kroki-rs`) is designed for stability and minimal size:
+- **Runtime-only**: Contains basic system dependencies (Graphviz, D2, Chromium) but excludes the Rust toolchain and CI utilities.
+- **Compiled Binary**: Includes the `kroki-rs` binary pre-compiled for the target architecture.
+- **Multi-arch Support**: Published for both `linux/amd64` and `linux/arm64`.
+
+### Automated Smoke Testing
+Before any image is published to GHCR, it must pass a rigorous smoke test suite that:
+1.  **Health Check**: Ensures the server starts and responds on port 8081.
+2.  **Version Verification**: Confirms the reported version matches the release tag.
+3.  **Rendering Validation**: Performs live diagram generation tests (Graphviz, D2) inside the fresh container to ensure all native drivers are correctly linked.
 
 ## 3. Security & Integrity
 

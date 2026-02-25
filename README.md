@@ -4,12 +4,13 @@
 
 Unlike the original Java-based Kroki, **Kroki-rs** is designed to run natively and efficiently, leveraging existing CLI tools and a specialized **Native Browser Engine** for modern diagrams like Mermaid and BPMN.
 
-## v0.0.5 Stabilization Achievements
+## Highlights
 
--   🚀 **Native Browser Engine**: Replaced heavy Node.js/Playwright dependencies with a pure-Rust `headless_chrome` implementation for Mermaid and BPMN. (Now with **Serverless Harness** for zero-networking overhead and maximum reliability).
--   🎨 **Robust Font Support**: Dynamic font injection and pixel-perfect rendering using `resvg`.
--   🏢 **Professional Workflow**: Verify in the same CI environment as GitHub Actions (Docker base + deps). Use `./dflow ci-verify` locally and `remote-ci.sh` for remote offload; both run in the CI container for reproducibility.
--   🔋 **Remote CI**: Secure SSH-based offloading via `remote-ci.sh` — runs ci-verify (container) on the remote host, not native builds.
+-   **Native Browser Engine**: Pure-Rust `headless_chrome` for Mermaid and BPMN rendering (zero Node.js/Playwright runtime).
+-   **Consolidated 3-Job pipeline**: Unified CI (Prep-Build-Verify) with backgrounded parallel checks for instant PR status feedback.
+-   **Deterministic Parity**: Local verification via `./dflow ci-verify` uses the **exact** same fingerprinted image as GHA for 100% reproducibility.
+-   **Automatic Packaging**: Production OCI images (`ghcr.io/softmentor/kroki-rs`) are built, multi-arch verified, and smoke-tested on every release.
+-   **Integrated Docs**: MyST-based documentation infrastructure baked into the CI for reliable, offline-capable validation.
 
 ## Features
 
@@ -48,18 +49,20 @@ Our professional workflow follows the POSIX-standard CLI pattern: `./dflow <comm
 
 ```bash
 ./dflow develop   # Local native iteration (macOS); alias: dev
-./dflow ci-verify # Verify in CI container (same env as GHA); alias: repro — use before pushing
-./dflow ci-shell  # Interactive shell in CI container for incremental test fixes; alias: shell
+./dflow ci-verify # Verify in CI container (same env as GHA); alias: repro
+./dflow ci-shell  # Interactive shell in CI container for debugging; alias: shell
+./dflow release   # Release management (propose branch or tag); see --help
 ./dflow teardown  # Reclaim build/container disk space; alias: clean
 ```
-
-For remote offload (same container-based verification on another host), use `REMOTE_HOST=user@host bash src-scripts/ci-verify/remote-ci.sh`.
 
 **Concrete Examples:**
 ```bash
 ./dflow develop -p -v            # Local iteration with full purge (-p) and verbose (-v)
 ./dflow ci-verify --test load    # Containerized CI verification with load tests
-REMOTE_HOST=user@remote bash src-scripts/ci-verify/remote-ci.sh   # Remote offload (container)
+./dflow ci-verify fmt            # Run only format check in container
+./dflow release -b               # Propose a release branch (create PR)
+./dflow release --tag            # Tag and push release (triggers distribution)
+./dflow teardown -f -y           # Deep cleanup (GHA caches + Podman storage, no prompt)
 ```
 
 For advanced users, the underlying `Makefile` targets and `make help` still provide full variable-based control.

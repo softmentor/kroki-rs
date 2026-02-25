@@ -157,6 +157,11 @@ To prevent GitHub Actions storage bloat and ensure fast restorations, we utilize
 -   **Scripted Logic**: The `src-scripts/gh-tasks/prune-gha-cache.sh` script is the single source of truth for cache lifecycle management.
 -   **CI Integration**: The `CI-Build` workflow calls this script automatically on every run.
 
+### GitHub Run Pruning
+To prevent GitHub Actions run history from becoming cluttered, we use `src-scripts/gh-tasks/prune-gha-runs.sh`.
+- **Logic**: It keeps the latest 100 runs and automatically deletes failed or canceled runs to keep the UI clean.
+- **Usage**: Typically run via GitHub Actions or manually by maintainers: `bash src-scripts/gh-tasks/prune-gha-runs.sh 100 true`.
+
 ### Cache Key Strategy
 
 | Cache Type | Key Pattern | Invalidation Trigger |
@@ -207,3 +212,13 @@ If the CI image cannot be pulled:
 If `repro-ci.sh` reports a "Toolchain Mismatch":
 - The project's `rust-toolchain.toml` has been updated but the pre-baked CI image is using an old version.
 - **Fix**: Update the `RUST_VERSION` in the root `Dockerfile` and push to GitHub to regenerate the base image.
+
+## 8. Release Verification Reports
+
+For every official release, a detailed verification report is generated to prove the integrity of the artifacts.
+
+- **Script**: `src-scripts/gh-tasks/generate-release-report.sh`.
+- **Artifacts**: 
+    - `release-report-v<version>.md`: A standalone report for a specific version.
+    - `release-reports.md`: A cumulative history of all releases, including base image fingerprints and CI run links.
+- **Traceability**: These reports link the final binaries back to the exact fingerprinted CI environment used to build them.

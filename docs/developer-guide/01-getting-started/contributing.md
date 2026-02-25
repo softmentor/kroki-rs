@@ -70,8 +70,7 @@ To ensure consistency across local iteration and CI, we use the professional **`
 | :--- | :--- | :--- | :--- |
 | **Local Dev** | macOS (native) | `./dflow develop` | Rapid iteration |
 | **Local CI verification** | macOS/Linux + container | `./dflow ci-verify` | Verify in same env as GHA before pushing |
-| **Remote offload** | Remote host + container | `remote-ci.sh` → repro-ci.sh | Offload; still container-based (reproducible) |
-| **GitHub CI** | GHA runner + container | ci-build.yml (container jobs) | Source of truth |
+| **GitHub CI** | GHA runner + container | `ci-build.yml` (container jobs) | Source of truth |
 
 ---
 
