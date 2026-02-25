@@ -144,6 +144,12 @@ if [ -z "$DOCKER_CMD" ]; then
 fi
 
 echo "🚀 Using container engine: $DOCKER_CMD"
+if ! $DOCKER_CMD system info >/dev/null 2>&1; then
+    echo "❌ Error: Container engine ($DOCKER_CMD) is not responsive."
+    echo "   Ensure Podman/Docker is running. If using Podman, you might need to run:"
+    echo "   make setup"
+    exit 1
+fi
 
 # Fingerprint (must match src-scripts/develop/vars/vars.mk and base-image.yml)
 CI_FINGERPRINT=$(make -s print-base-fingerprint)
