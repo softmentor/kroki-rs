@@ -27,13 +27,19 @@ RESPONSE=$(curl -s -X POST \
   "$API_URL" \
   -d "{\"name\":\"$CHECK_NAME\",\"head_sha\":\"$GITHUB_SHA\",\"status\":\"in_progress\",\"started_at\":\"$STARTED_AT\"}")
 
-CHECK_ID=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+# Resilient parsing: search for "id": <number>
+# handles spaces via xargs and matches accurately even if line formatting varies
+CHECK_ID=$(echo "$RESPONSE" | grep -o '"id":\s*[0-9]*' | head -1 | cut -d: -f2 | xargs || true)
 
 if [ -z "$CHECK_ID" ]; then
-    echo "⚠️  Failed to create Check Run (API Response: $RESPONSE). Executing command anyway..."
+    echo "⚠️  Failed to extract Check ID from API Response."
+    echo "Debug: API response was: $RESPONSE"
+    echo "Executing command anyway..."
     eval "$COMMAND"
     exit $?
 fi
+
+echo "✅ Created Check ID: $CHECK_ID"
 
 # 2. Execute Command
 echo "🏃 Running: $COMMAND"
@@ -51,12 +57,16 @@ fi
 # 4. Finalize Check Run
 echo "🏁 Finalizing GitHub Check: $CHECK_NAME (Conclusion: $CONCLUSION)"
 COMPLETED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-curl -s -X PATCH \
+FINAL_RESPONSE=$(curl -s -X PATCH \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "X-GitHub-Api-Version: 2022-11-28" \
   "$API_URL/$CHECK_ID" \
-  -d "{\"status\":\"completed\",\"conclusion\":\"$CONCLUSION\",\"completed_at\":\"$COMPLETED_AT\"}" \
-  > /dev/null
+  -d "{\"status\":\"completed\",\"conclusion\":\"$CONCLUSION\",\"completed_at\":\"$COMPLETED_AT\"}")
+
+# Log final response if it failed
+if echo "$FINAL_RESPONSE" | grep -q '\"message\"'; then
+    echo "⚠️  Failed to finalize check run: $FINAL_RESPONSE"
+fi
 
 exit $EXIT_CODE

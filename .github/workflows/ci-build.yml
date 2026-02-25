@@ -174,7 +174,7 @@ jobs:
   # All checks run in parallel inside the SAME container instance.
   # ---------------------------------------------------------------------------
   verify:
-    name: "verify"
+    name: "Verify"
     needs: [prep, build]
     runs-on: ubuntu-latest
     container:
