@@ -137,9 +137,14 @@ jobs:
       - name: "CI: Build (Pre-warm sccache)"
         run: ./dflow ci-verify build-all
 
-  # Job 2: Format Check
-  fmt:
-    name: "fmt"
+      - name: "CI: Align Permissions (Fix Cache Write)"
+        if: always()
+        run: |
+          sudo chown -R 1001:1001 .cargo-cache target/ci || true
+
+  # Unified Verification Job (Sequential Steps, Persistent Container, Clear Status)
+  verify:
+    name: "Verify"
     needs: build
     runs-on: ubuntu-latest
     container:
@@ -169,100 +174,17 @@ jobs:
       - name: "CI: Format Check"
         run: ./dflow ci-verify fmt
 
-  # Job 3: Clippy (Lint)
-  clippy:
-    name: "clippy"
-    needs: build
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
-    env:
-      IS_CONTAINER: "true"
-      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
-      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
-      SCCACHE_GHA_ENABLED: "false"
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache Cargo (Restore target/ci and sccache)
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .cargo-cache/registry
-            .cargo-cache/git
-            .cargo-cache/sccache
-            target/ci
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-
       - name: "CI: Lint (Clippy)"
         run: ./dflow ci-verify lint
 
-  # Job 4: Tests
-  test:
-    name: "test"
-    needs: build
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
-    env:
-      IS_CONTAINER: "true"
-      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
-      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
-      SCCACHE_GHA_ENABLED: "false"
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
+      - name: "CI: Build (Verify)"
+        run: ./dflow ci-verify build
 
-      - name: Cache Cargo (Restore target/ci and sccache)
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .cargo-cache/registry
-            .cargo-cache/git
-            .cargo-cache/sccache
-            target/ci
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-
-      - name: "CI: Tests"
+      - name: "CI: Tests (Nextest)"
         run: ./dflow ci-verify test-ci
-
-  # Job 5: Smoke Test and Final Verification
-  smoke-test:
-    name: "smoke-test"
-    needs: build
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
-    env:
-      IS_CONTAINER: "true"
-      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
-      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
-      SCCACHE_GHA_ENABLED: "false"
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache Cargo (Restore target/ci and sccache)
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .cargo-cache/registry
-            .cargo-cache/git
-            .cargo-cache/sccache
-            target/ci
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
 
       - name: "CI: Smoke Test"
         run: ./dflow ci-verify smoke-test
+
       - name: "CI: Final Verification"
         run: ./dflow ci-verify verify
