@@ -179,6 +179,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
       checks: write
       packages: read
     steps:
@@ -233,7 +234,7 @@ jobs:
 
       - name: "Execute Concurrent PR Checks"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
         run: |
           chmod +x src-scripts/gh-tasks/gh-check-wrapper.sh
