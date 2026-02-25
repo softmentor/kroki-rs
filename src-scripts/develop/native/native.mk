@@ -10,8 +10,8 @@
 #   - repro.mk targets (devrun, ghrun) depend on fmt, lint, build, test, etc.
 #
 # Targets:
-#   build, release, test, test-ci, test-v, lint, fmt, fix, doc, clean, dist,
-#   verify, smoke-test, quick, bump, serve.
+#   build, release, build-ci, build-all, test, test-ci, test-v, lint, fmt, fix,
+#   doc, clean, dist, verify, smoke-test, quick, bump, serve.
 # ------------------------------------------------------------------------------
 
 RELEASE_DIR = target/release
@@ -32,9 +32,12 @@ build:
 release:
 	cargo build --release $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
 
-.PHONY: build-all
-build-all:
+.PHONY: build-ci
+build-ci:
 	cargo build --release --all-targets $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
+
+.PHONY: build-all
+build-all: build-ci
 	cargo clippy --release --all-targets $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS) -- -D warnings
 
 .PHONY: test

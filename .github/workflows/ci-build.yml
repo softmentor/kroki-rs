@@ -1,5 +1,19 @@
 # Continuous Integration (PR-Gate)
-# Runs inside the fingerprinted CI container for 100% parity with local repro (repro-ci.sh).
+# 3-phase pipeline: Prep (image resolution) → Build (cache warmup) → Verify (parallel checks).
+# ALL Rust steps run inside the fingerprinted CI container for 100% parity with local repro.
+# Local equivalent: ./dflow ci-verify  (uses same image, same make targets, consistent paths)
+#
+# Job graph:
+#   prep ──► build ──► lint          (fmt-check + clippy, parallel with test/smoke-verify)
+#        │          ├──► test         (nextest, parallel with lint/smoke-verify)
+#        │          └──► smoke-verify (smoke-test + dist verify, parallel with lint/test)
+#        └──────────────────────────── (prep also feeds image tag to all container jobs)
+#
+# Cache key: cargo-<runner.os>-<Cargo.lock+rust-toolchain hash>
+#   - Invalidates on dep changes (Cargo.lock) or toolchain bump (rust-toolchain.toml)
+#   - No run_id suffix: enables cross-run reuse on same branch
+#   - Build job saves; Verify jobs restore read-only
+
 name: CI-Build
 
 on:
@@ -21,142 +35,129 @@ on:
       - '.DS_Store'
       - 'LICENSE'
 
+# Shared env for all container jobs (see x-container-env anchor below)
 env:
   SCCACHE_GHA_ENABLED: "false"
   RUSTC_WRAPPER: "sccache"
 
+# ---------------------------------------------------------------------------
+# Reusable YAML anchors
+# ---------------------------------------------------------------------------
+x-container-env: &container-env
+  IS_CONTAINER: "true"
+  # CARGO_HOME: workspace-relative so cache action and cargo see the same path
+  CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+  # CARGO_TARGET_DIR: workspace-relative — identical absolute path in Build and
+  # all Verify jobs, so cargo fingerprints recorded during Build are valid on restore
+  CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+  SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
+  SCCACHE_GHA_ENABLED: "false"
+  RUSTC_WRAPPER: "sccache"
+
+x-cargo-cache-paths: &cargo-cache-paths |
+  .cargo-cache/registry
+  .cargo-cache/git
+  .cargo-cache/sccache
+  target/ci
+
+x-cargo-cache-key: &cargo-cache-key >-
+  cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+
+x-cargo-restore-keys: &cargo-restore-keys |
+  cargo-${{ runner.os }}-
+
 jobs:
-  # Job 1: Build dependencies and the application
-  build:
-    name: "Build"
+  # ---------------------------------------------------------------------------
+  # Phase 1 — Prep: resolve the CI image once, output fingerprint for all jobs
+  # Runs on bare runner (~15s). Handles image tar caching so container jobs
+  # pull from the runner's Docker daemon (fast) rather than GHCR (slow).
+  # ---------------------------------------------------------------------------
+  prep:
+    name: "Prep"
     runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: write
       packages: write
     outputs:
-      fingerprint: ${{ steps.image_logic.outputs.fingerprint }}
+      fingerprint: ${{ steps.fingerprint.outputs.hash }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: "CI: Prune Redundant Caches"
+      - name: "Compute CI Image Fingerprint"
+        id: fingerprint
+        run: |
+          HASH=$(make -s print-base-fingerprint)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "📌 Fingerprint: $HASH"
+
+      - name: "Prune Redundant Caches"
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          bash src-scripts/gh-tasks/prune-gha-cache.sh
+        run: bash src-scripts/gh-tasks/prune-gha-cache.sh
 
-      - name: "CI: Registry Check & Image Cache"
-        id: image_cache
+      # Image tar cache — keyed on Dockerfile hash (same as fingerprint but explicit)
+      # Saves ~30-60s image pull time for every downstream container job.
+      - name: "Cache CI Image Tar"
+        id: image_tar_cache
         uses: actions/cache@v4
         with:
           path: ci-image.tar
-          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
+          key: docker-ci-${{ hashFiles('Dockerfile') }}
 
-      - name: "CI: Load or Build Image"
-        id: image_logic
+      - name: "Ensure CI Image Available"
+        id: ensure_image
         run: |
-          FINGERPRINT=$(make -s print-base-fingerprint)
-          IMAGE="ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
-          echo "fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
-          
-          # 1. Try Loading from Cache
+          FINGERPRINT="${{ steps.fingerprint.outputs.hash }}"
+          IMAGE="ghcr.io/${{ github.repository }}-ci:${FINGERPRINT}"
+
+          # 1. Load from tar cache (fastest — avoids any network)
           if [ -f ci-image.tar ]; then
-            echo "📦 Loading image from cache..."
+            echo "📦 Loading CI image from cache tar..."
             docker load -i ci-image.tar
-            echo "loaded=true" >> $GITHUB_OUTPUT
+            echo "✅ Image loaded from cache."
             exit 0
           fi
-          
-          # 2. Try Pulling from GHCR
+
+          # 2. Pull from GHCR (normal path after base-image.yml has run)
+          echo "🔍 Cache miss — pulling from GHCR..."
           if docker pull "$IMAGE" 2>/dev/null; then
-            echo "✅ Image $FINGERPRINT found in registry."
+            echo "✅ Pulled $IMAGE from GHCR. Saving tar for cache..."
             docker save -o ci-image.tar "$IMAGE"
-            echo "loaded=true" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
-          # 3. Build-on-Demand (Safe Fallback)
-          echo "exists=false" >> $GITHUB_OUTPUT
-          echo "loaded=false" >> $GITHUB_OUTPUT
 
-      - name: Set up QEMU
-        if: steps.image_logic.outputs.loaded == 'false'
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        if: steps.image_logic.outputs.loaded == 'false'
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
-
-      - name: Log in to the Container registry
-        if: steps.image_logic.outputs.loaded == 'false'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: "Build-on-Demand: Build and push CI image"
-        if: steps.image_logic.outputs.loaded == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          target: ci
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}-ci:${{ steps.image_logic.outputs.fingerprint }}
-            ghcr.io/${{ github.repository }}-ci:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: "Post-Build: Save Image to Cache"
-        if: steps.image_logic.outputs.loaded == 'false'
-        run: |
-          IMAGE="ghcr.io/${{ github.repository }}-ci:${{ steps.image_logic.outputs.fingerprint }}"
-          echo "📦 Pulling built image to local daemon for caching..."
-          docker pull "$IMAGE"
+          # 3. Build-on-demand fallback (amd64 only, no push)
+          # Triggered when: Dockerfile changed in a PR before base-image.yml ran on main.
+          # base-image.yml is the canonical builder; this is a convenience fallback only.
+          echo "⚠️  Image not in GHCR. Building on-demand (amd64, no push)..."
+          docker buildx build \
+            --load \
+            --target ci \
+            --build-arg RUST_VERSION="$(make -s print-rust-version)" \
+            -t "$IMAGE" \
+            -t "ghcr.io/${{ github.repository }}-ci:latest" \
+            .
           docker save -o ci-image.tar "$IMAGE"
+          echo "✅ Build-on-demand complete. Tar saved for downstream jobs."
 
-      - name: "Global: Git Safety"
-        run: git config --global --add safe.directory "*"
-
-      - name: Cache Cargo (registry, git, target/ci, sccache)
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cargo-cache/registry
-            .cargo-cache/git
-            .cargo-cache/sccache
-            target/ci
-          key: cargo-cache-v1-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
-          restore-keys: |
-            cargo-cache-v1-${{ hashFiles('**/Cargo.lock') }}-
-            cargo-cache-v1-
-
-      - name: "CI: Build (Pre-warm sccache)"
-        env:
-          CARGO_HOME: ${{ github.workspace }}/.cargo-cache
-          CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
-          SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
-        run: ./dflow ci-verify build-all
-
-      - name: "CI: Align Permissions (Fix Cache Write)"
-        if: always()
-        run: |
-          sudo chmod -R 777 .cargo-cache target/ci || true
-          sudo chown -R $(id -u):$(id -g) .cargo-cache target/ci || true
-
-  # Unified Verification Job (Sequential Steps, Persistent Container, Clear Status)
-  verify:
-    name: "Verify"
-    needs: build
+  # ---------------------------------------------------------------------------
+  # Phase 2 — Build: compile all targets in release mode inside the CI container.
+  # Warms the cargo/sccache cache; saves it for all downstream Verify jobs.
+  # Only compilation — clippy runs separately in the Lint job for clear PR status.
+  # ---------------------------------------------------------------------------
+  build:
+    name: "Build"
+    needs: prep
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+      packages: read
     container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
+      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
+      options: --security-opt seccomp=unconfined
     env:
       IS_CONTAINER: "true"
       CARGO_HOME: ${{ github.workspace }}/.cargo-cache
@@ -167,10 +168,60 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Global: Git Safety"
-        run: git config --global --add safe.directory "*"
+      - name: "Git Safety"
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Cache Cargo (Restore target/ci and sccache)
+      # Restore + save: Build is the only job that writes the cargo cache.
+      # Key has no run_id — enables cross-run reuse when deps+toolchain unchanged.
+      - name: "Restore/Save Cargo Cache"
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            .cargo-cache/sccache
+            target/ci
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      # build-ci = cargo build --release --all-targets (no clippy)
+      # Compiles all crates including test targets so Verify jobs hit the cache.
+      - name: "Build All Release Targets"
+        run: ./dflow ci-verify build-ci
+
+      # Container jobs run as root; cache post-step runs as runner user.
+      # Make cached dirs world-readable so the cache action can upload them.
+      - name: "Fix Cache Permissions"
+        if: always()
+        run: chmod -R a+rw .cargo-cache target/ci || true
+
+  # ---------------------------------------------------------------------------
+  # Phase 3 — Verify: parallel jobs, each a separate PR check.
+  # All restore cargo cache (read-only). None save — only Build saves.
+  # ---------------------------------------------------------------------------
+
+  lint:
+    name: "Lint"
+    needs: [prep, build]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
+      options: --security-opt seccomp=unconfined
+    env:
+      IS_CONTAINER: "true"
+      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
+      SCCACHE_GHA_ENABLED: "false"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Git Safety"
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: "Restore Cargo Cache"
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -178,25 +229,89 @@ jobs:
             .cargo-cache/git
             .cargo-cache/sccache
             target/ci
-          key: cargo-cache-v1-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: |
-            cargo-cache-v1-${{ hashFiles('**/Cargo.lock') }}-
-            cargo-cache-v1-
+            cargo-${{ runner.os }}-
 
-      - name: "CI: Format Check"
-        run: ./dflow ci-verify fmt
+      # Two named steps = two visible entries in the job log.
+      # If format fails, clippy step is skipped — clear which check failed.
+      - name: "Format Check"
+        run: cargo fmt --all -- --check
 
-      - name: "CI: Lint (Clippy)"
-        run: ./dflow ci-verify lint
+      - name: "Clippy"
+        run: cargo clippy --release --all-targets --features native-browser -- -D warnings
 
-      - name: "CI: Build (Verify)"
-        run: ./dflow ci-verify build
+  test:
+    name: "Test"
+    needs: [prep, build]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
+      options: --security-opt seccomp=unconfined
+    env:
+      IS_CONTAINER: "true"
+      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
+      SCCACHE_GHA_ENABLED: "false"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: "CI: Tests (Nextest)"
+      - name: "Git Safety"
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: "Restore Cargo Cache"
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            .cargo-cache/sccache
+            target/ci
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: "Tests (Nextest)"
         run: ./dflow ci-verify test-ci
 
-      - name: "CI: Smoke Test"
+  smoke-verify:
+    name: "Smoke + Verify"
+    needs: [prep, build]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
+      options: --security-opt seccomp=unconfined
+    env:
+      IS_CONTAINER: "true"
+      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
+      SCCACHE_GHA_ENABLED: "false"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Git Safety"
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: "Restore Cargo Cache"
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cargo-cache/registry
+            .cargo-cache/git
+            .cargo-cache/sccache
+            target/ci
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      # smoke-test depends on `release` (make target), which finds the cached binary.
+      - name: "Smoke Test"
         run: ./dflow ci-verify smoke-test
 
-      - name: "CI: Final Verification"
+      # verify depends on `dist` → `release` (make targets); uses cached release binary.
+      - name: "Final Verification"
         run: ./dflow ci-verify verify
