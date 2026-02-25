@@ -34,6 +34,8 @@ jobs:
       contents: read
       actions: write
       packages: write
+    outputs:
+      fingerprint: ${{ steps.image_logic.outputs.fingerprint }}
     steps:
       - uses: actions/checkout@v4
 
@@ -140,24 +142,13 @@ jobs:
     name: "fmt"
     needs: build
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
+    env:
+      IS_CONTAINER: "true"
     steps:
       - uses: actions/checkout@v4
 
-      - name: "CI: Image Cache (Restore)"
-        uses: actions/cache/restore@v4
-        with:
-          path: ci-image.tar
-          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
-
-      - name: "CI: Load Image"
-        run: |
-          if [ -f ci-image.tar ]; then
-            docker load -i ci-image.tar
-          else
-            # Fallback to pull if cache is missing (safety)
-            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
-            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
-          fi
       - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
@@ -178,24 +169,13 @@ jobs:
     name: "clippy"
     needs: build
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
+    env:
+      IS_CONTAINER: "true"
     steps:
       - uses: actions/checkout@v4
 
-      - name: "CI: Image Cache (Restore)"
-        uses: actions/cache/restore@v4
-        with:
-          path: ci-image.tar
-          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
-
-      - name: "CI: Load Image"
-        run: |
-          if [ -f ci-image.tar ]; then
-            docker load -i ci-image.tar
-          else
-            # Fallback to pull if cache is missing (safety)
-            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
-            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
-          fi
       - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
         with:
@@ -216,22 +196,12 @@ jobs:
     name: "test"
     needs: build
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
+    env:
+      IS_CONTAINER: "true"
     steps:
       - uses: actions/checkout@v4
-      - name: "CI: Image Cache (Restore)"
-        uses: actions/cache/restore@v4
-        with:
-          path: ci-image.tar
-          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
-
-      - name: "CI: Load Image"
-        run: |
-          if [ -f ci-image.tar ]; then
-            docker load -i ci-image.tar
-          else
-            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
-            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
-          fi
 
       - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
@@ -253,23 +223,12 @@ jobs:
     name: "smoke-test"
     needs: build
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
+    env:
+      IS_CONTAINER: "true"
     steps:
       - uses: actions/checkout@v4
-
-      - name: "CI: Image Cache (Restore)"
-        uses: actions/cache/restore@v4
-        with:
-          path: ci-image.tar
-          key: ${{ runner.os }}-docker-image-${{ hashFiles('Dockerfile') }}
-
-      - name: "CI: Load Image"
-        run: |
-          if [ -f ci-image.tar ]; then
-            docker load -i ci-image.tar
-          else
-            FINGERPRINT=$(openssl dgst -sha256 Dockerfile 2>/dev/null | sed 's/.* //' | cut -c1-12)
-            docker pull "ghcr.io/${{ github.repository }}-ci:$FINGERPRINT"
-          fi
 
       - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4

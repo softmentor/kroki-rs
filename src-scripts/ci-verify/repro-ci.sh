@@ -127,6 +127,14 @@ fi
 # --- Normal ci-verify flow: version check upfront, then container repro ---
 run_version_check || true
 
+# Fast-path: If already inside the CI container, execute directly.
+if [ "$IS_CONTAINER" = "true" ]; then
+    echo "✅ Already inside CI container. Executing $TARGET directly..."
+    # Shift arguments if they was used for shell/version-check (already handled or not applicable)
+    make $TARGET JOBS=${JOBS:-1} "$@"
+    exit 0
+fi
+
 CLEANUP=${CLEANUP:-false}
 export DOCKER_BUILDKIT=1
 

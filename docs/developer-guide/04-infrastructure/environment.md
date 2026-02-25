@@ -41,10 +41,46 @@ The system's identity is derived from its `Dockerfile`.
 To ensure absolute parity, the `repro-ci.sh` script includes a build-time guard. It verifies that the project's required Rust version (from `rust-toolchain.toml`) matches the version baked into the container.
 
 If a mismatch is detected, the build fails with instructions to update the `Dockerfile` and rebuild the base image, preventing "invisible" toolchain downloads during CI.
-### Local Fingerprint Caching
-The `repro-ci.sh` script automatically tags pulled images with their fingerprint locally. This enables instant container startup on subsequent runs by skipping network checks.
+## 3. CI Infrastructure & Reproducibility
 
-## 3. The `dflow` Toolsuite
+Kroki-rs uses a dual-flow CI architecture to ensure absolute reproducibility between local development and GitHub Actions while optimizing for performance.
+
+### Dual-Flow Architecture
+
+The architecture relies on a "fast-path" detection in `repro-ci.sh`.
+
+```mermaid
+sequenceDiagram
+    participant U as Developer (Local)
+    participant GH as GitHub Actions
+    participant R as repro-ci.sh
+    participant D as Docker Host
+    participant C as CI Container
+
+    Note over U, C: Local Flow (make cirun)
+    U->>R: Execute repro-ci.sh
+    R->>D: docker run --rm ... CI_IMAGE
+    D->>C: Start Container
+    C->>R: make [TARGET]
+    R-->>U: Success/Failure
+
+    Note over GH, C: GHA Flow (ci-build.yml)
+    GH->>C: Start Runner inside CI Container (container: image)
+    GH->>R: Execute repro-ci.sh
+    Note right of R: IS_CONTAINER=true (Fast-Path)
+    R->>R: detect fast-path
+    R->>C: make [TARGET]
+    C-->>GH: Success/Failure
+```
+
+### Portable Lockfiles (`Cargo.lock`)
+
+To prevent `--locked` failures in CI when using different feature sets (like `native-browser`) or target platforms, we maintain a "complete" lockfile.
+
+- **The Problem**: By default, `Cargo.lock` may only resolve dependencies for the current active features and host platform.
+- **The Solution**: Every version bump (`make bump`) triggers a full metadata resolution via `cargo metadata --all-features`. This ensures that `Cargo.lock` contains bit-identical dependency versions for ALL features and ALL platforms (Windows/Linux/macOS) supported by the project.
+
+## 4. The `dflow` Toolsuite
 
 The `dflow` script is the primary entry point for the infrastructure lifecycle.
 
