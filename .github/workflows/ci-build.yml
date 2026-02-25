@@ -55,6 +55,7 @@ jobs:
       packages: write
     outputs:
       fingerprint: ${{ steps.fingerprint.outputs.hash }}
+      image: ${{ steps.fingerprint.outputs.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -73,7 +74,11 @@ jobs:
         run: |
           HASH=$(make -s print-base-fingerprint)
           echo "hash=$HASH" >> $GITHUB_OUTPUT
+          IMAGE="ghcr.io/${{ github.repository }}-ci:$HASH"
+          IMAGE=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
           echo "📌 Fingerprint: $HASH"
+          echo "📌 Image: $IMAGE"
 
       - name: "Prune Redundant Caches"
         continue-on-error: true
@@ -93,8 +98,7 @@ jobs:
       - name: "Ensure CI Image Available"
         id: ensure_image
         run: |
-          FINGERPRINT="${{ steps.fingerprint.outputs.hash }}"
-          IMAGE="ghcr.io/${{ github.repository }}-ci:${FINGERPRINT}"
+          IMAGE="${{ steps.fingerprint.outputs.image }}"
 
           # 1. Load from tar cache (fastest — avoids any network)
           if [ -f ci-image.tar ]; then
@@ -131,8 +135,7 @@ jobs:
       - name: "Verify Documentation (MyST)"
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || contains(github.ref, 'release/')
         run: |
-          FINGERPRINT="${{ steps.fingerprint.outputs.hash }}"
-          IMAGE="ghcr.io/${{ github.repository }}-ci:${FINGERPRINT}"
+          IMAGE="${{ steps.fingerprint.outputs.image }}"
           docker run --rm -v "$(pwd):/app" -w /app "$IMAGE" make doc-myst
 
   # ---------------------------------------------------------------------------
@@ -149,7 +152,10 @@ jobs:
       actions: write
       packages: read
     container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
+      image: ${{ needs.prep.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
       options: --security-opt seccomp=unconfined
     env:
       IS_CONTAINER: "true"
@@ -198,7 +204,10 @@ jobs:
     needs: [prep, build]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
+      image: ${{ needs.prep.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
       options: --security-opt seccomp=unconfined
     permissions:
       contents: read
