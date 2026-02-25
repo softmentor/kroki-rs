@@ -74,12 +74,10 @@ Major internal architecture shift. Remove Node.js and Java runtime dependencies 
 
 ## 🟢 v0.0.6: Release Orchestration \u0026 Migration Cleanup (Completed)
 
-Final infrastructure hardening and removal of legacy runtime dependencies.
-
-- [x] **dflow Release Automation**: Integrated \`--release\` flag for automated versioning and branch management.
-- [x] **Multi-level Version Sync**: Automated verification of version consistency across Cargo, Docs, and Changelog.
-- [x] **Automated Release Reporting**: Detailed verification reports per-release, attached as GitHub assets.
-- [x] **Final Playwright removal**: Complete transition to native Rust \`headless_chrome\` core.
+## 🟢 v0.0.7: CI/CD Performance \u0026 Diagnostics (Planned)
+- [ ] **CI Cache Optimization**: Align build profiles and pre-warm clippy for 2x faster fan-out jobs.
+- [ ] **Proactive Diagnostics**: Improved \`dflow ci-verify\` error reporting for container environments.
+- [ ] **Developer Onboarding**: Updated documentation for troubleshooting and prerequisites.
 
 ## 🔮 v0.1.0: Modular Crate Workspace \u0026 Unified Vision
 
