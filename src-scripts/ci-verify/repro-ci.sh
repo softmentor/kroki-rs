@@ -147,7 +147,7 @@ echo "🚀 Using container engine: $DOCKER_CMD"
 if ! $DOCKER_CMD system info >/dev/null 2>&1; then
     echo "❌ Error: Container engine ($DOCKER_CMD) is not responsive."
     echo "   Ensure Podman/Docker is running. If using Podman, you might need to run:"
-    echo "   make setup"
+    echo "   ./dflow setup"
     exit 1
 fi
 
