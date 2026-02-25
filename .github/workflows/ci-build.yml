@@ -121,6 +121,9 @@ jobs:
           docker pull "$IMAGE"
           docker save -o ci-image.tar "$IMAGE"
 
+      - name: "Global: Git Safety"
+        run: git config --global --add safe.directory "${{ github.workspace }}"
+
       - name: Cache Cargo (registry, git, target/ci, sccache)
         uses: actions/cache@v4
         with:
@@ -135,12 +138,16 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: "CI: Build (Pre-warm sccache)"
+        env:
+          CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+          SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
         run: ./dflow ci-verify build-all
 
       - name: "CI: Align Permissions (Fix Cache Write)"
         if: always()
         run: |
-          sudo chown -R 1001:1001 .cargo-cache target/ci || true
+          sudo chown -R $(id -u):$(id -g) .cargo-cache target/ci || true
 
   # Unified Verification Job (Sequential Steps, Persistent Container, Clear Status)
   verify:
@@ -158,6 +165,9 @@ jobs:
       RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
+
+      - name: "Global: Git Safety"
+        run: git config --global --add safe.directory "${{ github.workspace }}"
 
       - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
