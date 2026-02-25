@@ -9,17 +9,20 @@ CONTEXT_NAME="$1"
 shift
 COMMAND="$@"
 
-if [ -z "$GITHUB_TOKEN" ] || [ -z "$GITHUB_SHA" ] || [ -z "$GITHUB_REPOSITORY" ]; then
+# Detect the correct SHA to report on (Head SHA for PRs, usual SHA for Push)
+REPORT_SHA="${GITHUB_HEAD_SHA:-$GITHUB_SHA}"
+
+if [ -z "$GITHUB_TOKEN" ] || [ -z "$REPORT_SHA" ] || [ -z "$GITHUB_REPOSITORY" ]; then
     echo "ℹ️  Not in GitHub Actions or missing tokens. Executing command directly..."
     eval "$COMMAND"
     exit $?
 fi
 
-API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${REPORT_SHA}"
 TARGET_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
 # 1. Report Status: pending
-echo "🚀 Reporting Status: pending ($CONTEXT_NAME)"
+echo "🚀 Reporting Status: pending ($CONTEXT_NAME) on $REPORT_SHA"
 curl -s -X POST \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -44,7 +47,7 @@ if [ $EXIT_CODE -ne 0 ]; then
 fi
 
 # 4. Finalize Status
-echo "🏁 Finalizing Status: $STATE ($CONTEXT_NAME)"
+echo "🏁 Finalizing Status: $STATE ($CONTEXT_NAME) on $REPORT_SHA"
 curl -s -X POST \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
