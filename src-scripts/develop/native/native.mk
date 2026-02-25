@@ -113,6 +113,7 @@ quick: build test
 bump:
 	@if [ -z "$(VERSION)" ]; then echo "Usage: make bump VERSION=x.y.z"; exit 1; fi
 	@sed -i.bak '2,10s/^version = ".*"/version = "$(VERSION)"/' Cargo.toml
+	@cargo metadata --format-version=1 --locked > /dev/null || cargo metadata --format-version=1 > /dev/null
 	@sed -i.bak 's/logo_text: Kroki-rs V.*/logo_text: Kroki-rs V$(VERSION)/' docs/myst.yml
 	@rm -f Cargo.toml.bak docs/myst.yml.bak
 
