@@ -35,36 +35,9 @@ on:
       - '.DS_Store'
       - 'LICENSE'
 
-# Shared env for all container jobs (see x-container-env anchor below)
 env:
   SCCACHE_GHA_ENABLED: "false"
   RUSTC_WRAPPER: "sccache"
-
-# ---------------------------------------------------------------------------
-# Reusable YAML anchors
-# ---------------------------------------------------------------------------
-x-container-env: &container-env
-  IS_CONTAINER: "true"
-  # CARGO_HOME: workspace-relative so cache action and cargo see the same path
-  CARGO_HOME: ${{ github.workspace }}/.cargo-cache
-  # CARGO_TARGET_DIR: workspace-relative — identical absolute path in Build and
-  # all Verify jobs, so cargo fingerprints recorded during Build are valid on restore
-  CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
-  SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
-  SCCACHE_GHA_ENABLED: "false"
-  RUSTC_WRAPPER: "sccache"
-
-x-cargo-cache-paths: &cargo-cache-paths |
-  .cargo-cache/registry
-  .cargo-cache/git
-  .cargo-cache/sccache
-  target/ci
-
-x-cargo-cache-key: &cargo-cache-key >-
-  cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
-
-x-cargo-restore-keys: &cargo-restore-keys |
-  cargo-${{ runner.os }}-
 
 jobs:
   # ---------------------------------------------------------------------------
