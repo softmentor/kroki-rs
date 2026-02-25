@@ -154,13 +154,15 @@ echo "📦 Ensuring CI environment image is ready (fingerprint: ${CI_FINGERPRINT
 if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>&1; then
     echo "✅ Found CI image locally (fingerprint: ${CI_FINGERPRINT})."
     $DOCKER_CMD tag "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" "$CI_IMAGE_LOCAL"
-elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
+elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE"; then
     echo "✅ Pulled CI image from ghcr.io (fingerprint: ${CI_FINGERPRINT})."
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
 else
-    echo "❌ Error: CI image ${CI_FINGERPRINT} not found in GHCR."
-    echo "   Please ensure the 'Build Base Image' workflow has completed on GitHub."
+    echo "❌ Error: Failed to pull CI image from GHCR."
+    echo "   Registry: ${CI_IMAGE_REMOTE}"
+    echo "   Fingerprint: ${CI_FINGERPRINT}"
+    echo "   Possible causes: No internet, Podman not running, Image not built yet, or Auth required."
     exit 1
 fi
 
