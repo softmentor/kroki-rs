@@ -60,6 +60,13 @@ setup:
 devrun: $(_PRE_CLEAN) fmt lint build test smoke-test
 	@echo "✅ Local native development verification complete."
 
+.PHONY: devrun-p
+devrun-p: $(_PRE_CLEAN)
+	@echo "🚀 Running parallel local verification (fmt, lint, build)..."
+	@$(MAKE) -j3 fmt lint build
+	@$(MAKE) test smoke-test
+	@echo "✅ Local native development verification (parallel) complete."
+
 .PHONY: cirun
 cirun: $(_PRE_CLEAN)
 	@echo "🚀 Running container-based CI verification (ci-verify)..."
@@ -72,6 +79,13 @@ cishell:
 .PHONY: ghrun
 ghrun: setup $(_PRE_CLEAN) fmt lint build test-ci smoke-test verify
 	@echo "🌟 Production-level verification (GitHub/Remote) complete."
+
+.PHONY: ghrun-p
+ghrun-p: setup $(_PRE_CLEAN)
+	@echo "🚀 Running parallel production verification (fmt, lint, build)..."
+	@$(MAKE) -j3 fmt lint build
+	@$(MAKE) test-ci smoke-test verify
+	@echo "🌟 Production-level verification (parallel) complete."
 
 .PHONY: teardown
 teardown: clean

@@ -73,6 +73,29 @@ sequenceDiagram
     C-->>GH: Success/Failure
 ```
 
+### Reproducibility Matrix
+
+The Host and Container flows are designed to be functionally identical, with the only difference being the **caching mechanism** used for performance.
+
+| Component | Local (Host) | CI (Container) | Reproducibility |
+| :--- | :--- | :--- | :--- |
+| **OS** | macOS/Linux | Linux (Debian) | 100% (Bit-Identical) |
+| **Rust Toolchain** | Native (rustup) | Baked-in (system) | Verified by `repro-ci.sh` |
+| **Features** | `native-browser` | `native-browser` | Explicitly passed |
+| **Dependencies** | Target-agnostic | Target-agnostic | Pin via `Cargo.lock` |
+| **Caching** | Local `~/.cargo` | Volume Mounts | Performance only |
+
+### Parallel Verification
+
+To speed up local development, you can run independent verification steps in parallel using the `-p` targets.
+
+```bash
+# Run fmt, lint, and build in parallel (uses up to 3 cores)
+make devrun-p
+# Or for containerized producing runs
+make ghrun-p
+```
+
 ### Portable Lockfiles (`Cargo.lock`)
 
 To prevent `--locked` failures in CI when using different feature sets (like `native-browser`) or target platforms, we maintain a "complete" lockfile.
