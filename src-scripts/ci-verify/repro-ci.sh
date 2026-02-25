@@ -183,7 +183,8 @@ else
     echo "❌ Error: Failed to pull CI image from GHCR."
     echo "   Registry: ${CI_IMAGE_REMOTE}"
     echo "   Fingerprint: ${CI_FINGERPRINT}"
-    echo "   Possible causes: No internet, Podman not running, Image not built yet, or Auth required."
+    echo "   Reason: Dockerfile has changed. To ensure portability, images must be generated on GitHub."
+    echo "   Action: Wait for GHA 'Base Image' workflow to complete on main/release branch."
     exit 1
 fi
 

@@ -4,10 +4,9 @@
 # Local equivalent: ./dflow ci-verify  (uses same image, same make targets, consistent paths)
 #
 # Job graph:
-#   prep ──► build ──► lint          (fmt-check + clippy, parallel with test/smoke-verify)
-#        │          ├──► test         (nextest, parallel with lint/smoke-verify)
-#        │          └──► smoke-verify (smoke-test + dist verify, parallel with lint/test)
-#        └──────────────────────────── (prep also feeds image tag to all container jobs)
+#   prep ──► build ──► verify  (runs fmt, clippy, test, smoke-test concurrently;
+#        │                       reports each as a separate PR commit status)
+#        └──────────────────── (prep also feeds image tag to all container jobs)
 #
 # Cache key: cargo-<runner.os>-<Cargo.lock + rust-toolchain hash>
 #   - Invalidates on dep changes (Cargo.lock) or toolchain bump (rust-toolchain.toml)
@@ -104,7 +103,13 @@ jobs:
           if [ -f ci-image.tar ]; then
             echo "📦 Loading CI image from cache tar..."
             docker load -i ci-image.tar
-            echo "✅ Image loaded from cache."
+            # Downstream container: jobs pull from GHCR (different runner), so ensure it's there.
+            # This handles the case where the tar was cached from a local-only build.
+            if ! docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+              echo "📤 Image loaded from tar but missing in GHCR — pushing..."
+              docker push "$IMAGE"
+            fi
+            echo "✅ Image ready (local + GHCR)."
             exit 0
           fi
 
