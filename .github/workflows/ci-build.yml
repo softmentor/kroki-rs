@@ -170,29 +170,28 @@ jobs:
         run: chmod -R a+rw .cargo-cache target/ci || true
 
   # ---------------------------------------------------------------------------
-  # Phase 3 — Verify: parallel jobs, each a separate PR check.
-  # All restore cargo cache (read-only). None save — only Build saves.
+  # Phase 3 — Verify: Single job pulled once, reporting multiple PR checks via API.
+  # All checks run in parallel inside the SAME container instance.
   # ---------------------------------------------------------------------------
-
-  lint:
-    name: "lint"
+  verify:
+    name: "verify"
     needs: [prep, build]
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
-      options: --security-opt seccomp=unconfined
-    env:
-      IS_CONTAINER: "true"
-      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
-      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
-      SCCACHE_GHA_ENABLED: "false"
-      RUSTC_WRAPPER: "sccache"
+    permissions:
+      contents: read
+      checks: write
+      packages: read
     steps:
       - uses: actions/checkout@v4
 
       - name: "Git Safety"
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: "Restore Image Cache"
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-image.tar
+          key: docker-ci-${{ hashFiles('Dockerfile') }}
 
       - name: "Restore Cargo Cache"
         uses: actions/cache/restore@v4
@@ -206,85 +205,53 @@ jobs:
           restore-keys: |
             cargo-${{ runner.os }}-
 
-      # Two named steps = two visible entries in the job log.
-      # If format fails, clippy step is skipped — clear which check failed.
-      - name: "Format Check"
-        run: cargo fmt --all -- --check
+      - name: "Start Unified CI Container"
+        run: |
+          # 1. Load image (fastest if cached)
+          if [ -f ci-image.tar ]; then
+            docker load -i ci-image.tar
+          else
+            docker pull "ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}"
+          fi
 
-      - name: "Clippy"
-        run: cargo clippy --release --all-targets --features native-browser -- -D warnings
+          # 2. Start persistent container
+          docker run -d --name ci-container \
+            -v "$(pwd):/app" \
+            -v "$(pwd)/target/ci:/app/target-ci" \
+            -v "$(pwd)/.cargo-cache/registry:/usr/local/cargo/registry" \
+            -v "$(pwd)/.cargo-cache/git:/usr/local/cargo/git" \
+            -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
+            -w /app \
+            -e IS_CONTAINER=true \
+            -e CARGO_TARGET_DIR=/app/target-ci \
+            -e SCCACHE_DIR=/root/.cache/sccache \
+            -e RUSTC_WRAPPER=sccache \
+            -e SCCACHE_GHA_ENABLED=false \
+            --security-opt seccomp=unconfined \
+            "ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}" \
+            tail -f /dev/null
 
-  test:
-    name: "test"
-    needs: [prep, build]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
-      options: --security-opt seccomp=unconfined
-    env:
-      IS_CONTAINER: "true"
-      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
-      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
-      SCCACHE_GHA_ENABLED: "false"
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: "Git Safety"
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: "Restore Cargo Cache"
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .cargo-cache/registry
-            .cargo-cache/git
-            .cargo-cache/sccache
-            target/ci
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
-
-      - name: "Tests (Nextest)"
-        run: ./dflow ci-verify test-ci
-
-  smoke-verify:
-    name: "smoke-verify"
-    needs: [prep, build]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
-      options: --security-opt seccomp=unconfined
-    env:
-      IS_CONTAINER: "true"
-      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
-      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
-      SCCACHE_GHA_ENABLED: "false"
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: "Git Safety"
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: "Restore Cargo Cache"
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .cargo-cache/registry
-            .cargo-cache/git
-            .cargo-cache/sccache
-            target/ci
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
-
-      # smoke-test depends on `release` (make target), which finds the cached binary.
-      - name: "Smoke Test"
-        run: ./dflow ci-verify smoke-test
-
-      # verify depends on `dist` → `release` (make targets); uses cached release binary.
-      - name: "Final Verification"
-        run: ./dflow ci-verify verify
+      - name: "Execute Concurrent PR Checks"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          chmod +x src-scripts/gh-tasks/gh-check-wrapper.sh
+          
+          # Define checks as background tasks
+          # Wrap each in gh-check-wrapper to emit fine-grained PR statuses
+          
+          bash src-scripts/gh-tasks/gh-check-wrapper.sh "fmt" \
+            "docker exec ci-container cargo fmt --all -- --check" &
+          
+          bash src-scripts/gh-tasks/gh-check-wrapper.sh "clippy" \
+            "docker exec ci-container cargo clippy --release --all-targets --features native-browser -- -D warnings" &
+          
+          bash src-scripts/gh-tasks/gh-check-wrapper.sh "test" \
+            "docker exec ci-container ./dflow ci-verify test-ci" &
+          
+          bash src-scripts/gh-tasks/gh-check-wrapper.sh "smoke-test" \
+            "docker exec ci-container bash -c './dflow ci-verify smoke-test && ./dflow ci-verify verify'" &
+          
+          # Wait for all background checks to complete
+          wait
