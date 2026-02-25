@@ -18,7 +18,7 @@ Legacy approaches rely on manual local setup, which inevitably leads to **Enviro
 
 **Kroki-rs** eliminates drift by treating its infrastructure as code. Every verification, from local development to the final release, happens inside a **Deterministic Container**.
 
-### The 3-Tier Architecture
+### The 4-Tier Architecture
 
 We use a modular, highly-optimized pipeline designed for speed and absolute reproducibility:
 
@@ -38,8 +38,13 @@ graph TD
     end
 
     subgraph "Tier 3: Distribution"
-        G -->|Success| H[multi-arch OCI Images]
-        G -->|Success| I[Native Binaries]
+        G -->|Success| I[Native Binaries + GitHub Release]
+    end
+
+    subgraph "Tier 4: Packaging"
+        I -->|Release Success| J[Production OCI Image]
+        J --> K[Smoke Test]
+        K -->|Pass| L["GHCR: kroki-rs:version"]
     end
 ```
 

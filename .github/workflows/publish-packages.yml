@@ -1,0 +1,175 @@
+# Publish Production Docker Image
+# Triggered after a successful release. Builds the final-stage production image,
+# runs smoke tests, and pushes to GHCR with version + latest tags.
+#
+# Image: ghcr.io/softmentor/kroki-rs:<version>
+# Contains: base system deps (Graphviz, D2, Chromium) + compiled kroki-rs binary.
+# Does NOT contain: Rust toolchain, sccache, nextest, or any CI-only tooling.
+#
+# Traceability: OCI labels link every image to its git tag, SHA, and source repo.
+
+name: Publish Packages
+
+on:
+  workflow_run:
+    workflows: ["Project Release (Tags Only)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version tag to publish (e.g., v0.0.8)"
+        required: true
+        type: string
+
+jobs:
+  publish-image:
+    name: "Build & Publish Production Image"
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       startsWith(github.event.workflow_run.head_branch, 'v'))
+    permissions:
+      contents: read
+      packages: write
+      id-token: write   # For future Cosign / SLSA attestation
+    steps:
+      - name: "Resolve Version Tag"
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.event.workflow_run.head_branch }}"
+          fi
+          # Strip leading 'v' for semver label (v0.0.8 -> 0.0.8)
+          SEMVER="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "semver=$SEMVER" >> $GITHUB_OUTPUT
+          echo "Version: $TAG (semver: $SEMVER)"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.version.outputs.tag }}
+
+      - name: "Set up QEMU"
+        uses: docker/setup-qemu-action@v3
+
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Login to GHCR"
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Extract Metadata (OCI Labels)"
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.tag }}
+            type=raw,value=latest
+
+      - name: "Build and Load (amd64 for smoke test)"
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: kroki-rs-smoke:test
+          build-args: |
+            RUST_VERSION=${{ steps.rust_version.outputs.version || '' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: "Smoke Test - Health Check"
+        run: |
+          echo "Starting kroki-rs container for smoke testing..."
+          docker run -d --name kroki-smoke \
+            -p 8000:8000 -p 8081:8081 \
+            kroki-rs-smoke:test
+
+          echo "Waiting for server to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8081/health >/dev/null 2>&1; then
+              echo "Server is healthy after ${i}s"
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "Server failed to start within 30s"
+              docker logs kroki-smoke
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: "Smoke Test - Version Endpoint"
+        run: |
+          VERSION=$(curl -sf http://localhost:8081/health | jq -r '.version // empty' 2>/dev/null || true)
+          echo "Reported version: ${VERSION:-'(not in health response)'}"
+          echo "Expected: ${{ steps.version.outputs.semver }}"
+
+      - name: "Smoke Test - Diagram Rendering"
+        run: |
+          # Test Graphviz DOT rendering (core functionality)
+          HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" \
+            -X POST http://localhost:8000/graphviz/svg \
+            -H "Content-Type: text/plain" \
+            -d 'digraph { A -> B }')
+          echo "Graphviz render: HTTP $HTTP_CODE"
+          [ "$HTTP_CODE" = "200" ] || { echo "Graphviz rendering failed"; exit 1; }
+
+          # Test D2 rendering
+          HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" \
+            -X POST http://localhost:8000/d2/svg \
+            -H "Content-Type: text/plain" \
+            -d 'x -> y')
+          echo "D2 render: HTTP $HTTP_CODE"
+          [ "$HTTP_CODE" = "200" ] || { echo "D2 rendering failed"; exit 1; }
+
+          echo "All smoke tests passed."
+
+      - name: "Cleanup Smoke Container"
+        if: always()
+        run: docker rm -f kroki-smoke 2>/dev/null || true
+
+      # --- Future: Cosign Signing ---
+      # - name: "Sign Image with Cosign"
+      #   uses: sigstore/cosign-installer@v3
+      # - run: cosign sign --yes ghcr.io/${{ github.repository }}@${{ steps.push.outputs.digest }}
+
+      # --- Future: SBOM Generation ---
+      # - name: "Generate SBOM"
+      #   uses: anchore/sbom-action@v0
+      #   with:
+      #     image: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.semver }}
+
+      - name: "Build and Push (multi-arch)"
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: "Summary"
+        run: |
+          echo "## Production Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | \`${{ steps.version.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Digest** | \`${{ steps.push.outputs.digest }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Platforms** | linux/amd64, linux/arm64 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Pull** | \`docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.semver }}\` |" >> $GITHUB_STEP_SUMMARY
