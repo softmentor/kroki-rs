@@ -184,6 +184,7 @@ jobs:
       contents: read
       actions: read
       checks: write
+      statuses: write
       packages: read
     env:
       IS_CONTAINER: "true"
