@@ -146,6 +146,11 @@ jobs:
       image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
     env:
       IS_CONTAINER: "true"
+      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
+      SCCACHE_GHA_ENABLED: "false"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
 
@@ -173,6 +178,11 @@ jobs:
       image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
     env:
       IS_CONTAINER: "true"
+      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
+      SCCACHE_GHA_ENABLED: "false"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
 
@@ -200,6 +210,11 @@ jobs:
       image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
     env:
       IS_CONTAINER: "true"
+      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
+      SCCACHE_GHA_ENABLED: "false"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
 
@@ -227,6 +242,11 @@ jobs:
       image: ghcr.io/${{ github.repository }}-ci:${{ needs.build.outputs.fingerprint }}
     env:
       IS_CONTAINER: "true"
+      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
+      SCCACHE_GHA_ENABLED: "false"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
 
