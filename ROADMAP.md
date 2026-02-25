@@ -31,7 +31,7 @@ This document outlines the planned internal improvements and future features for
 - [x] **Health Check API**: Endpoint for container orchestration and uptime monitoring.
 - [x] **Configuration Priority Pattern**: Establish a clear hierarchy for global vs. local settings (TD-07).
 
-## � v0.0.4: Server Production Enablement (Completed)
+## 🟢 v0.0.4: Server Production Enablement (Completed)
 
 Incremental production-grade hardening of the existing server architecture. All features are config-gated and enabled by default, supporting a "dev mode" for fast local debugging.
 
@@ -66,20 +66,24 @@ Major internal architecture shift. Remove Node.js and Java runtime dependencies 
 - [x] **Rust Browser Automation Experiment**: Evaluate `fantoccini` (WebDriver), `headless_chrome` (CDP), and `chromiumoxide` (CDP) as replacements for Node.js + Playwright (ADR 0008).
 - [x] **Native Backend**: Implement pure-Rust browser automation using `headless_chrome` with automated fallback to the legacy Playwright backend.
 
-### PlantUML without Java
-
 ### Design & Architecture
 - [x] **BrowserBackend Trait**: Abstract browser implementations behind a trait for future crate separation (ADR 0008.1).
 - [x] **Composite CI/CD**: Standardized setup across workflows using a reusable composite action (ADR 0010).
 
-## 🟢 v0.0.6: Release Orchestration \u0026 Migration Cleanup (Completed)
+## 🟢 v0.0.6: Release Orchestration & Migration Cleanup (Completed)
+- [x] **Automated Versioning**: Tagging and release automation via `dflow`.
+- [x] **Verification**: Multi-file version synchronization and automated release reporting.
 
-## 🟢 v0.0.7: CI/CD Performance \u0026 Diagnostics (Planned)
-- [ ] **CI Cache Optimization**: Align build profiles and pre-warm clippy for 2x faster fan-out jobs.
-- [ ] **Proactive Diagnostics**: Improved \`dflow ci-verify\` error reporting for container environments.
-- [ ] **Developer Onboarding**: Updated documentation for troubleshooting and prerequisites.
+## 🟢 v0.0.7: CI/CD Performance & Diagnostics (Completed)
+- [x] **CI Cache Optimization**: Aligned build profiles and clippy pre-warm for 2x faster fan-out jobs.
+- [x] **Statuses API**: Transitioned to Commit Statuses API and SHA alignment for reliable PR checks.
 
-## 🔮 v0.1.0: Modular Crate Workspace \u0026 Unified Vision
+## 🟢 v0.0.8: Documentation Infrastructure & CI Finalization (Completed)
+- [x] **MyST Integration**: Included Node.js and MyST in the CI container for local reproducibility.
+- [x] **Conditional Verification**: Gated documentation builds in GHA for high-velocity PRs.
+- [x] **Retroactive History**: Tagged previous missing versions to complete repository integrity.
+
+## 🔮 v0.1.0: Modular Crate Workspace & Unified Vision
 
 Split into multi-crate Cargo workspace for maximum reuse (VS Code plugins, desktop apps, embedded systems).
 

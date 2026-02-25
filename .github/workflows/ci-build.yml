@@ -119,6 +119,13 @@ jobs:
           docker save -o ci-image.tar "$IMAGE"
           echo "✅ Build-on-demand complete. Tar saved for downstream jobs."
 
+      - name: "Verify Documentation (MyST)"
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || contains(github.ref, 'release/')
+        run: |
+          FINGERPRINT="${{ steps.fingerprint.outputs.hash }}"
+          IMAGE="ghcr.io/${{ github.repository }}-ci:${FINGERPRINT}"
+          docker run --rm -v "$(pwd):/app" -w /app "$IMAGE" make doc-myst
+
   # ---------------------------------------------------------------------------
   # Phase 2 — Build: compile all targets in release mode inside the CI container.
   # Warms the cargo/sccache cache; saves it for all downstream Verify jobs.

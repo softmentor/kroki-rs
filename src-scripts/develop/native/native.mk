@@ -65,8 +65,12 @@ fmt:
 fix:
 	cargo clippy --fix --allow-dirty --allow-staged $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
 
+.PHONY: doc-myst
+doc-myst:
+	cd docs && mystmd build --html
+
 .PHONY: doc
-doc:
+doc: doc-myst
 	cargo doc --no-deps --document-private-items $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
 
 .PHONY: clean

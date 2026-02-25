@@ -4,7 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2026-02-25
+
+### Added
+- **Documentation Infrastructure**: Integrated Node.js and MyST into the CI container for self-contained, offline-capable verification.
+- **Automated Doc Validation**: Integrated `make doc-myst` into the `ci-verify` flow (conditional in GHA) to prevent documentation regressions.
+
+### Fixed
+- **CI Reliability**: Finalized transition to Commit Statuses API and robust SHA alignment for PR checks.
+- **Repository Integrity**: Retroactively tagged `v0.0.6` and `v0.0.7` to maintain version history.
+
 ## [0.0.7] - 2026-02-25
+
+> [!NOTE]
+> No documentation site update was published for this release.
 
 ### Fixed
 - **CI Reliability**: Unified CI image naming and resolved registry fetch logic mismatch.
