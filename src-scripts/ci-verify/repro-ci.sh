@@ -126,8 +126,10 @@ if [ "${1:-}" = "--shell" ]; then
         bash
 fi
 
-# --- Normal ci-verify flow: version check upfront, then container repro ---
-run_version_check || true
+# --- Normal ci-verify flow: version check upfront (unless in GHA to avoid redundancy), then container repro ---
+if [ "$GITHUB_ACTIONS" != "true" ]; then
+    run_version_check || true
+fi
 
 CLEANUP=${CLEANUP:-false}
 export DOCKER_BUILDKIT=1

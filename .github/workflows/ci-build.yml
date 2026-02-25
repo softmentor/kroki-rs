@@ -57,6 +57,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: "Verify Version Sync"
+        run: ./dflow ci-verify --version-check
+
       - name: "Compute CI Image Fingerprint"
         id: fingerprint
         run: |
