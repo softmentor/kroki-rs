@@ -177,22 +177,26 @@ jobs:
     name: "verify"
     needs: [prep, build]
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
+      options: --security-opt seccomp=unconfined
     permissions:
       contents: read
       actions: read
       checks: write
       packages: read
+    env:
+      IS_CONTAINER: "true"
+      CARGO_HOME: ${{ github.workspace }}/.cargo-cache
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/ci
+      SCCACHE_DIR: ${{ github.workspace }}/.cargo-cache/sccache
+      SCCACHE_GHA_ENABLED: "false"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
 
       - name: "Git Safety"
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: "Restore Image Cache"
-        uses: actions/cache/restore@v4
-        with:
-          path: ci-image.tar
-          key: docker-ci-${{ hashFiles('Dockerfile') }}
 
       - name: "Restore Cargo Cache"
         uses: actions/cache/restore@v4
@@ -206,32 +210,6 @@ jobs:
           restore-keys: |
             cargo-${{ runner.os }}-
 
-      - name: "Start Unified CI Container"
-        run: |
-          # 1. Load image (fastest if cached)
-          if [ -f ci-image.tar ]; then
-            docker load -i ci-image.tar
-          else
-            docker pull "ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}"
-          fi
-
-          # 2. Start persistent container
-          docker run -d --name ci-container \
-            -v "$(pwd):/app" \
-            -v "$(pwd)/target/ci:/app/target-ci" \
-            -v "$(pwd)/.cargo-cache/registry:/usr/local/cargo/registry" \
-            -v "$(pwd)/.cargo-cache/git:/usr/local/cargo/git" \
-            -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
-            -w /app \
-            -e IS_CONTAINER=true \
-            -e CARGO_TARGET_DIR=/app/target-ci \
-            -e SCCACHE_DIR=/root/.cache/sccache \
-            -e RUSTC_WRAPPER=sccache \
-            -e SCCACHE_GHA_ENABLED=false \
-            --security-opt seccomp=unconfined \
-            "ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}" \
-            tail -f /dev/null
-
       - name: "Execute Concurrent PR Checks"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -243,16 +221,16 @@ jobs:
           # Wrap each in gh-check-wrapper to emit fine-grained PR statuses
           
           bash src-scripts/gh-tasks/gh-check-wrapper.sh "fmt" \
-            "docker exec ci-container cargo fmt --all -- --check" &
+            "cargo fmt --all -- --check" &
           
           bash src-scripts/gh-tasks/gh-check-wrapper.sh "clippy" \
-            "docker exec ci-container cargo clippy --release --all-targets --features native-browser -- -D warnings" &
+            "cargo clippy --release --all-targets --features native-browser -- -D warnings" &
           
           bash src-scripts/gh-tasks/gh-check-wrapper.sh "test" \
-            "docker exec ci-container ./dflow ci-verify test-ci" &
+            "./dflow ci-verify test-ci" &
           
           bash src-scripts/gh-tasks/gh-check-wrapper.sh "smoke-test" \
-            "docker exec ci-container bash -c './dflow ci-verify smoke-test && ./dflow ci-verify verify'" &
+            "bash -c './dflow ci-verify smoke-test && ./dflow ci-verify verify'" &
           
           # Wait for all background checks to complete
           wait
