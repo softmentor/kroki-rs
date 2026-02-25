@@ -93,10 +93,18 @@ BASE_IMAGE_FINGERPRINT := $(shell openssl dgst -sha256 Dockerfile 2>/dev/null | 
 CONTAINER_ENGINE ?= $(shell which podman 2>/dev/null || which docker 2>/dev/null)
 DOCKER_ORG = softmentor
 DOCKER_IMAGE = $(DOCKER_ORG)/kroki-rs
-DOCKER_IMAGE_BASE = $(DOCKER_IMAGE)-base
+DOCKER_IMAGE_BASE = $(DOCKER_IMAGE)-ci
 DOCKER_IMAGE_CI = $(DOCKER_ORG)/kroki-rs-ci
 
 # --- Scripting Utilities ---
 .PHONY: print-base-fingerprint
 print-base-fingerprint:
 	@echo "$(BASE_IMAGE_FINGERPRINT)"
+
+.PHONY: print-ci-image-local
+print-ci-image-local:
+	@echo "$(DOCKER_IMAGE_BASE)"
+
+.PHONY: print-ci-image-remote
+print-ci-image-remote:
+	@echo "ghcr.io/$(DOCKER_IMAGE_BASE):$(BASE_IMAGE_FINGERPRINT)"

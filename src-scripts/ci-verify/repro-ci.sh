@@ -83,8 +83,8 @@ if [ "${1:-}" = "--shell" ]; then
     DOCKER_CMD=$(make -s print-container-engine)
     [ -z "$DOCKER_CMD" ] && { echo "❌ Error: Podman or Docker not found."; exit 1; }
     CI_FINGERPRINT=$(make -s print-base-fingerprint)
-    CI_IMAGE_LOCAL="softmentor/kroki-rs-ci"
-    CI_IMAGE_REMOTE="ghcr.io/softmentor/kroki-rs-ci:${CI_FINGERPRINT}"
+    CI_IMAGE_LOCAL=$(make -s print-ci-image-local)
+    CI_IMAGE_REMOTE=$(make -s print-ci-image-remote)
     echo "📦 Ensuring CI image is ready (fingerprint: ${CI_FINGERPRINT})..."
     if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>&1; then
         echo "✅ Found CI image locally (fingerprint: ${CI_FINGERPRINT})."
@@ -92,6 +92,7 @@ if [ "${1:-}" = "--shell" ]; then
     elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
         echo "✅ Pulled CI image from ghcr.io."
         $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
+        $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL:latest"
         $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
     else
         echo "📦 CI image not in registry; building locally..."
@@ -146,8 +147,8 @@ echo "🚀 Using container engine: $DOCKER_CMD"
 
 # Fingerprint (must match src-scripts/develop/vars/vars.mk and base-image.yml)
 CI_FINGERPRINT=$(make -s print-base-fingerprint)
-CI_IMAGE_LOCAL="softmentor/kroki-rs-ci"
-CI_IMAGE_REMOTE="ghcr.io/softmentor/kroki-rs-ci:${CI_FINGERPRINT}"
+CI_IMAGE_LOCAL=$(make -s print-ci-image-local)
+CI_IMAGE_REMOTE=$(make -s print-ci-image-remote)
 
 echo "📦 Ensuring CI environment image is ready (fingerprint: ${CI_FINGERPRINT})..."
 if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>&1; then
