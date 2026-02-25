@@ -87,13 +87,23 @@ The Host and Container flows are designed to be functionally identical, with the
 
 ### Parallel Verification
 
-To speed up local development, you can run independent verification steps in parallel using the `-p` targets.
+Verification steps (fmt, lint, build) run in parallel by default to maximize resource utilization.
+
+#### High-Level vs. Low-Level Parallelism
+
+| Type | Control Flag | Purpose | Default |
+| :--- | :--- | :--- | :--- |
+| **Steps Parallelism** | `--steps-parallel` (`-sp`) | Concurrent execution of `fmt`, `clippy`, and `cargo build` | `true` |
+| **Jobs Parallelism** | `--jobs` (`-j`) | Internal parallelism within `cargo` or `make` | Host-based |
+
+#### Usage Examples
 
 ```bash
-# Run fmt, lint, and build in parallel (uses up to 3 cores)
-make devrun-p
-# Or for containerized producing runs
-make ghrun-p
+# dflow: Disable steps parallelism but use 4 cores for internal build
+./dflow dev -sp false -j 4
+
+# make: Disable steps parallelism
+make devrun STEPS_PARALLEL=false
 ```
 
 ### Portable Lockfiles (`Cargo.lock`)

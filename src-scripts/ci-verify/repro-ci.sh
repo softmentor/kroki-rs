@@ -127,14 +127,6 @@ fi
 # --- Normal ci-verify flow: version check upfront, then container repro ---
 run_version_check || true
 
-# Fast-path: If already inside the CI container, execute directly.
-if [ "$IS_CONTAINER" = "true" ]; then
-    echo "✅ Already inside CI container. Executing $TARGET directly..."
-    # Shift arguments if they was used for shell/version-check (already handled or not applicable)
-    make $TARGET JOBS=${JOBS:-1} "$@"
-    exit 0
-fi
-
 CLEANUP=${CLEANUP:-false}
 export DOCKER_BUILDKIT=1
 
@@ -143,6 +135,15 @@ TARGET="ghrun"
 if [[ $# -gt 0 && ! "$1" =~ ^-- ]]; then
     TARGET="$1"
     shift
+fi
+
+# Fast-path: If already inside the CI container, execute directly.
+# This MUST happen after TARGET is captured from arguments.
+if [ "$IS_CONTAINER" = "true" ]; then
+    echo "✅ Already inside CI container. Executing $TARGET directly..."
+    # Any remaining arguments are passed to make
+    make $TARGET JOBS=${JOBS:-1} "$@"
+    exit 0
 fi
 
 DOCKER_CMD=$(make -s print-container-engine)

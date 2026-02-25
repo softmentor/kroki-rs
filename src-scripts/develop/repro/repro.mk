@@ -57,15 +57,15 @@ setup:
 	fi
 
 .PHONY: devrun
-devrun: $(_PRE_CLEAN) fmt lint build test smoke-test
-	@echo "✅ Local native development verification complete."
-
-.PHONY: devrun-p
-devrun-p: $(_PRE_CLEAN)
+devrun: $(_PRE_CLEAN)
+ifeq ($(STEPS_PARALLEL),true)
 	@echo "🚀 Running parallel local verification (fmt, lint, build)..."
 	@$(MAKE) -j3 fmt lint build
+else
+	@$(MAKE) fmt lint build
+endif
 	@$(MAKE) test smoke-test
-	@echo "✅ Local native development verification (parallel) complete."
+	@echo "✅ Local native development verification complete."
 
 .PHONY: cirun
 cirun: $(_PRE_CLEAN)
@@ -77,15 +77,15 @@ cishell:
 	@FEATURES="$(FEATURES)" JOBS="$(JOBS)" bash src-scripts/ci-verify/repro-ci.sh --shell
 
 .PHONY: ghrun
-ghrun: setup $(_PRE_CLEAN) fmt lint build test-ci smoke-test verify
-	@echo "🌟 Production-level verification (GitHub/Remote) complete."
-
-.PHONY: ghrun-p
-ghrun-p: setup $(_PRE_CLEAN)
+ghrun: setup $(_PRE_CLEAN)
+ifeq ($(STEPS_PARALLEL),true)
 	@echo "🚀 Running parallel production verification (fmt, lint, build)..."
 	@$(MAKE) -j3 fmt lint build
+else
+	@$(MAKE) fmt lint build
+endif
 	@$(MAKE) test-ci smoke-test verify
-	@echo "🌟 Production-level verification (parallel) complete."
+	@echo "🌟 Production-level verification (GitHub/Remote) complete."
 
 .PHONY: teardown
 teardown: clean
@@ -153,12 +153,13 @@ help:
 	@echo "  VERBOSE=true         Enable verbose tool output"
 	@echo "  NO_NETWORK=true      Run in offline mode"
 	@echo "  LOAD_TEST=true       Include high-concurrency load tests"
-	@echo "  JOBS=N               Limit parallelism to N threads (e.g., JOBS=2)"
+	@echo "  JOBS=N               Limit INTERNAL build parallelism to N threads"
+	@echo "  STEPS_PARALLEL=true  Run HIGH-LEVEL steps (fmt, lint, build) concurrently"
 	@echo "  FULL_CLEANUP=true    Full cleanup including Podman storage (teardown only)"
 	@echo "  FEATURES=\"\"           Build lean core without browser engine"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make devrun PURGE_DISK=true"
+	@echo "  make devrun STEPS_PARALLEL=false"
 	@echo "  make cirun LOAD_TEST=true JOBS=1"
 	@echo "  make ghrun DEBUG_LOG=true VERBOSE=true"
 	@echo "  make setup FEATURES=\"\""

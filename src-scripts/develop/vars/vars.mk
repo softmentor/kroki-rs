@@ -38,7 +38,10 @@ print-container-engine:
 
 # --- Build configuration (override via make VAR=value) ---
 FEATURES ?= native-browser
+# JOBS: Controls internal build-level parallelism (e.g. cargo --jobs N).
 JOBS ?=
+# STEPS_PARALLEL: Controls high-level verification concurrency (e.g. running fmt, lint, build in parallel).
+STEPS_PARALLEL ?= true
 
 # --- Environment detection ---
 PODMAN_STORAGE_DIR ?=
