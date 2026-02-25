@@ -61,6 +61,13 @@ jobs:
       - name: "Verify Version Sync"
         run: ./dflow ci-verify --version-check
 
+      - name: "Login to GHCR"
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: "Compute CI Image Fingerprint"
         id: fingerprint
         run: |
@@ -97,27 +104,29 @@ jobs:
             exit 0
           fi
 
-          # 2. Pull from GHCR (normal path after base-image.yml has run)
-          echo "🔍 Cache miss — pulling from GHCR..."
-          if docker pull "$IMAGE" 2>/dev/null; then
-            echo "✅ Pulled $IMAGE from GHCR. Saving tar for cache..."
+          # 2. Check if image exists in GHCR (normal path after base-image.yml has run)
+          echo "🔍 Checking GHCR for image..."
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "✅ Image $IMAGE found in GHCR. Pulling to local daemon..."
+            docker pull "$IMAGE"
             docker save -o ci-image.tar "$IMAGE"
             exit 0
           fi
 
-          # 3. Build-on-demand fallback (amd64 only, no push)
-          # Triggered when: Dockerfile changed in a PR before base-image.yml ran on main.
-          # base-image.yml is the canonical builder; this is a convenience fallback only.
-          echo "⚠️  Image not in GHCR. Building on-demand (amd64, no push)..."
+          # 3. Build-on-demand fallback: PUSH to GHCR so downstream container jobs can pull it.
+          # This ensures PRs with Dockerfile changes are verified correctly.
+          echo "⚠️  Image not in GHCR. Building and Pushing on-demand (amd64)..."
           docker buildx build \
-            --load \
+            --push \
             --target ci \
             --build-arg RUST_VERSION="$(make -s print-rust-version)" \
             -t "$IMAGE" \
-            -t "ghcr.io/${{ github.repository }}-ci:latest" \
             .
+          
+          # Pull back to local for the docs-verify step in this job
+          docker pull "$IMAGE"
           docker save -o ci-image.tar "$IMAGE"
-          echo "✅ Build-on-demand complete. Tar saved for downstream jobs."
+          echo "✅ Build and Push complete."
 
       - name: "Verify Documentation (MyST)"
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || contains(github.ref, 'release/')
