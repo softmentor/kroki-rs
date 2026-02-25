@@ -9,7 +9,7 @@
 #        │          └──► smoke-verify (smoke-test + dist verify, parallel with lint/test)
 #        └──────────────────────────── (prep also feeds image tag to all container jobs)
 #
-# Cache key: cargo-<runner.os>-<Cargo.lock+rust-toolchain hash>
+# Cache key: cargo-<runner.os>-<Cargo.lock + rust-toolchain hash>
 #   - Invalidates on dep changes (Cargo.lock) or toolchain bump (rust-toolchain.toml)
 #   - No run_id suffix: enables cross-run reuse on same branch
 #   - Build job saves; Verify jobs restore read-only
@@ -154,7 +154,7 @@ jobs:
             .cargo-cache/git
             .cargo-cache/sccache
             target/ci
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: |
             cargo-${{ runner.os }}-
 
@@ -202,7 +202,7 @@ jobs:
             .cargo-cache/git
             .cargo-cache/sccache
             target/ci
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: |
             cargo-${{ runner.os }}-
 
@@ -242,7 +242,7 @@ jobs:
             .cargo-cache/git
             .cargo-cache/sccache
             target/ci
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: |
             cargo-${{ runner.os }}-
 
@@ -277,7 +277,7 @@ jobs:
             .cargo-cache/git
             .cargo-cache/sccache
             target/ci
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: |
             cargo-${{ runner.os }}-
 
