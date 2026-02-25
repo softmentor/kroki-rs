@@ -175,7 +175,7 @@ jobs:
   # ---------------------------------------------------------------------------
 
   lint:
-    name: "Lint"
+    name: "lint"
     needs: [prep, build]
     runs-on: ubuntu-latest
     container:
@@ -215,7 +215,7 @@ jobs:
         run: cargo clippy --release --all-targets --features native-browser -- -D warnings
 
   test:
-    name: "Test"
+    name: "test"
     needs: [prep, build]
     runs-on: ubuntu-latest
     container:
@@ -250,7 +250,7 @@ jobs:
         run: ./dflow ci-verify test-ci
 
   smoke-verify:
-    name: "Smoke + Verify"
+    name: "smoke-verify"
     needs: [prep, build]
     runs-on: ubuntu-latest
     container:
