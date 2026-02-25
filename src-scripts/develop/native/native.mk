@@ -35,6 +35,7 @@ release:
 .PHONY: build-all
 build-all:
 	cargo build --release --all-targets $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
+	cargo clippy --release --all-targets $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS) -- -D warnings
 
 .PHONY: test
 test:
@@ -42,7 +43,7 @@ test:
 
 .PHONY: test-ci
 test-ci:
-	cargo nextest run --locked $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
+	cargo nextest run --release --locked $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
 
 .PHONY: test-v
 test-v:
@@ -50,7 +51,7 @@ test-v:
 
 .PHONY: lint
 lint:
-	cargo clippy --release $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS) -- -D warnings
+	cargo clippy --release --all-targets $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS) -- -D warnings
 	cargo fmt --all -- --check
 
 .PHONY: fmt
