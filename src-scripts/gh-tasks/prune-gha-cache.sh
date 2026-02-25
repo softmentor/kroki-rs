@@ -29,18 +29,23 @@ for ref in $REFS; do
     echo "   Pruning redundant Cargo caches..."
     gh cache list --ref "$ref" --json id,key | jq -r '.[] | select(.key | contains("cargo-")) | .id' | tail -n +2 | xargs -I {} gh cache delete {} || true
     
-    # 2. Prune Docker Image caches (Keep 1)
+    # 2. Prune Docker image caches — covers both legacy "docker-image-" and new "docker-ci-" keys (Keep 1 each)
     echo "   Pruning redundant Docker image caches..."
     gh cache list --ref "$ref" --json id,key | jq -r '.[] | select(.key | contains("docker-image-")) | .id' | tail -n +2 | xargs -I {} gh cache delete {} || true
+    gh cache list --ref "$ref" --json id,key | jq -r '.[] | select(.key | contains("docker-ci-")) | .id' | tail -n +2 | xargs -I {} gh cache delete {} || true
     
     # 3. Prune Buildkit blobs (Keep 10)
     echo "   Pruning redundant Buildkit blobs (keeping 10)..."
     gh cache list --ref "$ref" --json id,key | jq -r '.[] | select(.key | contains("buildkit-")) | .id' | tail -n +11 | xargs -I {} gh cache delete {} || true
 done
 
-# Aggressive PR cleanup: delete all caches for pull requests that haven't been touched in 24h
-echo "🕵️  Checking for stale PR caches..."
+# Stale PR cleanup: delete caches for pull requests not accessed in the last 24 hours.
+# This prevents unbounded growth from abandoned/merged PRs while preserving active PR caches
+# that are needed for cross-run reuse (cargo warm cache, docker image tar).
+echo "🕵️  Checking for stale PR caches (>24h since last access)..."
 gh cache list --limit 100 --json id,ref,lastAccessedAt | jq -r '
-  .[] | select(.ref | startswith("refs/pull/")) | .id' | xargs -I {} gh cache delete {} || true
+  .[] | select(.ref | startswith("refs/pull/"))
+       | select((.lastAccessedAt | fromdateiso8601) < (now - 86400))
+       | .id' | xargs -I {} gh cache delete {} || true
 
 echo "🎉 Cache pruning process completed!"
