@@ -79,7 +79,6 @@ fi
 # Mode: interactive shell in CI container (same mounts as ci-verify for fast incremental fixes)
 if [ "${1:-}" = "--shell" ]; then
     export DOCKER_BUILDKIT=1
-    export DOCKER_BUILDKIT=1
     DOCKER_CMD=$(make -s print-container-engine)
     [ -z "$DOCKER_CMD" ] && { echo "❌ Error: Podman or Docker not found."; exit 1; }
     CI_FINGERPRINT=$(make -s print-base-fingerprint)
@@ -99,33 +98,38 @@ if [ "${1:-}" = "--shell" ]; then
         RUST_VER=$(make -s print-rust-version)
         $DOCKER_CMD build --target ci --build-arg RUST_VERSION="$RUST_VER" -t "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" -t "$CI_IMAGE_LOCAL" .
     fi
-    echo "🐚 Opening shell in CI environment. Repo at /app (mounted); target at /app/target (volume)."
+    echo "🐚 Opening shell in CI environment. Repo at /app (mounted); target at /app/target-ci (volume)."
     echo "   Cargo registry/git/sccache cached at .cargo-cache/ for fast incremental builds."
     echo "   Run 'make ghrun' or 'cargo test' for incremental fixes. Exit with 'exit'."
-    mkdir -p "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
+    mkdir -p "$(pwd)/target/ci" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
     exec $DOCKER_CMD run --rm -it \
         -v "$(pwd):/app" \
-        -v "$(pwd)/target:/app/target" \
+        -v "$(pwd)/target/ci:/app/target-ci" \
         -v "$(pwd)/.cargo-cache/registry:/usr/local/cargo/registry" \
         -v "$(pwd)/.cargo-cache/git:/usr/local/cargo/git" \
         -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
         -w /app \
-        -e JOBS="${JOBS:-1}" \
-        -e FEATURES="${FEATURES:-native-browser}" \
+        -e IS_CONTAINER=true \
+        -e CARGO_TARGET_DIR=/app/target-ci \
         -e SCCACHE_DIR=/root/.cache/sccache \
         -e RUSTC_WRAPPER=sccache \
+        -e SCCACHE_GHA_ENABLED=false \
+        -e FEATURES="${FEATURES:-native-browser}" \
         -e PURGE_DISK \
         -e DEBUG_LOG \
         -e VERBOSE \
         -e NO_NETWORK \
         -e LOAD_TEST \
+        ${JOBS:+-e JOBS=$JOBS} \
         --security-opt seccomp=unconfined \
         "$CI_IMAGE_LOCAL" \
         bash
 fi
 
-# --- Normal ci-verify flow: version check upfront, then container repro ---
-run_version_check || true
+# --- Normal ci-verify flow: version check upfront (unless in GHA to avoid redundancy), then container repro ---
+if [ "$GITHUB_ACTIONS" != "true" ]; then
+    run_version_check || true
+fi
 
 CLEANUP=${CLEANUP:-false}
 export DOCKER_BUILDKIT=1
@@ -135,6 +139,17 @@ TARGET="ghrun"
 if [[ $# -gt 0 && ! "$1" =~ ^-- ]]; then
     TARGET="$1"
     shift
+fi
+
+# Fast-path: If already inside the CI container, execute directly.
+# This MUST happen after TARGET is captured from arguments.
+if [ "$IS_CONTAINER" = "true" ]; then
+    echo "✅ Already inside CI container. Executing $TARGET directly..."
+    # Ensure Git doesn't complain about ownership in the mounted workspace
+    git config --global --add safe.directory "$(pwd)" || true
+    # Any remaining arguments are passed to make (JOBS passed only if explicitly set)
+    make $TARGET ${JOBS:+JOBS=$JOBS} "$@"
+    exit 0
 fi
 
 DOCKER_CMD=$(make -s print-container-engine)
@@ -194,19 +209,20 @@ $DOCKER_CMD run --rm \
     -v "$(pwd)/.cargo-cache/git:/usr/local/cargo/git" \
     -v "$(pwd)/.cargo-cache/sccache:/root/.cache/sccache" \
     -w /app \
-    -e JOBS \
+    -e IS_CONTAINER=true \
+    -e CARGO_TARGET_DIR=/app/target-ci \
+    -e SCCACHE_DIR=/root/.cache/sccache \
+    -e RUSTC_WRAPPER=sccache \
+    -e SCCACHE_GHA_ENABLED=false \
     -e PURGE_DISK \
     -e DEBUG_LOG \
     -e VERBOSE \
     -e NO_NETWORK \
     -e LOAD_TEST \
-    -e CARGO_TARGET_DIR=/app/target-ci \
-    -e SCCACHE_DIR=/root/.cache/sccache \
-    -e RUSTC_WRAPPER=sccache \
-    -e SCCACHE_GHA_ENABLED=false \
+    ${JOBS:+-e JOBS=$JOBS} \
     --security-opt seccomp=unconfined \
     "$CI_IMAGE_LOCAL" \
-    make $TARGET JOBS=${JOBS:-1} "$@"
+    make $TARGET ${JOBS:+JOBS=$JOBS} "$@"
 
 if [ "$PURGE_DISK" = "true" ]; then
     echo "🧹 Cleaning up images and builder cache..."

@@ -4,10 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.7] - 2026-02-25
+
+### Fixed
+- **CI Reliability**: Unified CI image naming and resolved registry fetch logic mismatch.
+- **Diagnostics**: Added proactive container engine connection checks and suggest `./dflow setup` on failure.
+- **Workflow Syntax**: Standardized `release.yml` YAML conditions for better compatibility.
+
+### Changed
+- **Performance**: Aligned CI build profiles to Release and added Clippy pre-warming, significantly reducing fan-out job durations.
+- **Documentation**: Expanded troubleshooting and prerequisite guides for developer onboarding.
+
 ## [0.0.6] - 2026-02-25
 
 ### Added
-- **Release Orchestration**: Automated versioning and branch verification via \`dflow\`.
+- **Release Orchestration**: Automated versioning and branch verification via `dflow`.
 - **Enhanced Verification**: Multi-file version synchronization and automated release reporting.
 - **Migration Cleanup**: Finalized removal of Playwright and transition to native Rust browser engine.
 

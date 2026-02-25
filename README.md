@@ -85,7 +85,7 @@ make serve
 
 Full documentation is available in the [`docs/`](docs/) directory:
 
--   [PIPELINE & CI/CD](docs/developer-guide/pipeline.md) - **Recommended for contributors**
+-   [PIPELINE & CI/CD](docs/developer-guide/04-infrastructure/automation.md) - **Recommended for contributors**
 -   [Supported Diagrams](docs/user-guide/supported-diagrams.md)
 -   [User Guide](docs/user-guide/user-index.md)
 -   [Developer Guide](docs/developer-guide/developer-index.md)

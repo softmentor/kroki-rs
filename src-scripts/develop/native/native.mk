@@ -10,8 +10,8 @@
 #   - repro.mk targets (devrun, ghrun) depend on fmt, lint, build, test, etc.
 #
 # Targets:
-#   build, release, test, test-ci, test-v, lint, fmt, fix, doc, clean, dist,
-#   verify, smoke-test, quick, bump, serve.
+#   build, release, build-ci, build-all, test, test-ci, test-v, lint, fmt, fix,
+#   doc, clean, dist, verify, smoke-test, quick, bump, serve.
 # ------------------------------------------------------------------------------
 
 RELEASE_DIR = target/release
@@ -32,9 +32,13 @@ build:
 release:
 	cargo build --release $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
 
-.PHONY: build-all
-build-all:
+.PHONY: build-ci
+build-ci:
 	cargo build --release --all-targets $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
+
+.PHONY: build-all
+build-all: build-ci
+	cargo clippy --release --all-targets $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS) -- -D warnings
 
 .PHONY: test
 test:
@@ -42,7 +46,7 @@ test:
 
 .PHONY: test-ci
 test-ci:
-	cargo nextest run --locked $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
+	cargo nextest run --release --locked $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
 
 .PHONY: test-v
 test-v:
@@ -50,7 +54,7 @@ test-v:
 
 .PHONY: lint
 lint:
-	cargo clippy --release $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS) -- -D warnings
+	cargo clippy --release --all-targets $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS) -- -D warnings
 	cargo fmt --all -- --check
 
 .PHONY: fmt
@@ -112,6 +116,7 @@ quick: build test
 bump:
 	@if [ -z "$(VERSION)" ]; then echo "Usage: make bump VERSION=x.y.z"; exit 1; fi
 	@sed -i.bak '2,10s/^version = ".*"/version = "$(VERSION)"/' Cargo.toml
+	@cargo metadata --format-version=1 --all-features > /dev/null
 	@sed -i.bak 's/logo_text: Kroki-rs V.*/logo_text: Kroki-rs V$(VERSION)/' docs/myst.yml
 	@rm -f Cargo.toml.bak docs/myst.yml.bak
 

@@ -12,36 +12,42 @@ Kroki-rs uses a multi-tier pipeline designed for extreme speed and absolute repr
 | Tier | Workflow | Purpose |
 | :--- | :--- | :--- |
 | **Tier 1: Identity** | `base-image.yml` | Masters the Docker fingerprints. Built on-demand. |
-| **Tier 2: Verification** | `ci-build.yml` | The primary fan-out collector (Fmt -> Lint -> Test -> Smoke). |
+| **Tier 2: Verification** | `ci-build.yml` | 3-phase fan-out: Prep → Build → parallel Lint / Test / Smoke+Verify. |
 | **Tier 3: Distribution** | `release.yml` | Multi-arch OCI images and native binaries on version tags. |
 
 ## 2. Verification Flow (CI-Build)
 
 We utilize a "Compile Once, Check Parallel" strategy to maximize GitHub Actions runner efficiency.
 
-### Workflow Sequence
+### Workflow Sequence (5-Job Pipeline)
 
 ```mermaid
 sequenceDiagram
-    participant PR as Pull Request / Tag
-    participant Build as Job: Build (build-all)
+    participant PR as Pull Request / Push
+    participant Prep as Job: Prep (bare runner)
+    participant Build as Job: Build (container)
     participant Cache as Actions Cache (Disk Sccache)
-    participant Parallel as Jobs: Fmt/Lint/Test/Smoke
+    participant Verify as Jobs: Lint / Test / Smoke+Verify
 
-    PR->>Build: Trigger
+    PR->>Prep: Trigger
+    Prep->>Prep: Compute fingerprint, cache CI image tar
+    Prep->>Build: Pass fingerprint
+
     Build->>Cache: Restore .cargo-cache & target/ci
-    Build->>Build: cargo build --all-targets (Pre-warm)
+    Build->>Build: cargo build --release --all-targets (build-ci)
     Build->>Cache: Save .cargo-cache & target/ci
-    Build->>Parallel: Trigger (FAN-OUT)
-    
+    Build->>Verify: Trigger (FAN-OUT, 3 parallel jobs)
+
     rect rgb(240, 240, 240)
-    Note over Parallel: Parallel verification using warm cache
-    Parallel->>Cache: Restore (Read-Only)
-    Parallel->>Parallel: cargo check / test / smoke
+    Note over Verify: Parallel verification using warm cache
+    Verify->>Cache: Restore (Read-Only)
+    Verify->>Verify: clippy + fmt / nextest / smoke-test + dist verify
     end
-    
-    Parallel->>PR: Success/Failure status
+
+    Verify->>PR: Per-job Success/Failure status (5 PR checks)
 ```
+
+Each verify job appears as a **separate PR check** so failures are immediately visible without expanding logs.
 
 ## 3. Local Reproducibility (`repro-ci.sh`)
 
@@ -83,8 +89,10 @@ To avoid 400 errors from GHA proxies inside containers, we standardized on a **D
 - **Path**: `.cargo-cache/sccache`
 - **Method**: The host mounts this directory to the container. GitHub Actions preserves it across runs via `actions/cache`.
 
-### `build-all` Pre-warming
-The initial sequential job compiles **all targets** (application + test suites). This ensures that subsequent parallel jobs (Lint, Test, Smoke) are purely fetching from a warm cache, typically resulting in <30s execution times for verify jobs.
+### Build Job Pre-warming (`build-ci` Target)
+The Build job runs the `build-ci` make target (`cargo build --release --all-targets`) inside the fingerprinted CI container. This compiles all targets (application, libraries, and test suites) without running clippy — linting runs separately in the Lint job for clear PR status. Subsequent parallel jobs (Lint, Test, Smoke+Verify) restore the warm cache read-only, typically resulting in <30s execution times.
+
+The cache key `cargo-<runner.os>-<Cargo.lock+rust-toolchain hash>` enables cross-run reuse: unchanged dependencies and toolchain produce an exact cache hit, avoiding recompilation entirely.
 
 ### Target Isolation (`target/ci`)
 Containerized builds exclusively use `target/ci` to avoid binary clobbering with host-native `target/` directories (e.g., macOS binaries on Linux containers).

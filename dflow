@@ -16,6 +16,7 @@ YES_BYPASS="false"
 RELEASE_TYPE=""
 DRY_RUN="false"
 JOBS=""
+STEPS_PARALLEL="true"
 FEATURES="native-browser"
 
 show_help() {
@@ -39,7 +40,8 @@ Options:
   -v, --verbose         Enable verbose tool output
   -n, --no-network      Run in offline mode
   -t <type>, --test=<type>   Include tests (e.g., -t load)
-  -j <n>, --jobs=<n>    Limit parallelism to n threads
+  -j <n>, --jobs=<n>    Limit INTERNAL build parallelism to n threads
+  -sp, --steps-parallel [true|false]  Run high-level verification steps concurrently (default: true)
   -f, --full            Deep System & Remote Cleanup (GHA caches + Podman) [teardown only]
   -y, --yes             Bypass all confirmation prompts
   -b, --branch          Propose a release branch (create PR) [release only]
@@ -51,6 +53,7 @@ Options:
 
 Examples:
   dflow develop -p -d
+  dflow ci-verify -sp false
   dflow ci-verify --test load -j 1
   dflow teardown -f -y
   dflow release -b --dry-run
@@ -105,6 +108,13 @@ while [[ $# -gt 0 ]]; do
         --test=load)     LOAD_TEST="true"; shift ;;
         -j|--jobs)       JOBS="$2"; shift 2 ;;
         --jobs=*)        JOBS="${1#*=}"; shift ;;
+        -sp|--steps-parallel)
+            if [[ "$2" == "false" ]]; then STEPS_PARALLEL="false"; else STEPS_PARALLEL="true"; fi
+            shift 2 ;;
+        --steps-parallel=*)
+            VAL="${1#*=}"
+            if [[ "$VAL" == "false" ]]; then STEPS_PARALLEL="false"; else STEPS_PARALLEL="true"; fi
+            shift ;;
         --lean)          FEATURES=""; shift ;;
         -h|--help)       show_help; exit 0 ;;
         -*)              echo "Unknown option: $1"; show_help; exit 1 ;;
@@ -188,6 +198,7 @@ CMD="$CMD VERBOSE=$VERBOSE"
 CMD="$CMD NO_NETWORK=$NO_NETWORK"
 CMD="$CMD LOAD_TEST=$LOAD_TEST"
 CMD="$CMD FULL_CLEANUP=$FULL_CLEANUP"
+CMD="$CMD STEPS_PARALLEL=$STEPS_PARALLEL"
 CMD="$CMD FEATURES=\"$FEATURES\""
 CMD="$CMD CI_ARGS=\"$EXTRA_CI_ARGS $POS_ARGS\""
 
