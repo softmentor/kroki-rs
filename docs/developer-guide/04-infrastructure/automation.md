@@ -109,7 +109,7 @@ The `.github/actions/setup-kroki` action is the primary bridge for non-container
 | `use-cache` | Whether to enable standard Rust caching. | `true` |
 
 #### Hybrid Logic
-- **macOS**: Installs dependencies via `Homebrew` and handles specific `PLAYWRIGHT_EXECUTABLE_PATH` mappings for Chromium.
+- **macOS**: Installs dependencies via \`Homebrew\` and manages Chromium for the native browser engine.
 - **Linux (VM)**: Uses `apt-get` to install the standard rendering suite (Graphviz, D2, Chromium-browser).
 
 > [!NOTE]
@@ -122,3 +122,20 @@ To prevent GitHub Actions storage bloat and ensure fast restorations, we utilize
 -   **Scripted Logic**: The `src-scripts/gh-tasks/prune-gha-cache.sh` script is the single source of truth for cache lifecycle management.
 -   **CI Integration**: The `CI-Build` workflow calls this script automatically on every run to keep only the most recent caches for each branch/PR.
 -   **Manual Control**: Developers can trigger a remote cleanup locally via `./dflow teardown -f`, which executes the same pruning logic against the GHA repository.
+
+## 6. Troubleshooting
+
+### Container Engine Failures
+If `./dflow ci-verify` fails with "Container engine is not responsive" or "connection refused":
+- **Podman (macOS)**: Ensure the VM is running. Check `podman machine list`. If stalled, run `./dflow setup` to re-initialize.
+- **Docker**: Ensure the Docker Desktop or daemon is active.
+
+### GHCR Pull Errors
+If the CI image cannot be pulled:
+- **Authentication**: Ensure you are logged into GHCR: `echo $GITHUB_TOKEN | podman login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin`.
+- **Image Mismatch**: If you modified the `Dockerfile`, the fingerprint changes. You must push your changes to GitHub to trigger the `Build Base Image` workflow before `ci-verify` will pass locally.
+
+### Version / Toolchain Mismatches
+If `repro-ci.sh` reports a "Toolchain Mismatch":
+- The project's `rust-toolchain.toml` has been updated but the pre-baked CI image is using an old version.
+- **Fix**: Update the `RUST_VERSION` in the root `Dockerfile` and push to GitHub to regenerate the base image.

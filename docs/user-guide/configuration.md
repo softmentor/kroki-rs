@@ -38,10 +38,9 @@ enabled = true
 export_endpoint = true      # Exposes /metrics on admin port
 
 [browser]
-# Preferred backend: "native" (default) or "playwright"
-backend = "native"
-# Legacy Playwright only:
+# Pool size for native browser engine
 pool_size = 4
+# Number of requests after which a browser context is recreated to prevent memory leaks.
 context_ttl_requests = 100
 
 [[plugins]]
@@ -79,9 +78,8 @@ You can override any configuration directly using environment variables:
 -   `KROKI_MAX_INPUT_SIZE`: Maximum payload size in bytes
 -   `KROKI_MAX_OUTPUT_SIZE`: Maximum SVG/PNG size in bytes
 -   `KROKI_CONFIG`: Path to a custom config file
--   `KROKI_BROWSER_BACKEND`: "native" (default) or "playwright"
--   `KROKI_BROWSER_POOL_SIZE`: (Playwright only) Max concurrent browser sessions (default 4)
--   `KROKI_BROWSER_CONTEXT_TTL`: (Playwright only) Forced recycling TTL (default 100)
+-   `KROKI_BROWSER_POOL_SIZE`: Max concurrent browser sessions (default 4)
+-   `KROKI_BROWSER_CONTEXT_TTL`: Forced recycling TTL for browser contexts (default 100)
 
 Tool-specific env overrides follow the pattern `KROKI_<TOOL>_<OPTION>`, e.g.:
 -   `KROKI_GRAPHVIZ_BIN`: Path to dot executable

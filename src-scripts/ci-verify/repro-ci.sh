@@ -20,19 +20,53 @@ run_version_check() {
     elif [[ "$REF" == v* ]]; then
         VERSION_TAG=${REF#v}
     fi
-    if [ -z "$VERSION_TAG" ]; then
-        echo "ℹ️ Not a version tag ($REF). Skipping version synchronicity check."
-        return 0
-    fi
+    
     CARGO_VERSION=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
-    if [ "$CARGO_VERSION" != "$VERSION_TAG" ]; then
-        echo "❌ Error: Version Mismatch!"
-        echo "   Cargo.toml: $CARGO_VERSION"
-        echo "   Git Tag:    $VERSION_TAG"
-        echo "   Please update Cargo.toml to match the tag before releasing."
+    
+    if [ -n "$VERSION_TAG" ]; then
+        if [ "$CARGO_VERSION" != "$VERSION_TAG" ]; then
+            echo "❌ Error: Version Mismatch!"
+            echo "   Cargo.toml: $CARGO_VERSION"
+            echo "   Git Tag:    $VERSION_TAG"
+            return 1
+        fi
+    fi
+
+    # 1. Sync check: Cargo.toml vs docs/myst.yml
+    MYST_VERSION=$(grep 'logo_text: Kroki-rs V' docs/myst.yml | sed 's/.*Kroki-rs V//')
+    if [ "$CARGO_VERSION" != "$MYST_VERSION" ]; then
+        echo "❌ Error: Documentation Version Mismatch!"
+        echo "   Cargo.toml:    $CARGO_VERSION"
+        echo "   docs/myst.yml: $MYST_VERSION"
         return 1
     fi
-    echo "✅ Version synchronization verified: v$CARGO_VERSION"
+
+    # 2. Sync check: Cargo.toml vs CHANGELOG.md
+    if ! grep -q "## \[$CARGO_VERSION\]" CHANGELOG.md; then
+        echo "❌ Error: CHANGELOG.md header for [$CARGO_VERSION] not found."
+        return 1
+    fi
+
+    # 3. Sync check: Cargo.toml vs ROADMAP.md
+    # (Simple check for existence of version header)
+    if ! grep -i -q "v$CARGO_VERSION" ROADMAP.md; then
+        echo "⚠️  Warning: ROADMAP.md might not mention v$CARGO_VERSION."
+    fi
+
+    # 4. Branch check (for release branches)
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [[ "$CURRENT_BRANCH" =~ ^v[0-9] ]] || [[ "$CURRENT_BRANCH" =~ ^release/v[0-9] ]]; then
+        BRANCH_VER=${CURRENT_BRANCH#release/}
+        BRANCH_VER=${BRANCH_VER#v}
+        if [ "$CARGO_VERSION" != "$BRANCH_VER" ]; then
+            echo "❌ Error: Branch Version Mismatch!"
+            echo "   Cargo.toml: $CARGO_VERSION"
+            echo "   Branch:     $CURRENT_BRANCH"
+            return 1
+        fi
+    fi
+
+    echo "✅ Version synchronization verified: v$CARGO_VERSION (Cargo, Docs, Changelog, Branch)"
     return 0
 }
 
@@ -49,8 +83,8 @@ if [ "${1:-}" = "--shell" ]; then
     DOCKER_CMD=$(make -s print-container-engine)
     [ -z "$DOCKER_CMD" ] && { echo "❌ Error: Podman or Docker not found."; exit 1; }
     CI_FINGERPRINT=$(make -s print-base-fingerprint)
-    CI_IMAGE_LOCAL="softmentor/kroki-rs-ci"
-    CI_IMAGE_REMOTE="ghcr.io/softmentor/kroki-rs-ci:${CI_FINGERPRINT}"
+    CI_IMAGE_LOCAL=$(make -s print-ci-image-local)
+    CI_IMAGE_REMOTE=$(make -s print-ci-image-remote)
     echo "📦 Ensuring CI image is ready (fingerprint: ${CI_FINGERPRINT})..."
     if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>&1; then
         echo "✅ Found CI image locally (fingerprint: ${CI_FINGERPRINT})."
@@ -58,6 +92,7 @@ if [ "${1:-}" = "--shell" ]; then
     elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
         echo "✅ Pulled CI image from ghcr.io."
         $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
+        $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL:latest"
         $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
     else
         echo "📦 CI image not in registry; building locally..."
@@ -109,23 +144,31 @@ if [ -z "$DOCKER_CMD" ]; then
 fi
 
 echo "🚀 Using container engine: $DOCKER_CMD"
+if ! $DOCKER_CMD system info >/dev/null 2>&1; then
+    echo "❌ Error: Container engine ($DOCKER_CMD) is not responsive."
+    echo "   Ensure Podman/Docker is running. If using Podman, you might need to run:"
+    echo "   ./dflow setup"
+    exit 1
+fi
 
 # Fingerprint (must match src-scripts/develop/vars/vars.mk and base-image.yml)
 CI_FINGERPRINT=$(make -s print-base-fingerprint)
-CI_IMAGE_LOCAL="softmentor/kroki-rs-ci"
-CI_IMAGE_REMOTE="ghcr.io/softmentor/kroki-rs-ci:${CI_FINGERPRINT}"
+CI_IMAGE_LOCAL=$(make -s print-ci-image-local)
+CI_IMAGE_REMOTE=$(make -s print-ci-image-remote)
 
 echo "📦 Ensuring CI environment image is ready (fingerprint: ${CI_FINGERPRINT})..."
 if $DOCKER_CMD image inspect "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" >/dev/null 2>&1; then
     echo "✅ Found CI image locally (fingerprint: ${CI_FINGERPRINT})."
     $DOCKER_CMD tag "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}" "$CI_IMAGE_LOCAL"
-elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE" 2>/dev/null; then
+elif $DOCKER_CMD pull "$CI_IMAGE_REMOTE"; then
     echo "✅ Pulled CI image from ghcr.io (fingerprint: ${CI_FINGERPRINT})."
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "${CI_IMAGE_LOCAL}:${CI_FINGERPRINT}"
     $DOCKER_CMD tag "$CI_IMAGE_REMOTE" "$CI_IMAGE_LOCAL"
 else
-    echo "❌ Error: CI image ${CI_FINGERPRINT} not found in GHCR."
-    echo "   Please ensure the 'Build Base Image' workflow has completed on GitHub."
+    echo "❌ Error: Failed to pull CI image from GHCR."
+    echo "   Registry: ${CI_IMAGE_REMOTE}"
+    echo "   Fingerprint: ${CI_FINGERPRINT}"
+    echo "   Possible causes: No internet, Podman not running, Image not built yet, or Auth required."
     exit 1
 fi
 

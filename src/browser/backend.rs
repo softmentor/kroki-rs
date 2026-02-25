@@ -2,7 +2,7 @@ use crate::diagrams::DiagramResult;
 use async_trait::async_trait;
 
 /// Abstract interface for browser-based diagram rendering.
-/// Allows swapping between Playwright (Node.js) and native Rust backends (headless_chrome).
+/// Managed via a persistent pool of browser contexts.
 #[async_trait]
 pub trait BrowserBackend: Send + Sync {
     /// Renders a diagram using the browser.
