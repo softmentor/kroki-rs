@@ -38,6 +38,7 @@ on:
 env:
   SCCACHE_GHA_ENABLED: "false"
   RUSTC_WRAPPER: "sccache"
+  GITHUB_ACTIONS: "true"
 
 jobs:
   # ---------------------------------------------------------------------------
