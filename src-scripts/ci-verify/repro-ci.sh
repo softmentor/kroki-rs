@@ -20,19 +20,53 @@ run_version_check() {
     elif [[ "$REF" == v* ]]; then
         VERSION_TAG=${REF#v}
     fi
-    if [ -z "$VERSION_TAG" ]; then
-        echo "ℹ️ Not a version tag ($REF). Skipping version synchronicity check."
-        return 0
-    fi
+    
     CARGO_VERSION=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
-    if [ "$CARGO_VERSION" != "$VERSION_TAG" ]; then
-        echo "❌ Error: Version Mismatch!"
-        echo "   Cargo.toml: $CARGO_VERSION"
-        echo "   Git Tag:    $VERSION_TAG"
-        echo "   Please update Cargo.toml to match the tag before releasing."
+    
+    if [ -n "$VERSION_TAG" ]; then
+        if [ "$CARGO_VERSION" != "$VERSION_TAG" ]; then
+            echo "❌ Error: Version Mismatch!"
+            echo "   Cargo.toml: $CARGO_VERSION"
+            echo "   Git Tag:    $VERSION_TAG"
+            return 1
+        fi
+    fi
+
+    # 1. Sync check: Cargo.toml vs docs/myst.yml
+    MYST_VERSION=$(grep 'logo_text: Kroki-rs V' docs/myst.yml | sed 's/.*Kroki-rs V//')
+    if [ "$CARGO_VERSION" != "$MYST_VERSION" ]; then
+        echo "❌ Error: Documentation Version Mismatch!"
+        echo "   Cargo.toml:    $CARGO_VERSION"
+        echo "   docs/myst.yml: $MYST_VERSION"
         return 1
     fi
-    echo "✅ Version synchronization verified: v$CARGO_VERSION"
+
+    # 2. Sync check: Cargo.toml vs CHANGELOG.md
+    if ! grep -q "## \[$CARGO_VERSION\]" CHANGELOG.md; then
+        echo "❌ Error: CHANGELOG.md header for [$CARGO_VERSION] not found."
+        return 1
+    fi
+
+    # 3. Sync check: Cargo.toml vs ROADMAP.md
+    # (Simple check for existence of version header)
+    if ! grep -i -q "v$CARGO_VERSION" ROADMAP.md; then
+        echo "⚠️  Warning: ROADMAP.md might not mention v$CARGO_VERSION."
+    fi
+
+    # 4. Branch check (for release branches)
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [[ "$CURRENT_BRANCH" =~ ^v[0-9] ]] || [[ "$CURRENT_BRANCH" =~ ^release/v[0-9] ]]; then
+        BRANCH_VER=${CURRENT_BRANCH#release/}
+        BRANCH_VER=${BRANCH_VER#v}
+        if [ "$CARGO_VERSION" != "$BRANCH_VER" ]; then
+            echo "❌ Error: Branch Version Mismatch!"
+            echo "   Cargo.toml: $CARGO_VERSION"
+            echo "   Branch:     $CURRENT_BRANCH"
+            return 1
+        fi
+    fi
+
+    echo "✅ Version synchronization verified: v$CARGO_VERSION (Cargo, Docs, Changelog, Branch)"
     return 0
 }
 

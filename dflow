@@ -44,7 +44,8 @@ Options:
   -y, --yes             Bypass all confirmation prompts
   -b, --branch          Propose a release branch (create PR) [release only]
   --tag                 Initiate project-wide release tag [release only]
-  --dry-run             Verification mode: skip destructive actions [release only]
+  --release <v>         Prepare release v<v> (bump \u0026 commit) [dev only]
+  --dry-run             Verification mode: skip destructive actions [release/dev only]
   --lean                Build lean core without browser engine
   -h, --help            Show this help message
 
@@ -80,6 +81,15 @@ shift
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --release)
+            RELEASE_VERSION="$2"
+            shift 2 ;;
+        --release=*)
+            RELEASE_VERSION="${1#*=}"
+            shift ;;
+        --version-check)
+            EXTRA_CI_ARGS="$EXTRA_CI_ARGS --version-check"
+            shift ;;
         -p|--purge)      PURGE_DISK="true"; shift ;;
         -d|--debug)      DEBUG_LOG="true"; shift ;;
         -v|--verbose)    VERBOSE="true"; shift ;;
@@ -123,7 +133,41 @@ if [[ "$MAKE_TARGET" == "release" ]]; then
     exit 0
 fi
 
-# 2. Teardown Safety Prompt
+# 2. Release Mode (within dev command)
+if [[ -n "$RELEASE_VERSION" ]]; then
+    echo "📦 Preparing release v$RELEASE_VERSION..."
+    
+    # Check branch
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [[ "$CURRENT_BRANCH" != "v$RELEASE_VERSION" && "$CURRENT_BRANCH" != "release/v$RELEASE_VERSION" ]]; then
+        echo "❌ Error: Current branch '$CURRENT_BRANCH' does not match target version '$RELEASE_VERSION'."
+        echo "   Please switch to v$RELEASE_VERSION or release/v$RELEASE_VERSION first."
+        exit 1
+    fi
+
+    # Check Changelog
+    if ! grep -q "## \[$RELEASE_VERSION\]" CHANGELOG.md; then
+        echo "❌ Error: CHANGELOG.md is missing an entry for [$RELEASE_VERSION]."
+        exit 1
+    fi
+
+    # Bump version
+    make bump VERSION="$RELEASE_VERSION"
+    
+    # Commit changes
+    if ! git diff-index --quiet HEAD --; then
+        echo "📝 Committing version bump..."
+        git add Cargo.toml docs/myst.yml
+        git commit -m "release: version bump to $RELEASE_VERSION"
+    else
+        echo "ℹ️  No changes to commit (already at version $RELEASE_VERSION)."
+    fi
+    
+    echo "✅ Release preparation for v$RELEASE_VERSION complete."
+    exit 0
+fi
+
+# 3. Teardown Safety Prompt
 if [[ "$MAKE_TARGET" == "teardown" && "$FULL_CLEANUP" == "true" && "$YES_BYPASS" == "false" ]]; then
     echo "⚠️  CAUTION: Deep System & Remote Cleanup requested."
     echo "   This will purge local Podman storage, temp bloat, and REMOTE GHA caches."
@@ -145,7 +189,7 @@ CMD="$CMD NO_NETWORK=$NO_NETWORK"
 CMD="$CMD LOAD_TEST=$LOAD_TEST"
 CMD="$CMD FULL_CLEANUP=$FULL_CLEANUP"
 CMD="$CMD FEATURES=\"$FEATURES\""
-CMD="$CMD CI_ARGS=\"$POS_ARGS\""
+CMD="$CMD CI_ARGS=\"$EXTRA_CI_ARGS $POS_ARGS\""
 
 if [[ -n "$JOBS" ]]; then
     CMD="$CMD JOBS=$JOBS"

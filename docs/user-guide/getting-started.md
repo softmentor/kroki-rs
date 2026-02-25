@@ -62,7 +62,7 @@ On startup, `kroki-rs` automatically checks for available tools in your `PATH` a
     ```bash
     npm install
     ```
-    *Note: Mermaid and BPMN libraries are already embedded in the binary. This is only needed for Vega or if using the legacy Playwright backend.*
+    *Note: Mermaid and BPMN libraries are already embedded in the binary. This is only needed for Vega or other Node-based CLI tools.*
 
 2.  Run the server:
     ```bash

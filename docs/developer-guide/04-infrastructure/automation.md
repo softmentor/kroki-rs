@@ -109,7 +109,7 @@ The `.github/actions/setup-kroki` action is the primary bridge for non-container
 | `use-cache` | Whether to enable standard Rust caching. | `true` |
 
 #### Hybrid Logic
-- **macOS**: Installs dependencies via `Homebrew` and handles specific `PLAYWRIGHT_EXECUTABLE_PATH` mappings for Chromium.
+- **macOS**: Installs dependencies via \`Homebrew\` and manages Chromium for the native browser engine.
 - **Linux (VM)**: Uses `apt-get` to install the standard rendering suite (Graphviz, D2, Chromium-browser).
 
 > [!NOTE]

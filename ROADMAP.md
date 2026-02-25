@@ -72,27 +72,24 @@ Major internal architecture shift. Remove Node.js and Java runtime dependencies 
 - [x] **BrowserBackend Trait**: Abstract browser implementations behind a trait for future crate separation (ADR 0008.1).
 - [x] **Composite CI/CD**: Standardized setup across workflows using a reusable composite action (ADR 0010).
 
-## 🔮 v0.0.6: Modular Crate Workspace
+## 🟢 v0.0.6: Release Orchestration \u0026 Migration Cleanup (Completed)
+
+Final infrastructure hardening and removal of legacy runtime dependencies.
+
+- [x] **dflow Release Automation**: Integrated \`--release\` flag for automated versioning and branch management.
+- [x] **Multi-level Version Sync**: Automated verification of version consistency across Cargo, Docs, and Changelog.
+- [x] **Automated Release Reporting**: Detailed verification reports per-release, attached as GitHub assets.
+- [x] **Final Playwright removal**: Complete transition to native Rust \`headless_chrome\` core.
+
+## 🔮 v0.1.0: Modular Crate Workspace \u0026 Unified Vision
 
 Split into multi-crate Cargo workspace for maximum reuse (VS Code plugins, desktop apps, embedded systems).
 
-```
-kroki-rs/
-├── Cargo.toml              # workspace root
-├── crates/
-│   ├── kroki-core/          # DiagramProvider, providers, config, plugins, browser abstraction
-│   ├── kroki-server/        # Axum server, middleware, admin, metrics
-│   └── kroki-cli/           # CLI binary
-```
-
-- [ ] **kroki-core crate**: Pure library with no server dependencies. Owns providers, config, plugins, browser abstraction.
-- [ ] **kroki-server crate**: Axum server, middleware, admin dashboard. Depends on `kroki-core`.
-- [ ] **kroki-cli crate**: CLI binary. Depends on `kroki-core`.
-
-## 🌐 v0.1.0: The Unified Vision
-- [ ] **Live Preview Web UI**: A management dashboard to test conversions and view server health.
-- [ ] **Edge Deployment**: Optimize for Cloudflare Workers / Fastly Compute@Edge contexts.
-- [ ] **CloudEvents**: Adopt CloudEvents for rendering triggers (CNCF alignment).
+- [ ] **kroki-core crate**: Pure library with no server dependencies.
+- [ ] **kroki-server crate**: Axum server, middleware, admin dashboard.
+- [ ] **kroki-cli crate**: CLI binary.
+- [ ] **Live Preview Web UI**: Management dashboard for testing conversions.
+- [ ] **Edge Deployment**: Optimization for Cloudflare Workers / Fastly Compute@Edge.
 
 ---
 > Have a suggestion? Feel free to open an [Issue](https://github.com/softmentor/kroki-rs/issues) or a [Pull Request](https://github.com/softmentor/kroki-rs/pulls).

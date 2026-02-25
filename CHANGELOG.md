@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.6] - 2026-02-25
+
+### Added
+- **Release Orchestration**: Automated versioning and branch verification via \`dflow\`.
+- **Enhanced Verification**: Multi-file version synchronization and automated release reporting.
+- **Migration Cleanup**: Finalized removal of Playwright and transition to native Rust browser engine.
+
+## [0.0.5-1] - 2026-02-23
+
+### Fixed
+- **Stabilization**: Resolved race conditions in the native browser engine during high-concurrency rendering.
+- **Cross-Platform Fixes**: Improved ARM64 binary stability for Linux distributions.
+
 ## [0.0.5] - 2026-02-22
 
 ### Added
