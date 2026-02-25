@@ -122,7 +122,7 @@ jobs:
           docker save -o ci-image.tar "$IMAGE"
 
       - name: "Global: Git Safety"
-        run: git config --global --add safe.directory "${{ github.workspace }}"
+        run: git config --global --add safe.directory "*"
 
       - name: Cache Cargo (registry, git, target/ci, sccache)
         uses: actions/cache@v4
@@ -132,10 +132,10 @@ jobs:
             .cargo-cache/git
             .cargo-cache/sccache
             target/ci
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          key: cargo-cache-v1-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ runner.os }}-cargo-
+            cargo-cache-v1-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-cache-v1-
 
       - name: "CI: Build (Pre-warm sccache)"
         env:
@@ -147,6 +147,7 @@ jobs:
       - name: "CI: Align Permissions (Fix Cache Write)"
         if: always()
         run: |
+          sudo chmod -R 777 .cargo-cache target/ci || true
           sudo chown -R $(id -u):$(id -g) .cargo-cache target/ci || true
 
   # Unified Verification Job (Sequential Steps, Persistent Container, Clear Status)
@@ -167,7 +168,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "Global: Git Safety"
-        run: git config --global --add safe.directory "${{ github.workspace }}"
+        run: git config --global --add safe.directory "*"
 
       - name: Cache Cargo (Restore target/ci and sccache)
         uses: actions/cache/restore@v4
@@ -177,9 +178,10 @@ jobs:
             .cargo-cache/git
             .cargo-cache/sccache
             target/ci
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          key: cargo-cache-v1-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-cache-v1-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-cache-v1-
 
       - name: "CI: Format Check"
         run: ./dflow ci-verify fmt

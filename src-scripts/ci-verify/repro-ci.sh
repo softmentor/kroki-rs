@@ -141,6 +141,8 @@ fi
 # This MUST happen after TARGET is captured from arguments.
 if [ "$IS_CONTAINER" = "true" ]; then
     echo "✅ Already inside CI container. Executing $TARGET directly..."
+    # Ensure Git doesn't complain about ownership in the mounted workspace
+    git config --global --add safe.directory "$(pwd)" || true
     # Any remaining arguments are passed to make
     make $TARGET JOBS=${JOBS:-1} "$@"
     exit 0
