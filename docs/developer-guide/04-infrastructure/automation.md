@@ -20,7 +20,7 @@ Kroki-rs uses a multi-tier pipeline designed for extreme speed and absolute repr
 
 | Image | GHCR Package | Visibility | Contents |
 | :--- | :--- | :--- | :--- |
-| **CI** | `kroki-rs-ci` | Private | Base + Rust toolchain, sccache, nextest, mystmd |
+| **CI** | `kroki-rs-ci` | Private | Base + Rust toolchain, sccache, nextest, MyST (mystmd) |
 | **Base** | `kroki-rs-base` | Private | System deps (Graphviz, D2, Ditaa, Chromium) |
 | **Production** | `kroki-rs` | Public | Base + compiled binary only (minimal runtime) |
 
