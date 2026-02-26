@@ -82,7 +82,7 @@ fix:
 
 .PHONY: doc-myst
 doc-myst:
-	cd docs && mystmd build --html
+	cd docs && myst build --html
 
 .PHONY: doc
 doc: doc-myst
