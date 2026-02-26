@@ -2,6 +2,7 @@ use crate::browser::BrowserManager;
 use crate::capabilities::Capabilities;
 use crate::config::Config;
 use crate::diagrams::registry::DiagramRegistry;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 pub mod admin;
@@ -114,7 +115,9 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     });
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
-    axum::serve(listener, app(state)).await?;
+    let router = app(state.clone());
+    let service = router.into_make_service_with_connect_info::<SocketAddr>();
+    axum::serve(listener, service).await?;
 
     Ok(())
 }

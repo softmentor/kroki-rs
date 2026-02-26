@@ -81,12 +81,12 @@ async fn generate_diagram(
     hasher.update(b"fonts:");
     for font in &fonts {
         hasher.update(font.as_bytes());
-        hasher.update(&[0]);
+        hasher.update([0]);
     }
     hasher.update(b"plugins:");
     for signature in &plugin_signatures {
         hasher.update(signature.as_bytes());
-        hasher.update(&[0]);
+        hasher.update([0]);
     }
     let hash = hex::encode(hasher.finalize());
 

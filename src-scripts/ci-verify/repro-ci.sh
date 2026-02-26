@@ -70,10 +70,86 @@ run_version_check() {
     return 0
 }
 
+# Global variables for delta-based stats (Host only)
+HOST_HITS_START=0
+HOST_MISSES_START=0
+
+manage_sccache() {
+    local phase="$1"  # "before" or "after"
+    local env_label="Host"
+    [ "$IS_CONTAINER" = "true" ] && env_label="Container"
+    
+    # Only show stats if sccache is available
+    if command -v sccache >/dev/null 2>&1; then
+        if [ "$phase" = "before" ]; then
+            # Record base stats for the Host to provide an accurate delta
+            if [ "$IS_CONTAINER" != "true" ]; then
+                local stats=$(sccache --show-stats 2>/dev/null)
+                HOST_HITS_START=$(echo "$stats" | grep "Cache hits " | awk '{print $NF}' | head -n 1 || echo 0)
+                HOST_MISSES_START=$(echo "$stats" | grep "Cache misses " | awk '{print $NF}' | head -n 1 || echo 0)
+            fi
+            
+            if [ "$DEBUG_LOG" = "true" ]; then
+                echo "📊 [SCCACHE] ($env_label) $phase run stats:"
+                sccache --show-stats || true
+            fi
+        elif [ "$phase" = "after" ]; then
+            if [ "$DEBUG_LOG" = "true" ]; then
+                echo "📊 [SCCACHE] ($env_label) $phase run stats:"
+                sccache --show-stats || true
+            else
+                # One-line summary for non-debug mode
+                local stats=$(sccache --show-stats 2>/dev/null)
+                if [ -n "$stats" ]; then
+                    local hits=$(echo "$stats" | grep "Cache hits " | awk '{print $NF}' | head -n 1 || echo 0)
+                    local misses=$(echo "$stats" | grep "Cache misses " | awk '{print $NF}' | head -n 1 || echo 0)
+                    
+                    # Calculate delta for Host
+                    if [ "$IS_CONTAINER" != "true" ]; then
+                        hits=$((hits - HOST_HITS_START))
+                        misses=$((misses - HOST_MISSES_START))
+                    fi
+
+                    if [ "$hits" -ge 0 ] && [ "$misses" -ge 0 ]; then
+                        echo "⚡️ [SCCACHE] ($env_label) Summary: $hits hits, $misses misses"
+                    else
+                        echo "⚡️ [SCCACHE] ($env_label) Summary: Active"
+                    fi
+                fi
+            fi
+        fi
+    fi
+
+    # Health check and recovery (only before run on host, as container is ephemeral)
+    if [ "$phase" = "before" ] && [ "$IS_CONTAINER" != "true" ]; then
+        if command -v sccache >/dev/null 2>&1; then
+            echo "🔍 [SCCACHE] (Host) Verifying daemon health..."
+            if ! sccache --show-stats >/dev/null 2>&1; then
+                echo "⚠️  [SCCACHE] (Host) Daemon unresponsive. Attempting restart..."
+                sccache --stop-server >/dev/null 2>&1 || true
+                sccache --start-server >/dev/null 2>&1 || echo "❌ [SCCACHE] Failed to start server."
+            fi
+
+            # Fix permissions for the cache directory if it exists
+            local cache_dir="$REPO_ROOT/.cargo-cache/sccache"
+            if [ -d "$cache_dir" ]; then
+                if [ "$(uname)" = "Darwin" ]; then
+                    chmod -R 755 "$cache_dir" || true
+                fi
+            fi
+        fi
+    fi
+}
+
+# --- Initial Health Check (Execute immediately at script start) ---
+manage_sccache "before"
+
 # Mode: only version check (for GHA release workflow)
 if [ "${1:-}" = "--version-check" ]; then
     run_version_check
-    exit $?
+    RET=$?
+    manage_sccache "after"
+    exit $RET
 fi
 
 # Mode: interactive shell in CI container (same mounts as ci-verify for fast incremental fixes)
@@ -102,7 +178,8 @@ if [ "${1:-}" = "--shell" ]; then
     echo "   Cargo registry/git/sccache cached at .cargo-cache/ for fast incremental builds."
     echo "   Run 'make ghrun' or 'cargo test' for incremental fixes. Exit with 'exit'."
     mkdir -p "$(pwd)/target/ci" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
-    exec $DOCKER_CMD run --rm -it \
+    
+    $DOCKER_CMD run --rm -it \
         -v "$(pwd):/app" \
         -v "$(pwd)/target/ci:/app/target-ci" \
         -v "$(pwd)/.cargo-cache/registry:/usr/local/cargo/registry" \
@@ -124,6 +201,9 @@ if [ "${1:-}" = "--shell" ]; then
         --security-opt seccomp=unconfined \
         "$CI_IMAGE_LOCAL" \
         bash
+
+    manage_sccache "after"
+    exit 0
 fi
 
 # --- Normal ci-verify flow: version check upfront (unless in GHA to avoid redundancy), then container repro ---
@@ -149,6 +229,7 @@ if [ "$IS_CONTAINER" = "true" ]; then
     git config --global --add safe.directory "$(pwd)" || true
     # Any remaining arguments are passed to make (JOBS passed only if explicitly set)
     make $TARGET ${JOBS:+JOBS=$JOBS} "$@"
+    manage_sccache "after"
     exit 0
 fi
 
@@ -203,6 +284,7 @@ echo "✅ Toolchain alignment verified."
 
 echo "🧪 Running CI target '$TARGET' inside container..."
 mkdir -p "$(pwd)/target/ci" "$(pwd)/.cargo-cache/registry" "$(pwd)/.cargo-cache/git" "$(pwd)/.cargo-cache/sccache"
+
 $DOCKER_CMD run --rm \
     -v "$(pwd):/app" \
     -v "$(pwd)/target/ci:/app/target-ci" \
@@ -223,7 +305,9 @@ $DOCKER_CMD run --rm \
     ${JOBS:+-e JOBS=$JOBS} \
     --security-opt seccomp=unconfined \
     "$CI_IMAGE_LOCAL" \
-    make $TARGET ${JOBS:+JOBS=$JOBS} "$@"
+    bash src-scripts/ci-verify/repro-ci.sh $TARGET ${JOBS:+JOBS=$JOBS} "$@"
+
+manage_sccache "after"
 
 if [ "$PURGE_DISK" = "true" ]; then
     echo "🧹 Cleaning up images and builder cache..."

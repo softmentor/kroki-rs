@@ -3,23 +3,57 @@ mod native_impl {
     use crate::browser::backend::BrowserBackend;
     use crate::diagrams::{DiagramError, DiagramResult};
     use async_trait::async_trait;
-
-    use headless_chrome::Browser;
+    use headless_chrome::{Browser, LaunchOptions};
+    use std::ffi::OsStr;
     use std::io::Write;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::Arc;
-    use tokio::sync::Semaphore;
+    use std::time::Duration;
+    use tempfile::{Builder, NamedTempFile};
+    use tokio::sync::{RwLock, Semaphore};
+
+    const CHROME_ARGS: &[&str] = &[
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-web-security",
+        "--disable-software-rasterizer",
+        "--disable-features=IsolateOrigins,site-per-process",
+        "--font-render-hinting=none",
+        "--allow-file-access-from-files",
+    ];
+
+    const DEFAULT_IDLE_TIMEOUT: Duration = Duration::from_secs(120);
 
     /// Native browser backend using the `headless_chrome` crate.
     pub struct NativeBackend {
-        browser: Browser,
+        browser: Arc<RwLock<Browser>>,
         harness_url: String,
         semaphore: Arc<Semaphore>,
-        _harness_file: tempfile::NamedTempFile,
+        _harness_file: NamedTempFile,
+        context_ttl_requests: usize,
+        request_count: AtomicUsize,
+        restarting: AtomicBool,
     }
 
     impl NativeBackend {
-        pub async fn new(pool_size: usize) -> Result<Self, String> {
-            let mut temp_file = tempfile::Builder::new()
+        pub async fn new(pool_size: usize, context_ttl_requests: usize) -> Result<Self, String> {
+            let (harness_url, harness_file) = Self::build_harness()?;
+            let browser = Self::spawn_browser().await?;
+            Ok(Self {
+                browser: Arc::new(RwLock::new(browser)),
+                harness_url,
+                semaphore: Arc::new(Semaphore::new(pool_size)),
+                _harness_file: harness_file,
+                context_ttl_requests,
+                request_count: AtomicUsize::new(0),
+                restarting: AtomicBool::new(false),
+            })
+        }
+
+        fn build_harness() -> Result<(String, NamedTempFile), String> {
+            let mut temp_file = Builder::new()
                 .suffix(".html")
                 .tempfile()
                 .map_err(|e| format!("Failed to create temp harness: {}", e))?;
@@ -28,7 +62,6 @@ mod native_impl {
             let bpmn_js = include_str!("../../resources/browser/bpmn-viewer.production.min.js");
             let index_html = include_str!("../../resources/browser/index.html");
 
-            // Inject scripts into the HTML
             let html = index_html.replace(
                 "<!-- KROKI_SCRIPTS -->",
                 &("<script>".to_string()
@@ -42,38 +75,72 @@ mod native_impl {
                 .write_all(html.as_bytes())
                 .map_err(|e| format!("Failed to write harness: {}", e))?;
 
-            let harness_url = format!("file://{}", temp_file.path().to_str().unwrap());
+            let path = temp_file
+                .path()
+                .to_str()
+                .ok_or_else(|| "Failed to build harness URL".to_string())?;
+            let harness_url = format!("file://{}", path);
             tracing::debug!("Local serverless harness created at {}", harness_url);
 
-            use headless_chrome::LaunchOptions;
-            let options = LaunchOptions {
-                args: vec![
-                    std::ffi::OsStr::new("--no-sandbox"),
-                    std::ffi::OsStr::new("--disable-setuid-sandbox"),
-                    std::ffi::OsStr::new("--disable-dev-shm-usage"),
-                    std::ffi::OsStr::new("--disable-gpu"),
-                    std::ffi::OsStr::new("--disable-web-security"),
-                    std::ffi::OsStr::new("--disable-software-rasterizer"),
-                    std::ffi::OsStr::new("--disable-features=IsolateOrigins,site-per-process"),
-                    std::ffi::OsStr::new("--font-render-hinting=none"),
-                    std::ffi::OsStr::new("--allow-file-access-from-files"),
-                ],
-                idle_browser_timeout: std::time::Duration::from_secs(120),
-                ..Default::default()
-            };
+            Ok((harness_url, temp_file))
+        }
 
-            let browser = tokio::task::spawn_blocking(move || Browser::new(options))
+        fn default_launch_options() -> LaunchOptions<'static> {
+            let args: Vec<&'static OsStr> = CHROME_ARGS.iter().map(OsStr::new).collect();
+
+            LaunchOptions {
+                args,
+                idle_browser_timeout: DEFAULT_IDLE_TIMEOUT,
+                ..Default::default()
+            }
+        }
+
+        async fn spawn_browser() -> Result<Browser, String> {
+            let options = Self::default_launch_options();
+            tokio::task::spawn_blocking(move || Browser::new(options))
                 .await
                 .map_err(|e| format!("Browser spawn join failed: {}", e))?
-                .map_err(|e| e.to_string())?;
-            let semaphore = Arc::new(Semaphore::new(pool_size));
+                .map_err(|e| e.to_string())
+        }
 
-            Ok(Self {
-                browser,
-                harness_url,
-                semaphore,
-                _harness_file: temp_file,
-            })
+        async fn restart_browser(&self) -> Result<(), String> {
+            let new_browser = Self::spawn_browser().await?;
+            let mut guard = self.browser.write().await;
+            *guard = new_browser;
+            Ok(())
+        }
+
+        fn should_restart(&self) -> bool {
+            if self.context_ttl_requests == 0 {
+                return false;
+            }
+            let count = self.request_count.fetch_add(1, Ordering::Relaxed) + 1;
+            count >= self.context_ttl_requests
+        }
+
+        async fn maybe_restart(&self) {
+            if !self.should_restart() {
+                return;
+            }
+            if self
+                .restarting
+                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Relaxed)
+                .is_err()
+            {
+                return;
+            }
+
+            if let Err(err) = self.restart_browser().await {
+                tracing::error!("Native browser restart failed: {}", err);
+            }
+
+            self.request_count.store(0, Ordering::Relaxed);
+            self.restarting.store(false, Ordering::Release);
+        }
+
+        async fn acquire_browser(&self) -> Browser {
+            let guard = self.browser.read().await;
+            guard.clone()
         }
 
         async fn do_render(
@@ -88,19 +155,26 @@ mod native_impl {
             tab.wait_for_element("#container")
                 .map_err(|e| DiagramError::ProcessFailed(format!("Harness load timeout: {}", e)))?;
 
-            let font_injection = "const style = document.getElementById('kroki-fonts'); if (style) { style.innerHTML = window.krokiFontCss || ''; }";
+            let font_injection =
+                "const style = document.getElementById('kroki-fonts'); if (style) { style.innerHTML = window.krokiFontCss || ''; }";
             tab.evaluate(font_injection, false).map_err(|e| {
                 DiagramError::ProcessFailed(format!("Font injection failed: {}", e))
             })?;
 
             match diagram_type {
                 "mermaid" => {
-                    tab.evaluate("new Promise(r => { const check = () => window.mermaid ? r() : setTimeout(check, 50); check(); })", true)
-                        .map_err(|e| DiagramError::ProcessFailed(format!("Mermaid load timeout: {}", e)))?;
+                    tab.evaluate(
+                        "new Promise(r => { const check = () => window.mermaid ? r() : setTimeout(check, 50); check(); })",
+                        true,
+                    )
+                    .map_err(|e| DiagramError::ProcessFailed(format!("Mermaid load timeout: {}", e)))?;
                 }
                 "bpmn" => {
-                    tab.evaluate("new Promise(r => { const check = () => window.BpmnJS ? r() : setTimeout(check, 50); check(); })", true)
-                        .map_err(|e| DiagramError::ProcessFailed(format!("BPMN load timeout: {}", e)))?;
+                    tab.evaluate(
+                        "new Promise(r => { const check = () => window.BpmnJS ? r() : setTimeout(check, 50); check(); })",
+                        true,
+                    )
+                    .map_err(|e| DiagramError::ProcessFailed(format!("BPMN load timeout: {}", e)))?;
                 }
                 _ => {
                     return Err(DiagramError::UnsupportedFormat {
@@ -149,30 +223,32 @@ mod native_impl {
             source: &str,
             format: &str,
         ) -> DiagramResult<Vec<u8>> {
+            self.maybe_restart().await;
+
             let _permit = self.semaphore.acquire().await.map_err(|_| {
                 DiagramError::ProcessFailed("Native backend semaphore was closed".to_string())
             })?;
 
             tracing::debug!("Creating new tab...");
-            let tab = self
-                .browser
+            let browser = self.acquire_browser().await;
+            let tab = browser
                 .new_tab()
                 .map_err(|e| DiagramError::ProcessFailed(format!("Failed to create tab: {}", e)))?;
 
             let result = self.do_render(&tab, diagram_type, source, format).await;
 
-            // Ensure tab is closed regardless of success
             let _ = tab.close(false);
 
             result
         }
 
         async fn health(&self) -> serde_json::Value {
-            let tabs_count = if let Ok(lock) = self.browser.get_tabs().lock() {
-                lock.len()
-            } else {
-                0
-            };
+            let browser = self.acquire_browser().await;
+            let tabs_count = browser
+                .get_tabs()
+                .lock()
+                .map(|tabs| tabs.len())
+                .unwrap_or(0);
 
             serde_json::json!({
                 "status": "ok",

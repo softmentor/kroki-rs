@@ -31,6 +31,7 @@ impl BrowserManager {
 
         #[cfg(not(feature = "native-browser"))]
         {
+            let _ = (pool_size, context_ttl);
             Err(anyhow!("Browser-based rendering is disabled in this build. Rebuild with --features native-browser."))
         }
     }

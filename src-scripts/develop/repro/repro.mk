@@ -70,11 +70,11 @@ endif
 .PHONY: cirun
 cirun: $(_PRE_CLEAN)
 	@echo "🚀 Running container-based CI verification (ci-verify)..."
-	bash src-scripts/ci-verify/repro-ci.sh $(CI_ARGS)
+	@DEBUG_LOG="$(DEBUG_LOG)" VERBOSE="$(VERBOSE)" bash src-scripts/ci-verify/repro-ci.sh $(CI_ARGS)
 
 .PHONY: cishell
 cishell:
-	@FEATURES="$(FEATURES)" JOBS="$(JOBS)" bash src-scripts/ci-verify/repro-ci.sh --shell
+	@FEATURES="$(FEATURES)" JOBS="$(JOBS)" DEBUG_LOG="$(DEBUG_LOG)" VERBOSE="$(VERBOSE)" bash src-scripts/ci-verify/repro-ci.sh --shell
 
 .PHONY: ghrun
 ghrun: setup $(_PRE_CLEAN)

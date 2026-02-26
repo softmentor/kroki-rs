@@ -4,6 +4,7 @@ mod config;
 mod discovery;
 mod docker;
 mod helpers;
+mod production_features;
 mod providers;
 mod server;
 mod webp;
