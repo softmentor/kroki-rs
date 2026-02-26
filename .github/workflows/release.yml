@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       hash: ${{ steps.calc.outputs.hash }}
+  # ---------------------------------------------------------------------------
     steps:
       - uses: actions/checkout@v4
       - name: Compute Target CI Hash
@@ -56,6 +57,7 @@ jobs:
       
       - name: Verify Version Synchronicity
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE" || true
           chmod +x src-scripts/ci-verify/repro-ci.sh
           ./src-scripts/ci-verify/repro-ci.sh --version-check
 
@@ -97,6 +99,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -143,8 +147,14 @@ jobs:
 
       - name: Commit Cumulative Report
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE" || true
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main:main
+          git checkout main
+          # Re-run report generation on the latest main branch
+          chmod +x src-scripts/gh-tasks/generate-release-report.sh
+          ./src-scripts/gh-tasks/generate-release-report.sh "${GITHUB_REF_NAME#v}"
           git add release-reports.md
           git commit -m "docs: update cumulative release reports for ${GITHUB_REF_NAME}" || echo "No changes to report"
           git push origin main
@@ -161,6 +171,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Environment
         uses: ./.github/actions/setup-kroki
