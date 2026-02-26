@@ -41,6 +41,7 @@ project:
                 - file: developer-guide/02-design/adr/adr-0008-rust-browser-automation.md
                 - file: developer-guide/02-design/adr/adr-0008.1-browser-backend-evaluation.md
                 - file: developer-guide/02-design/adr/adr-0009-ci-optimization-strategy.md
+                - file: developer-guide/02-design/adr/adr-0010-devflow-and-nxt-repo-strategy.md
         - title: 🛠️ Development
           children:
             - file: developer-guide/03-development/workflow.md
@@ -60,6 +61,8 @@ project:
           children:
             - file: developer-guide/06-roadmap/index.md
             - file: developer-guide/06-roadmap/v0.1.0-ci-container-redesign.md
+            - file: developer-guide/06-roadmap/v0.1.0-platform-migration-decision.md
+            - file: developer-guide/06-roadmap/v0.1.0-implementation-execution-plan.md
             - file: developer-guide/06-roadmap/tech-debt.md
             - file: developer-guide/06-roadmap/brainstorm-implementation.md
             - file: developer-guide/06-roadmap/brainstorm-re-architecture.md

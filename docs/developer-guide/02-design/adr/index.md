@@ -21,6 +21,7 @@ This section documents the critical architectural choices and design trade-offs 
 | **[0008](#kroki-rs.adr.0008)** | Rust-Native Browser Automation | Implemented |
 | **[0008.1](#kroki-rs.adr.0008.1)** | Browser Backend Evaluation | Implemented |
 | **[0009](#kroki-rs.adr.0009)** | CI Optimization Strategy | Implemented |
+| **[0010](#kroki-rs.adr.0010)** | Devflow Platform and kroki-rs-nxt Repository Strategy | Accepted |
 
 ---
 > [!NOTE]
