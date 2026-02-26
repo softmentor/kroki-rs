@@ -197,6 +197,7 @@ if [ "${1:-}" = "--shell" ]; then
         -e VERBOSE \
         -e NO_NETWORK \
         -e LOAD_TEST \
+        -e SECURITY_TEST \
         ${JOBS:+-e JOBS=$JOBS} \
         --security-opt seccomp=unconfined \
         "$CI_IMAGE_LOCAL" \
@@ -302,6 +303,7 @@ $DOCKER_CMD run --rm \
     -e VERBOSE \
     -e NO_NETWORK \
     -e LOAD_TEST \
+    -e SECURITY_TEST \
     ${JOBS:+-e JOBS=$JOBS} \
     --security-opt seccomp=unconfined \
     "$CI_IMAGE_LOCAL" \

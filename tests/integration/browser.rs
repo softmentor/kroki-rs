@@ -91,6 +91,7 @@ async fn test_browser_sanity() {
 /// LOAD TEST: Smashes the headless_chrome backend.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[cfg(feature = "native-browser")]
+#[cfg_attr(not(feature = "load-tests"), ignore)]
 async fn test_load_native_concurrency() {
     let (port, _) = start_test_server().await;
     let client = Client::new();

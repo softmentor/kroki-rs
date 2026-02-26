@@ -38,6 +38,8 @@ num_cpus = "1.0"
 [features]
 default = []
 native-browser = ["dep:headless_chrome"]
+load-tests = []
+security-tests = []
 
 # Optimize dependencies even in debug/test mode to dramatically speed up image encoding
 [profile.dev]

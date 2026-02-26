@@ -11,6 +11,7 @@ DEBUG_LOG="false"
 VERBOSE="false"
 NO_NETWORK="false"
 LOAD_TEST="false"
+SECURITY_TEST="false"
 FULL_CLEANUP="false"
 YES_BYPASS="false"
 RELEASE_TYPE=""
@@ -20,7 +21,7 @@ STEPS_PARALLEL="true"
 FEATURES="native-browser"
 
 show_help() {
-    cat << EOF
+    cat <<'EOF'
 Usage: dflow <command> [options]
 
 Developer Flow CLI — commands match Kroki-Flow phases
@@ -39,7 +40,7 @@ Options:
   -d, --debug           Enable debug-level logging (RUST_LOG=debug)
   -v, --verbose         Enable verbose tool output
   -n, --no-network      Run in offline mode
-  -t <type>, --test=<type>   Include tests (e.g., -t load)
+  -t <type>, --test=<type>   Include tests (e.g., -t load, -t security, -t all)
   -j <n>, --jobs=<n>    Limit INTERNAL build parallelism to n threads
   -sp, --steps-parallel [true|false]  Run high-level verification steps concurrently (default: true)
   -f, --full            Deep System & Remote Cleanup (GHA caches + Podman) [teardown only]
@@ -51,13 +52,20 @@ Options:
   --lean                Build lean core without browser engine
   -h, --help            Show this help message
 
+Test & feature defaults:
+  LOAD_TEST=false, SECURITY_TEST=false by default so `./dflow develop` only runs fmt/lint/build/test with `native-browser`.
+  `ci-verify` / `ghrun` automatically force both flags true before spinning up Podman so the load + security suites run inside the container.
+  Use `-t load`, `-t security`, or `-t all` (or `--test=<type>`) on `develop` to opt into the heavier suites locally.
+  `--lean` drops `native-browser`; `SECURITY_TEST` adds `security-tests`; `LOAD_TEST` adds `load-tests` so Cargo never sees stray positional args.
+
 Examples:
-  dflow develop -p -d
-  dflow ci-verify -sp false
-  dflow ci-verify --test load -j 1
-  dflow teardown -f -y
-  dflow release -b --dry-run
-  dflow release --tag
+  dflow develop                     # quick sanity run (fmt/lint/build/test)
+  dflow develop -t load -j 2        # include the native-browser load test with 2 internal jobs
+  dflow dev --test=security --debug  # include auth/rate-limit/circuit-breaker security suite with extra logging
+  dflow ci-verify --test=load        # redundant because ci-verify already enables load/security, but shows syntax
+  dflow teardown -f -y              # full cleanup (Podman, caches) without confirmation
+  dflow release -b --dry-run        # propose release branch, non-destructively
+  dflow release --tag               # tag the current commit for release
 
 Docs: https://softmentor.github.io/kroki-rs/developer-guide/04-infrastructure/environment
 EOF
@@ -82,6 +90,11 @@ case "$1" in
 esac
 shift
 
+if [[ "$MAKE_TARGET" == "cirun" || "$MAKE_TARGET" == "ghrun" ]]; then
+    LOAD_TEST="true"
+    SECURITY_TEST="true"
+fi
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --release)
@@ -103,9 +116,15 @@ while [[ $# -gt 0 ]]; do
         --tag)           RELEASE_TYPE="tag"; shift ;;
         --dry-run)       DRY_RUN="true"; shift ;;
         -t|--test)
-            if [[ "$2" == "load" ]]; then LOAD_TEST="true"; fi
+            case "$2" in
+                load) LOAD_TEST="true" ;;
+                security) SECURITY_TEST="true" ;;
+                all) LOAD_TEST="true"; SECURITY_TEST="true" ;;
+            esac
             shift 2 ;;
         --test=load)     LOAD_TEST="true"; shift ;;
+        --test=security) SECURITY_TEST="true"; shift ;;
+        --test=all)      LOAD_TEST="true"; SECURITY_TEST="true"; shift ;;
         -j|--jobs)       JOBS="$2"; shift 2 ;;
         --jobs=*)        JOBS="${1#*=}"; shift ;;
         -sp|--steps-parallel)
@@ -197,6 +216,7 @@ CMD="$CMD DEBUG_LOG=$DEBUG_LOG"
 CMD="$CMD VERBOSE=$VERBOSE"
 CMD="$CMD NO_NETWORK=$NO_NETWORK"
 CMD="$CMD LOAD_TEST=$LOAD_TEST"
+CMD="$CMD SECURITY_TEST=$SECURITY_TEST"
 CMD="$CMD FULL_CLEANUP=$FULL_CLEANUP"
 CMD="$CMD STEPS_PARALLEL=$STEPS_PARALLEL"
 CMD="$CMD FEATURES=\"$FEATURES\""

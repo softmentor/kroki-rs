@@ -28,6 +28,10 @@ ARCHIVE_NAME = $(BINARY_NAME)-$(PLATFORM).tar.gz
 VERSION ?= $(shell grep '^version =' Cargo.toml 2>/dev/null | head -n 1 | cut -d '"' -f 2)
 RUST_VERSION := $(shell grep '^channel =' rust-toolchain.toml | cut -d '"' -f 2)
 
+empty :=
+space := $(empty) $(empty)
+comma := ,
+
 .PHONY: print-rust-version
 print-rust-version:
 	@echo $(RUST_VERSION)
@@ -38,6 +42,7 @@ print-container-engine:
 
 # --- Build configuration (override via make VAR=value) ---
 FEATURES ?= native-browser
+SECURITY_TEST ?= false
 # JOBS: Controls internal build-level parallelism (e.g. cargo --jobs N).
 JOBS ?=
 # STEPS_PARALLEL: Controls high-level verification concurrency (e.g. running fmt, lint, build in parallel).
@@ -75,8 +80,18 @@ ifeq ($(LOAD_TEST),true)
     TEST_FLAGS += --ignored
 endif
 
-ifneq ($(FEATURES),)
-    FEAT_FLAG := --features $(FEATURES)
+EXTRA_TEST_FEATURES :=
+ifeq ($(LOAD_TEST),true)
+    EXTRA_TEST_FEATURES += load-tests
+endif
+ifeq ($(SECURITY_TEST),true)
+    EXTRA_TEST_FEATURES += security-tests
+endif
+
+FEAT_LIST := $(strip $(FEATURES) $(EXTRA_TEST_FEATURES))
+FEAT_LIST_COMMA := $(if $(FEAT_LIST),$(subst $(space),$(comma),$(FEAT_LIST)))
+ifneq ($(FEAT_LIST),)
+    FEAT_FLAG := --features $(FEAT_LIST_COMMA)
 else
     FEAT_FLAG :=
 endif

@@ -153,6 +153,7 @@ help:
 	@echo "  VERBOSE=true         Enable verbose tool output"
 	@echo "  NO_NETWORK=true      Run in offline mode"
 	@echo "  LOAD_TEST=true       Include high-concurrency load tests"
+	@echo "  SECURITY_TEST=true   Run the full production/security integration suite"
 	@echo "  JOBS=N               Limit INTERNAL build parallelism to N threads"
 	@echo "  STEPS_PARALLEL=true  Run HIGH-LEVEL steps (fmt, lint, build) concurrently"
 	@echo "  FULL_CLEANUP=true    Full cleanup including Podman storage (teardown only)"
