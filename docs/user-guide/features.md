@@ -35,6 +35,5 @@ Kroki-rs is packed with features designed for speed, reliability, and ease of us
 - **Mermaid**: Flowcharts, Sequences, Gantt, etc.
 - **Graphviz**: DOT language visualization.
 - **D2**: Modern, declarative diagramming.
-- **PlantUML**: Classic software modeling.
 - **Vega/Vega-Lite**: Data visualization.
 - **And more**: BPMN, WaveDrom, Ditaa.

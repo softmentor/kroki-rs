@@ -198,6 +198,7 @@ pub async fn root(State(state): State<AppState>) -> impl IntoResponse {
                     <li><a href="http://localhost:{}/health">🔍 Health Check</a></li>
                     {}
                     <li><a href="http://localhost:{}">⚙️ Admin Dashboard</a></li>
+                    <li><a href="https://softmentor.github.io/kroki-rs/" target="_blank">📖 Documentation & Help</a></li>
                 </ul>
             </div>
         </div>

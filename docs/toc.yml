@@ -59,6 +59,7 @@ project:
         - title: 🗺️ Roadmap
           children:
             - file: developer-guide/06-roadmap/index.md
+            - file: developer-guide/06-roadmap/v0.1.0-ci-container-redesign.md
             - file: developer-guide/06-roadmap/tech-debt.md
             - file: developer-guide/06-roadmap/brainstorm-implementation.md
             - file: developer-guide/06-roadmap/brainstorm-re-architecture.md

@@ -29,11 +29,20 @@ pub struct AppState {
 pub async fn run(config: Config) -> anyhow::Result<()> {
     let capabilities = Capabilities::discover(&config);
     let port = config.server.port;
-    tracing::info!("Capabilities: {:?}", capabilities);
-    tracing::info!(
-        "Kroki-rs discovery service available at http://localhost:{}",
-        port
+    let admin_port = config.server.admin_port;
+    let host = &config.server.host;
+
+    println!(
+        "\n🚀 Kroki-rs v{} is starting up...",
+        env!("CARGO_PKG_VERSION")
     );
+    println!("------------------------------------------------------------");
+    println!("📡 API Server:      http://{}:{}", host, port);
+    println!("🛠️  Admin Dashboard: http://{}:{}", host, admin_port);
+    println!("📖 Documentation:   https://softmentor.github.io/kroki-rs/");
+    println!("------------------------------------------------------------\n");
+
+    tracing::info!("Capabilities discovered: {:?}", capabilities);
 
     let browser_manager = match BrowserManager::start(
         config.browser.pool_size,

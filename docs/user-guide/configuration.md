@@ -12,6 +12,8 @@ Kroki-rs is designed to work out-of-the-box with auto-discovery, but you can cus
 [server]
 port = 8000
 admin_port = 8081
+host = "localhost"           # Host domain used in startup URLs
+log_level = "info"           # Default logging level (debug, info, warn, error)
 timeout_ms = 5000
 max_input_size = 10485760   # 10MB
 max_output_size = 20971520  # 20MB
@@ -57,9 +59,6 @@ bin_path = "/usr/local/bin/dot"
 bin_path = "./node_modules/.bin/mmdc"
 config_path = "mermaid-config.json"
 
-[plantuml]
-# No bin_path or Java required! Kroki-rs uses embedded JS.
-# bin_path = "java"
 
 [d2]
 bin_path = "d2"
@@ -74,6 +73,8 @@ You can override any configuration directly using environment variables:
 
 -   `KROKI_PORT`: Server port (default 8000)
 -   `KROKI_ADMIN_PORT`: Admin dashboard & health check port (default 8081)
+-   `KROKI_HOST`: Host domain used in startup banner (default localhost)
+-   `KROKI_LOG_LEVEL`: Default logging level (default info)
 -   `KROKI_TIMEOUT`: Global fallback timeout in milliseconds
 -   `KROKI_MAX_INPUT_SIZE`: Maximum payload size in bytes
 -   `KROKI_MAX_OUTPUT_SIZE`: Maximum SVG/PNG size in bytes

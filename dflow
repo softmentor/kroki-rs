@@ -19,6 +19,7 @@ DRY_RUN="false"
 JOBS=""
 STEPS_PARALLEL="true"
 FEATURES="native-browser"
+RUN_SERVER="false"
 
 show_help() {
     cat <<'EOF'
@@ -50,6 +51,7 @@ Options:
   --release <v>         Prepare release v<v> (bump \u0026 commit) [dev only]
   --dry-run             Verification mode: skip destructive actions [release/dev only]
   --lean                Build lean core without browser engine
+  --run-server          Execute 'serve' after developer verification
   -h, --help            Show this help message
 
 Test & feature defaults:
@@ -135,6 +137,7 @@ while [[ $# -gt 0 ]]; do
             if [[ "$VAL" == "false" ]]; then STEPS_PARALLEL="false"; else STEPS_PARALLEL="true"; fi
             shift ;;
         --lean)          FEATURES=""; shift ;;
+        --run-server)    RUN_SERVER="true"; shift ;;
         -h|--help)       show_help; exit 0 ;;
         -*)              echo "Unknown option: $1"; show_help; exit 1 ;;
         *)               break ;; # Stop at first positional argument
@@ -220,6 +223,7 @@ CMD="$CMD SECURITY_TEST=$SECURITY_TEST"
 CMD="$CMD FULL_CLEANUP=$FULL_CLEANUP"
 CMD="$CMD STEPS_PARALLEL=$STEPS_PARALLEL"
 CMD="$CMD FEATURES=\"$FEATURES\""
+CMD="$CMD RUN_SERVER=$RUN_SERVER"
 CMD="$CMD CI_ARGS=\"$EXTRA_CI_ARGS $POS_ARGS\""
 
 if [[ -n "$JOBS" ]]; then

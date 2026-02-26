@@ -31,3 +31,4 @@ This page tracks the strategic evolution of **Kroki-rs**. For granular bug track
 - [ ] Split into multi-crate Cargo workspace.
 - [ ] Public Homebrew Tap.
 - [ ] Official Plugin SDK.
+- [ ] CI/Container redesign for deterministic caching and modular verification ([proposal](#kroki-rs.developer-guide.v010-ci-container-redesign)).

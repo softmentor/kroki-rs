@@ -65,6 +65,9 @@ else
 	@$(MAKE) fmt lint build
 endif
 	@$(MAKE) test smoke-test
+ifeq ($(RUN_SERVER),true)
+	@$(MAKE) serve
+endif
 	@echo "✅ Local native development verification complete."
 
 .PHONY: cirun
@@ -158,6 +161,7 @@ help:
 	@echo "  STEPS_PARALLEL=true  Run HIGH-LEVEL steps (fmt, lint, build) concurrently"
 	@echo "  FULL_CLEANUP=true    Full cleanup including Podman storage (teardown only)"
 	@echo "  FEATURES=\"\"           Build lean core without browser engine"
+	@echo "  RUN_SERVER=true      Execute 'serve' after developer verification"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make devrun STEPS_PARALLEL=false"

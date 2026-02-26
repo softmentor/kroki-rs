@@ -56,14 +56,16 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let args = Cli::parse();
+    let config = Config::load(args.config.clone())?;
+
     use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new(&config.server.log_level));
     tracing_subscriber::registry()
         .with(fmt::layer().with_writer(std::io::stderr))
-        .with(EnvFilter::from_default_env())
+        .with(filter)
         .init();
-
-    let args = Cli::parse();
-    let config = Config::load(args.config)?;
 
     match args.command {
         Commands::Serve { port } => {
