@@ -7,19 +7,30 @@ label: kroki-rs.developer-guide.automation
 
 Kroki-rs uses a multi-tier pipeline designed for extreme speed and absolute reproducibility across both local and remote environments.
 
-## 1. The 3-Tier Pipeline
+## 1. The 4-Tier Pipeline
 
 | Tier | Workflow | Purpose |
 | :--- | :--- | :--- |
-| **Tier 1: Identity** | `base-image.yml` | Masters the Docker fingerprints. Built on-demand. |
-| **Tier 2: Verification** | `ci-build.yml` | 3-phase fan-out: Prep → Build → parallel Lint / Test / Smoke+Verify. |
-| **Tier 3: Distribution** | `release.yml` | Multi-arch OCI images and native binaries on version tags. |
+| **Tier 1: Identity** | `base-image.yml` | Masters the Docker fingerprints. Built on-demand when Dockerfile changes. |
+| **Tier 2: Verification** | `ci-build.yml` | 3-phase pipeline: Prep -> Build -> Verify (concurrent checks). |
+| **Tier 3: Distribution** | `release.yml` | Multi-arch native binaries and GitHub Releases on version tags. |
+| **Tier 4: Packaging** | `publish-packages.yml` | Production OCI image build, smoke testing, and GHCR publish. |
+
+### Image Separation
+
+| Image | GHCR Package | Visibility | Contents |
+| :--- | :--- | :--- | :--- |
+| **CI** | `kroki-rs-ci` | Private | Base + Rust toolchain, sccache, nextest, mystmd |
+| **Base** | `kroki-rs-base` | Private | System deps (Graphviz, D2, Ditaa, Chromium) |
+| **Production** | `kroki-rs` | Public | Base + compiled binary only (minimal runtime) |
+
+CI and Base images are internal infrastructure. Only the production `kroki-rs` image is published for end users.
 
 ## 2. Verification Flow (CI-Build)
 
-We utilize a "Compile Once, Check Parallel" strategy to maximize GitHub Actions runner efficiency.
+We utilize a "Compile Once, Verify Concurrent" strategy to maximize GitHub Actions runner efficiency while maintaining fine-grained PR check visibility.
 
-### Workflow Sequence (5-Job Pipeline)
+### Workflow Sequence (3-Job Pipeline)
 
 ```mermaid
 sequenceDiagram
@@ -27,27 +38,38 @@ sequenceDiagram
     participant Prep as Job: Prep (bare runner)
     participant Build as Job: Build (container)
     participant Cache as Actions Cache (Disk Sccache)
-    participant Verify as Jobs: Lint / Test / Smoke+Verify
+    participant Verify as Job: Verify (container)
 
     PR->>Prep: Trigger
-    Prep->>Prep: Compute fingerprint, cache CI image tar
-    Prep->>Build: Pass fingerprint
+    Prep->>Prep: Version sync, compute fingerprint
+    Prep->>Prep: Ensure CI image in GHCR (tar cache / pull / build-on-demand)
+    Prep->>Build: Pass image URI
 
     Build->>Cache: Restore .cargo-cache & target/ci
     Build->>Build: cargo build --release --all-targets (build-ci)
     Build->>Cache: Save .cargo-cache & target/ci
-    Build->>Verify: Trigger (FAN-OUT, 3 parallel jobs)
+    Build->>Verify: Trigger
 
-    rect rgb(240, 240, 240)
-    Note over Verify: Parallel verification using warm cache
     Verify->>Cache: Restore (Read-Only)
-    Verify->>Verify: clippy + fmt / nextest / smoke-test + dist verify
+    rect rgb(240, 240, 240)
+    Note over Verify: Concurrent checks (background processes)
+    Verify->>Verify: fmt | clippy | nextest | smoke-test+verify
     end
-
-    Verify->>PR: Per-job Success/Failure status (5 PR checks)
+    Verify->>PR: Per-check commit status (fmt, clippy, test, smoke-test)
 ```
 
-Each verify job appears as a **separate PR check** so failures are immediately visible without expanding logs.
+The Verify job runs all checks concurrently as background processes within a **single container instance**, using `gh-check-wrapper.sh` to report each as a **separate PR commit status**. This avoids the overhead of pulling the CI image multiple times while still providing fine-grained failure visibility.
+
+### PR Status Checks
+
+Branch protection requires these four commit statuses (created by `gh-check-wrapper.sh`):
+
+| Status Context | Command |
+| :--- | :--- |
+| `fmt` | `cargo fmt --all -- --check` |
+| `clippy` | `cargo clippy --release --all-targets --features native-browser -- -D warnings` |
+| `test` | `./dflow ci-verify test-ci` (nextest) |
+| `smoke-test` | `./dflow ci-verify smoke-test && ./dflow ci-verify verify` |
 
 ## 3. Local Reproducibility (`repro-ci.sh`)
 
@@ -62,20 +84,20 @@ sequenceDiagram
 
     Dev->>Script: ./dflow ci-verify
     Script->>Script: Fetch Fingerprint (Makefile print-base-fingerprint)
-    
+
     alt Image missing or Fingerprint mismatch
         Script->>Registry: Pull image:fingerprint
-        Registry-->>Script: 📦 Pull complete
+        Registry-->>Script: Pull complete
     else Image exists locally
         Script->>Podman: Inspect local image:fingerprint
-        Podman-->>Script: ✅ Found
+        Podman-->>Script: Found
     end
-    
+
     Script->>Script: Toolchain Verification Guard
     Note over Script: Fail if baked Rust != project Rust
-    
+
     Script->>Podman: Run Container (Mount target/ci, .cargo-cache)
-    Podman->>Podman: Execute make ghrun
+    Podman->>Podman: Execute make target
     Podman-->>Dev: Verification results
 ```
 
@@ -90,14 +112,65 @@ To avoid 400 errors from GHA proxies inside containers, we standardized on a **D
 - **Method**: The host mounts this directory to the container. GitHub Actions preserves it across runs via `actions/cache`.
 
 ### Build Job Pre-warming (`build-ci` Target)
-The Build job runs the `build-ci` make target (`cargo build --release --all-targets`) inside the fingerprinted CI container. This compiles all targets (application, libraries, and test suites) without running clippy — linting runs separately in the Lint job for clear PR status. Subsequent parallel jobs (Lint, Test, Smoke+Verify) restore the warm cache read-only, typically resulting in <30s execution times.
+The Build job runs the `build-ci` make target (`cargo build --release --all-targets`) inside the fingerprinted CI container. This compiles all targets (application, libraries, and test suites) without running clippy -- linting runs separately in the Verify job for clear PR status. The Verify job restores the warm cache read-only, typically resulting in <30s execution times for all checks combined.
 
 The cache key `cargo-<runner.os>-<Cargo.lock+rust-toolchain hash>` enables cross-run reuse: unchanged dependencies and toolchain produce an exact cache hit, avoiding recompilation entirely.
 
 ### Target Isolation (`target/ci`)
 Containerized builds exclusively use `target/ci` to avoid binary clobbering with host-native `target/` directories (e.g., macOS binaries on Linux containers).
 
-## 4. Internal CI Actions
+## 4. Distribution Flow (Release + Publish)
+
+### Release Pipeline (`release.yml`)
+Triggered on version tags (`v*`), this workflow:
+1. **Fingerprint**: Resolves the CI image for container-based Linux builds
+2. **Build**: Compiles native binaries for 3 platforms (macOS ARM64, Linux AMD64, Linux ARM64)
+3. **Publish**: Creates a GitHub Release with tarballs and SHA256 checksums
+4. **Pages**: Deploys Rustdoc + MyST documentation to GitHub Pages
+
+### Package Publishing (`publish-packages.yml`)
+Triggered on successful completion of `release.yml`, this workflow:
+1. **Build**: Creates the production Docker image (Dockerfile final stage) for linux/amd64 and linux/arm64
+2. **Smoke Test**: Starts the container and verifies health + diagram rendering endpoints
+3. **Push**: Publishes to GHCR as `ghcr.io/softmentor/kroki-rs:<version>` and `latest`
+
+Future enhancements (scaffolded as placeholders):
+- **Cosign signing**: Cryptographic image signatures for supply chain security
+- **SBOM generation**: Software Bill of Materials via Syft/Trivy
+- **Provenance attestation**: SLSA provenance for build traceability
+
+### Image Traceability
+Every published production image carries OCI labels linking it back to the source:
+
+| Label | Value |
+| :--- | :--- |
+| `org.opencontainers.image.version` | Git tag (e.g., `0.0.8`) |
+| `org.opencontainers.image.revision` | Git SHA |
+| `org.opencontainers.image.source` | Repository URL |
+| `org.opencontainers.image.created` | Build timestamp |
+
+## 5. Remote Cache Maintenance
+
+To prevent GitHub Actions storage bloat and ensure fast restorations, we utilize a capacity-aware cache pruning strategy.
+
+-   **Capacity Threshold**: Aggressive pruning only triggers when total cache exceeds 80% of the 10GB limit (8GB). Below this threshold, only stale PR caches (>24h untouched) are cleaned.
+-   **Scripted Logic**: The `src-scripts/gh-tasks/prune-gha-cache.sh` script is the single source of truth for cache lifecycle management.
+-   **CI Integration**: The `CI-Build` workflow calls this script automatically on every run.
+
+### GitHub Run Pruning
+To prevent GitHub Actions run history from becoming cluttered, we use `src-scripts/gh-tasks/prune-gha-runs.sh`.
+- **Logic**: It keeps the latest 100 runs and automatically deletes failed or canceled runs to keep the UI clean.
+- **Usage**: Typically run via GitHub Actions or manually by maintainers: `bash src-scripts/gh-tasks/prune-gha-runs.sh 100 true`.
+
+### Cache Key Strategy
+
+| Cache Type | Key Pattern | Invalidation Trigger |
+| :--- | :--- | :--- |
+| **Cargo** | `cargo-<OS>-<hash(Cargo.lock, rust-toolchain.toml)>` | Dependency or toolchain change |
+| **Docker Image Tar** | `docker-ci-<hash(Dockerfile)>` | Dockerfile change |
+| **BuildKit Layers** | `buildkit-blob-*` | Base image rebuild |
+
+## 6. Internal CI Actions
 
 While developers primarily interact with `dflow`, the GitHub Actions infrastructure relies on internal composite actions to maintain environmental sanity across different runner types.
 
@@ -123,15 +196,7 @@ The `.github/actions/setup-kroki` action is the primary bridge for non-container
 > [!NOTE]
 > This action is **not used** in the primary `CI-Build` workflow for Linux PRs, which instead utilizes the pre-baked CI container for absolute consistency.
 
-## 5. Remote Cache Maintenance
-
-To prevent GitHub Actions storage bloat and ensure fast restorations, we utilize a unified cache pruning strategy.
-
--   **Scripted Logic**: The `src-scripts/gh-tasks/prune-gha-cache.sh` script is the single source of truth for cache lifecycle management.
--   **CI Integration**: The `CI-Build` workflow calls this script automatically on every run to keep only the most recent caches for each branch/PR.
--   **Manual Control**: Developers can trigger a remote cleanup locally via `./dflow teardown -f`, which executes the same pruning logic against the GHA repository.
-
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 ### Container Engine Failures
 If `./dflow ci-verify` fails with "Container engine is not responsive" or "connection refused":
@@ -147,3 +212,13 @@ If the CI image cannot be pulled:
 If `repro-ci.sh` reports a "Toolchain Mismatch":
 - The project's `rust-toolchain.toml` has been updated but the pre-baked CI image is using an old version.
 - **Fix**: Update the `RUST_VERSION` in the root `Dockerfile` and push to GitHub to regenerate the base image.
+
+## 8. Release Verification Reports
+
+For every official release, a detailed verification report is generated to prove the integrity of the artifacts.
+
+- **Script**: `src-scripts/gh-tasks/generate-release-report.sh`.
+- **Artifacts**: 
+    - `release-report-v<version>.md`: A standalone report for a specific version.
+    - `release-reports.md`: A cumulative history of all releases, including base image fingerprints and CI run links.
+- **Traceability**: These reports link the final binaries back to the exact fingerprinted CI environment used to build them.

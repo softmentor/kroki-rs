@@ -4,7 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2026-02-25
+
+### Added
+- **Documentation Infrastructure**: Integrated Node.js and MyST into the CI container for self-contained, offline-capable verification.
+- **Automated Doc Validation**: Integrated `make doc-myst` into the `ci-verify` flow (conditional in GHA) to prevent documentation regressions.
+- **Package Distribution**: Introduced `publish-packages.yml` for automated production OCI image builds, multi-arch support, and diagram smoke testing.
+
+### Changed
+- **CI Architecture**: Consolidated the CI pipeline into a 3-job "Prep-Build-Verify" structure, reducing overhead and improving failure visibility via backgrounded parallel checks.
+- **Cache Optimization**: Implemented capacity-aware GHA cache pruning and **environment-aware sccache reporting** (Host vs. Container delta stats).
+
+### Fixed
+- **CI Reliability**: Finalized transition to Commit Statuses API, robust SHA alignment for PR checks, and **delta-based cache reporting** to prevent stale host stats.
+- **Observability**: Restored `ERROR` log level for diagram generation failures to ensure critical production issues are highly visible.
+- **PR Container Pulls**: Resolved "manifest unknown" errors by adding credentials and ensuring transient CI images are pushed to GHCR on-demand.
+- **Repository Integrity**: Retroactively tagged `v0.0.6` and `v0.0.7` to maintain version history.
+
 ## [0.0.7] - 2026-02-25
+
+> [!NOTE]
+> No documentation site update was published for this release.
 
 ### Fixed
 - **CI Reliability**: Unified CI image naming and resolved registry fetch logic mismatch.

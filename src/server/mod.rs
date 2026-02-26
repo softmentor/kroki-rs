@@ -2,6 +2,7 @@ use crate::browser::BrowserManager;
 use crate::capabilities::Capabilities;
 use crate::config::Config;
 use crate::diagrams::registry::DiagramRegistry;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 pub mod admin;
@@ -28,11 +29,20 @@ pub struct AppState {
 pub async fn run(config: Config) -> anyhow::Result<()> {
     let capabilities = Capabilities::discover(&config);
     let port = config.server.port;
-    tracing::info!("Capabilities: {:?}", capabilities);
-    tracing::info!(
-        "Kroki-rs discovery service available at http://localhost:{}",
-        port
+    let admin_port = config.server.admin_port;
+    let host = &config.server.host;
+
+    println!(
+        "\n🚀 Kroki-rs v{} is starting up...",
+        env!("CARGO_PKG_VERSION")
     );
+    println!("------------------------------------------------------------");
+    println!("📡 API Server:      http://{}:{}", host, port);
+    println!("🛠️  Admin Dashboard: http://{}:{}", host, admin_port);
+    println!("📖 Documentation:   https://softmentor.github.io/kroki-rs/");
+    println!("------------------------------------------------------------\n");
+
+    tracing::info!("Capabilities discovered: {:?}", capabilities);
 
     let browser_manager = match BrowserManager::start(
         config.browser.pool_size,
@@ -114,7 +124,9 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     });
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
-    axum::serve(listener, app(state)).await?;
+    let router = app(state.clone());
+    let service = router.into_make_service_with_connect_info::<SocketAddr>();
+    axum::serve(listener, service).await?;
 
     Ok(())
 }

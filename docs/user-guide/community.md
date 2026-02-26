@@ -29,7 +29,7 @@ What was supposed to happen?
 - **Kroki-rs Version**: (Run `kroki-rs --version`)
 - **Deployment Mode**: (CLI / Docker / Server)
 - **OS**: (e.g. Ubuntu 22.04, macOS Sequoia)
-- **Diagram Type**: (e.g. Mermaid, D2, PlantUML)
+- **Diagram Type**: (e.g. Mermaid, D2, Graphviz)
 
 ### Debug Logs
 Please provide verbose logs by setting `RUST_LOG=debug`:

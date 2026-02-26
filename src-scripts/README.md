@@ -8,7 +8,7 @@ All operational scripts and Makefile fragments live under `src-scripts/`, organi
 |------------|-------------|---------|----------|
 | **Setup**  | `setup/`    | One-time or occasional: machine and repo configuration | `podman-setup/podman-storage.sh`, `gh-setup/apply-repo-settings.sh`, `gh-setup/repo-settings.json` |
 | **Develop**| `develop/`  | Day-to-day build and test (Makefile fragments) | `vars/`, `native/`, `container/`, `repro/` |
-| **CI-verify** | `ci-verify/` | Pre-merge verification; run in container or on remote | `repro-ci.sh`, `remote-ci.sh` |
+| **CI-verify** | `ci-verify/` | Pre-merge verification; run in container | `repro-ci.sh` |
 | **Release**| (GHA only)  | Release runs only on GitHub Actions; version check is run upfront in `repro-ci.sh` (use `--version-check` in release workflow) | — |
 
 ## Develop (Makefile)
@@ -29,8 +29,7 @@ The root `Makefile` includes, in order:
 
 ## CI-verify
 
-- **repro-ci.sh** — Run full CI in the fingerprinted container. Optional upfront version check (Cargo.toml vs Git tag). `--version-check` runs only that check (for GHA release).
-- **remote-ci.sh** — Run repro-ci.sh on a remote host via SSH.
+- **repro-ci.sh** — Run full CI in the fingerprinted container. Optional upfront version check (Cargo.toml vs Git tag).
 
 ## Naming (protocol)
 

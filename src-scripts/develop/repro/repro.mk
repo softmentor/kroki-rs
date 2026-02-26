@@ -65,16 +65,19 @@ else
 	@$(MAKE) fmt lint build
 endif
 	@$(MAKE) test smoke-test
+ifeq ($(RUN_SERVER),true)
+	@$(MAKE) serve
+endif
 	@echo "✅ Local native development verification complete."
 
 .PHONY: cirun
 cirun: $(_PRE_CLEAN)
 	@echo "🚀 Running container-based CI verification (ci-verify)..."
-	bash src-scripts/ci-verify/repro-ci.sh $(CI_ARGS)
+	@DEBUG_LOG="$(DEBUG_LOG)" VERBOSE="$(VERBOSE)" bash src-scripts/ci-verify/repro-ci.sh $(CI_ARGS)
 
 .PHONY: cishell
 cishell:
-	@FEATURES="$(FEATURES)" JOBS="$(JOBS)" bash src-scripts/ci-verify/repro-ci.sh --shell
+	@FEATURES="$(FEATURES)" JOBS="$(JOBS)" DEBUG_LOG="$(DEBUG_LOG)" VERBOSE="$(VERBOSE)" bash src-scripts/ci-verify/repro-ci.sh --shell
 
 .PHONY: ghrun
 ghrun: setup $(_PRE_CLEAN)
@@ -153,10 +156,12 @@ help:
 	@echo "  VERBOSE=true         Enable verbose tool output"
 	@echo "  NO_NETWORK=true      Run in offline mode"
 	@echo "  LOAD_TEST=true       Include high-concurrency load tests"
+	@echo "  SECURITY_TEST=true   Run the full production/security integration suite"
 	@echo "  JOBS=N               Limit INTERNAL build parallelism to N threads"
 	@echo "  STEPS_PARALLEL=true  Run HIGH-LEVEL steps (fmt, lint, build) concurrently"
 	@echo "  FULL_CLEANUP=true    Full cleanup including Podman storage (teardown only)"
 	@echo "  FEATURES=\"\"           Build lean core without browser engine"
+	@echo "  RUN_SERVER=true      Execute 'serve' after developer verification"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make devrun STEPS_PARALLEL=false"

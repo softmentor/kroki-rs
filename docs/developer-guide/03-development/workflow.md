@@ -33,4 +33,4 @@ This protocol ensures that `main` remains pristine, traceable, and always produc
 
 For details on the tooling:
 - [Local Development Guide](#kroki-rs.developer-guide.local-dev)
-- [CI/CD Infrastructure](#kroki-rs.developer-guide.pipelines)
+- [CI/CD Infrastructure](#kroki-rs.developer-guide.automation)

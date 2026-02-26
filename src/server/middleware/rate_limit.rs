@@ -6,13 +6,13 @@
 use crate::config::RateLimitConfig;
 use axum::{
     body::Body,
-    extract::Request,
+    extract::{connect_info::ConnectInfo, Request, State},
     http::{HeaderValue, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
 };
 use dashmap::DashMap;
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -95,7 +95,7 @@ impl RateLimiter {
 /// Skipped entirely when `rate_limit.enabled = false` (dev mode).
 /// Returns 429 with `Retry-After` header when the limit is exceeded.
 pub async fn rate_limit_middleware(
-    state: axum::extract::State<crate::server::AppState>,
+    State(state): State<crate::server::AppState>,
     request: Request<Body>,
     next: Next,
 ) -> Response {
@@ -103,8 +103,13 @@ pub async fn rate_limit_middleware(
         return next.run(request).await;
     }
 
-    // Extract client IP from the connection info or forwarded headers
-    let ip = extract_client_ip(&request);
+    let fallback_ip = request
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|info| info.0.ip())
+        .unwrap_or_else(|| "127.0.0.1".parse().unwrap());
+
+    let ip = extract_client_ip(&request, fallback_ip);
 
     if let Some(ref limiter) = state.rate_limiter {
         match limiter.check(ip) {
@@ -139,7 +144,7 @@ pub async fn rate_limit_middleware(
 /// Extracts the client IP from the request.
 /// Checks `X-Forwarded-For` first (for reverse proxy setups), then falls back to
 /// `X-Real-IP`, and finally defaults to `127.0.0.1`.
-fn extract_client_ip(request: &Request<Body>) -> IpAddr {
+fn extract_client_ip(request: &Request<Body>, fallback: IpAddr) -> IpAddr {
     // Try X-Forwarded-For (first IP in the chain)
     if let Some(forwarded) = request.headers().get("x-forwarded-for") {
         if let Ok(forwarded_str) = forwarded.to_str() {
@@ -160,8 +165,7 @@ fn extract_client_ip(request: &Request<Body>) -> IpAddr {
         }
     }
 
-    // Default fallback
-    "127.0.0.1".parse().unwrap()
+    fallback
 }
 
 #[cfg(test)]

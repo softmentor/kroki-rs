@@ -54,6 +54,10 @@ pub struct ServerConfig {
     pub port: u16,
     #[serde(default = "default_admin_port")]
     pub admin_port: u16,
+    #[serde(default = "default_host")]
+    pub host: String,
+    #[serde(default = "default_log_level")]
+    pub log_level: String,
     #[serde(default = "default_timeout")]
     pub timeout_ms: u64,
     /// Maximum allowed input size in bytes (default: 1MB).
@@ -84,6 +88,8 @@ impl Default for ServerConfig {
         Self {
             port: 8000,
             admin_port: 8081,
+            host: "localhost".to_string(),
+            log_level: "info".to_string(),
             timeout_ms: 5000,
             max_input_size: 1_048_576,   // 1MB
             max_output_size: 52_428_800, // 50MB
@@ -296,6 +302,12 @@ impl Config {
                 self.server.admin_port = p;
             }
         }
+        if let Ok(v) = env::var("KROKI_LOG_LEVEL") {
+            self.server.log_level = v;
+        }
+        if let Ok(v) = env::var("KROKI_HOST") {
+            self.server.host = v;
+        }
         if let Ok(password) = env::var("KROKI_ADMIN_PASSWORD") {
             if let Ok(hash) = bcrypt::hash(password, bcrypt::DEFAULT_COST) {
                 self.server.auth.admin_password_hash = Some(hash);
@@ -366,6 +378,12 @@ fn default_port() -> u16 {
 }
 fn default_admin_port() -> u16 {
     8081
+}
+fn default_host() -> String {
+    "localhost".to_string()
+}
+fn default_log_level() -> String {
+    "info".to_string()
 }
 fn default_timeout() -> u64 {
     5000

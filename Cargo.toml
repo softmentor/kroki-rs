@@ -1,6 +1,6 @@
 [package]
 name = "kroki-rs"
-version = "0.0.7"
+version = "0.0.8"
 edition = "2021"
 
 [dependencies]
@@ -33,10 +33,13 @@ bcrypt = "0.15"
 metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
 headless_chrome = { version = "1.0", optional = true }
+num_cpus = "1.0"
 
 [features]
 default = []
 native-browser = ["dep:headless_chrome"]
+load-tests = []
+security-tests = []
 
 # Optimize dependencies even in debug/test mode to dramatically speed up image encoding
 [profile.dev]

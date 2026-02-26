@@ -22,7 +22,7 @@ let output = crate::diagrams::run_process_with_timeout(
 ```
 
 **Rules:**
-- Always pass the tool's human-readable name (e.g., `"mmdc"`, `"dot"`, `"plantuml"`)
+- Always pass the tool's human-readable name (e.g., `"mmdc"`, `"dot"`)
 - Never call `cmd.spawn()` directly — the wrapper handles kill-on-drop, timeouts, and contextual errors
 - Timeouts are adaptive: base 3s + 1s per 10KB, capped at configured max
 
@@ -48,7 +48,7 @@ impl DiagramProvider for MyProvider {
 
 ### Browser-Based Providers
 
-If a diagram tool requires a JavaScript runtime (e.g., Mermaid, BPMN, PlantUML-CheerpJ), use the `BrowserManager`:
+If a diagram tool requires a JavaScript runtime (e.g., Mermaid, BPMN), use the `BrowserManager`:
 
 ```rust
 pub struct MyBrowserProvider {

@@ -31,6 +31,7 @@ async fn start_test_server() -> (u16, u16) {
     config.server.port = port;
     config.server.admin_port = admin_port;
     config.browser.pool_size = 2;
+    config.server.timeout_ms = 30000; // 30s for load testing
 
     tokio::spawn(async move {
         let _ = tracing_subscriber::fmt::try_init();
@@ -89,8 +90,8 @@ async fn test_browser_sanity() {
 
 /// LOAD TEST: Smashes the headless_chrome backend.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore]
 #[cfg(feature = "native-browser")]
+#[cfg_attr(not(feature = "load-tests"), ignore)]
 async fn test_load_native_concurrency() {
     let (port, _) = start_test_server().await;
     let client = Client::new();
@@ -106,7 +107,12 @@ async fn test_load_native_concurrency() {
     };
 
     let concurrency_level = 10;
-    let total_requests = 60;
+    // Reduce from 60 to 20 for standard dev runs to speed up feedback loops.
+    // DANGER: setting this too high may cause CI timeouts.
+    let total_requests = std::env::var("KROKI_LOAD_TEST_V")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(20);
 
     let semaphore = Arc::new(Semaphore::new(concurrency_level));
     let mut handles = Vec::new();

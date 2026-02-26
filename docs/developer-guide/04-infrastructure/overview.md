@@ -9,7 +9,7 @@ label: kroki-rs.developer-guide.infrastructure-overview
 
 Building a diagram rendering engine like **Kroki-rs** involves orchestrating a complex web of native dependencies:
 - **Headless Chrome**: Sensitive to OS versions, sandbox configurations, and GPU acceleration.
-- **Native Libraries**: PlantUML, D2, and Ditaa require specific JDKs and system-level rendering libraries (Cairo, Pixman).
+- **Native Libraries**: D2 and Ditaa require specific JDKs (for Ditaa) and system-level rendering libraries (Cairo, Pixman).
 - **Cross-Platform Parity**: A developer on macOS (Apple Silicon) must be able to verify changes that will eventually run on Linux (x86_64) without hitting "Exec format errors" or subtle rendering differences.
 
 Legacy approaches rely on manual local setup, which inevitably leads to **Environmental Drift** and the dreaded *"It works on my machine"* syndrome.
@@ -18,7 +18,7 @@ Legacy approaches rely on manual local setup, which inevitably leads to **Enviro
 
 **Kroki-rs** eliminates drift by treating its infrastructure as code. Every verification, from local development to the final release, happens inside a **Deterministic Container**.
 
-### The 3-Tier Architecture
+### The 4-Tier Architecture
 
 We use a modular, highly-optimized pipeline designed for speed and absolute reproducibility:
 
@@ -38,8 +38,13 @@ graph TD
     end
 
     subgraph "Tier 3: Distribution"
-        G -->|Success| H[multi-arch OCI Images]
-        G -->|Success| I[Native Binaries]
+        G -->|Success| I[Native Binaries + GitHub Release]
+    end
+
+    subgraph "Tier 4: Packaging"
+        I -->|Release Success| J[Production OCI Image]
+        J --> K[Smoke Test]
+        K -->|Pass| L["GHCR: kroki-rs:version"]
     end
 ```
 

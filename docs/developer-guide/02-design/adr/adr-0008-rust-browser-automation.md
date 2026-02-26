@@ -6,7 +6,7 @@ label: kroki-rs.adr.0008
 ## Context
 The current `BrowserManager` (ADR 0004) uses a Node.js child process running Playwright to render browser-dependent diagrams (Mermaid, BPMN, Excalidraw). While effective, this requires Node.js as a runtime dependency, complicating deployment and increasing container image size.
 
-The v0.0.5 goal is to eliminate the Node.js dependency entirely by replacing Playwright with a pure-Rust browser automation solution.
+The initial goal, achieved in v0.0.5, was to eliminate the Node.js dependency entirely by replacing Playwright with a pure-Rust browser automation solution.
 
 ## Candidates
 

@@ -3,11 +3,13 @@ use crate::config::Config;
 use crate::diagrams::registry::DiagramRegistry;
 use crate::utils::image_converter;
 use anyhow::{Context, Result};
+use num_cpus;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::Semaphore;
 use walkdir::WalkDir;
 
 /// Resolves WebP format to the appropriate base format for generation.
@@ -48,11 +50,44 @@ async fn generate_diagram(
         );
     }
 
-    // Caching: compute hash
+    // Caching: compute hash (includes fonts & plugin configuration to avoid stale cache)
+    let mut fonts = config.all_fonts();
+    fonts.sort();
+    fonts.dedup();
+
+    let mut plugin_signatures: Vec<String> = config
+        .plugins
+        .iter()
+        .map(|plugin| {
+            let args = plugin.args.join(",");
+            let formats = plugin.formats.join(",");
+            format!(
+                "{}|{}|{}|{}|{}|{}",
+                plugin.name,
+                plugin.command,
+                args,
+                formats,
+                plugin.stdin,
+                plugin.timeout_ms.unwrap_or(0)
+            )
+        })
+        .collect();
+    plugin_signatures.sort();
+
     let mut hasher = Sha256::new();
     hasher.update(type_);
     hasher.update(format);
     hasher.update(source);
+    hasher.update(b"fonts:");
+    for font in &fonts {
+        hasher.update(font.as_bytes());
+        hasher.update([0]);
+    }
+    hasher.update(b"plugins:");
+    for signature in &plugin_signatures {
+        hasher.update(signature.as_bytes());
+        hasher.update([0]);
+    }
     let hash = hex::encode(hasher.finalize());
 
     // Check cache
@@ -198,6 +233,9 @@ pub async fn batch(
     let mut tasks = Vec::new();
     let failure_count = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
 
+    let concurrency = std::cmp::max(1, num_cpus::get());
+    let semaphore = Arc::new(Semaphore::new(concurrency));
+
     for file_path in files {
         let extension = file_path
             .extension()
@@ -235,7 +273,9 @@ pub async fn batch(
             let input_dir = input_dir.clone();
             let failure_count = failure_count.clone();
 
+            let semaphore = semaphore.clone();
             tasks.push(tokio::spawn(async move {
+                let _permit = semaphore.acquire_owned().await.unwrap();
                 let relative_path = file_path.strip_prefix(&input_dir).unwrap_or(&file_path);
                 let mut output_path = if let Some(out) = out_dir.as_ref() {
                     out.join(relative_path)

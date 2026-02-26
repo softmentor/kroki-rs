@@ -15,10 +15,10 @@ pub struct BrowserManager {
 impl BrowserManager {
     /// Launches the preferred browser backend.
     /// Prefers Native (headless_chrome) if available.
-    pub async fn start(_pool_size: usize, _context_ttl: usize) -> Result<Self> {
+    pub async fn start(pool_size: usize, context_ttl: usize) -> Result<Self> {
         #[cfg(feature = "native-browser")]
         {
-            match NativeBackend::new(_pool_size).await {
+            match NativeBackend::new(pool_size, context_ttl).await {
                 Ok(backend) => {
                     tracing::info!("Initialized native browser backend (headless_chrome)");
                     Ok(Self {
@@ -31,6 +31,7 @@ impl BrowserManager {
 
         #[cfg(not(feature = "native-browser"))]
         {
+            let _ = (pool_size, context_ttl);
             Err(anyhow!("Browser-based rendering is disabled in this build. Rebuild with --features native-browser."))
         }
     }

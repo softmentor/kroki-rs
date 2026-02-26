@@ -20,7 +20,7 @@ Kroki-rs supports a wide variety of diagram types by leveraging existing CLI too
 
 ## Native Browser Engine (Mermaid & BPMN)
 
-For v0.0.5, Mermaid and BPMN are rendered using a native headless Chromium instance. This ensures:
+Starting from **v0.0.8**, Mermaid and BPMN are rendered using a native headless Chromium instance. This ensures:
 - **Accuracy**: Perfect rendering using official JS libraries.
 - **Performance**: Managed tab pooling and concurrency control.
 - **Serverless Architecture**: Uses a local `file://` based harness, eliminating the need for internal HTTP servers or loopback networking.
@@ -37,6 +37,10 @@ Most tools can be installed via your system package manager.
 
 ### macOS (Homebrew)
 ```bash
+brew install graphviz d2 ditaa
+# For Mermaid/BPMN rendering, kroki-rs uses its native engine;
+# however, an external browser is recommended for local development:
+brew install --cask chromium
 ```
 
 ### Note on Format

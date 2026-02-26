@@ -11,27 +11,8 @@ Kroki-rs is highly modular. While many diagrams now use a **Rust-Native** engine
 - **Graphviz**: Required for Ditaa and advanced DOT features.
 - **Node.js**: Required for Vega and Wavedrom (Mermaid and BPMN are now native).
 - **D2**: For modern, data-driven diagrams.
-- **Chromium / Chrome**: Required for browser-based diagrams (Mermaid, BPMN, PlantUML).
+- **Chromium / Chrome**: Required for browser-based diagrams (Mermaid, BPMN).
 
-> [!TIP]
-> **Java** is no longer required for PlantUML! Kroki-rs uses a native browser-based integration via CheerpJ.
-
-## Development & Contribution
-
-If you are contributing to Kroki-rs or running the full verification suite, we recommend using the `dflow` orchestration tool.
-
-### Development Prerequisites
-- **Rust**: Latest stable toolchain via [rustup.rs](https://rustup.rs).
-- **Make**: Standard build automation (GNU Make).
-- **Podman / Docker**: Required for containerized CI verification (`./dflow ci-verify`).
-- **GitHub CLI (gh)**: Required for proposing releases (`./dflow release -b`).
-
-### Using `dflow`
-The `dflow` script provides a unified interface for all development tasks:
-- `./dflow setup`: Initializes the environment (Podman machines, toolchains).
-- `./dflow dev`: Runs local native verification (fmt, lint, test, smoke-test).
-- `./dflow ci-verify`: Runs the **exact** same pipeline as GitHub Actions using a pre-baked CI container.
-- `./dflow teardown`: Reclaims disk space and prunes old caches.
 
 ## Installation
 
@@ -113,6 +94,24 @@ Once the server is running, you can generate an SVG from a Graphviz dot file usi
 ```bash
 curl http://localhost:8000/graphviz/svg/eNpLyUwvSizm5TIGAAWDAY0=
 ```
+
+
+## Development & Contribution
+
+If you are contributing to Kroki-rs or running the full verification suite, we recommend using the `dflow` orchestration tool.
+
+### Development Prerequisites
+- **Rust**: Latest stable toolchain via [rustup.rs](https://rustup.rs).
+- **Make**: Standard build automation (GNU Make).
+- **Podman / Docker**: Required for containerized CI verification (`./dflow ci-verify`).
+- **GitHub CLI (gh)**: Required for proposing releases (`./dflow release -b`).
+
+### Using `dflow`
+The `dflow` script provides a unified interface for all development tasks:
+- `./dflow setup`: Initializes the environment (Podman machines, toolchains).
+- `./dflow dev`: Runs local native verification (fmt, lint, test, smoke-test).
+- `./dflow ci-verify`: Runs the **exact** same pipeline as GitHub Actions using a pre-baked CI container.
+- `./dflow teardown`: Reclaims disk space and prunes old caches.
 
 ## Next Steps
 - Explore [**Usage Details**](#kroki-rs.user-guide.usage) for advanced CLI flags.

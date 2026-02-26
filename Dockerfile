@@ -73,7 +73,10 @@ RUN ARCH=$(uname -m) && \
     fi && \
     curl -LsSf "$NEXTEST_URL" | tar zxf - -C /usr/local/bin && \
     curl -LsSf https://github.com/LukeMathWalker/cargo-chef/releases/latest/download/cargo-chef-$CHEF_ARCH.tar.gz | tar zxf - -C /usr/local/bin && \
-    curl -LsSf https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-v0.8.1-$SCCACHE_ARCH.tar.gz | tar zxf - --strip-components=1 -C /usr/local/bin sccache-v0.8.1-$SCCACHE_ARCH/sccache
+    curl -LsSf https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-v0.8.1-$SCCACHE_ARCH.tar.gz | tar zxf - --strip-components=1 -C /usr/local/bin sccache-v0.8.1-$SCCACHE_ARCH/sccache && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g mystmd
 
 # Stage 3: Planner (cargo-chef)
 FROM ci AS chef

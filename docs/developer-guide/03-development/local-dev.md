@@ -35,7 +35,7 @@ This guide covers the practical tools and structure used for day-to-day developm
 | `./dflow develop` | `dev` | Rapid native-OS iteration (Fast feedback). |
 | `./dflow ci-verify`| `repro` | Containerized verification (CI Parity). |
 | `./dflow ci-shell` | `shell` | Interactive shell inside the CI container. |
-| `./dflow gh`       | - | Production CI (Remote trigger). |
+| `./dflow release` | - | Release management (propose branch or tag). |
 | `./dflow teardown` | `clean` | Reclaim build and container disk space. |
 
 ## `dflow` Options Reference
@@ -49,7 +49,10 @@ All commands accept the following options to customize the behavior:
 | `-v` | `--verbose` | Enable verbose tool output (e.g., `cargo --verbose`). |
 | `-n` | `--no-network` | Restricted build mode (no downloads). |
 | `-t load` | `--test=load` | Include high-concurrency stress tests. |
-| `-j <n>` | `--jobs=<n>` | Limit parallelism to `<n>` threads. |
+| `-j <n>` | `--jobs=<n>` | Limit internal parallelism to `<n>` threads. |
+| `-sp` | `--steps-parallel` | Run checks concurrently (default: true). |
+| `--release <v>`| - | Prepare release v<v> (bump & commit) [dev only]. |
+| `--dry-run` | - | Verification mode: skip destructive actions. |
 | `--lean` | - | Build core only (skips browser engine). |
 
 ### Granular Execution

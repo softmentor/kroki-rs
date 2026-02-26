@@ -108,7 +108,7 @@ pub async fn run_process_with_timeout(
 /// A trait for diagram generation providers.
 ///
 /// Each provider implementation is responsible for a specific diagram type
-/// (e.g., Mermaid, PlantUML, Graphviz).
+/// (e.g., Mermaid, Graphviz).
 #[async_trait]
 pub trait DiagramProvider {
     /// Validates the diagram source text.

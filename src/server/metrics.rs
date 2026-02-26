@@ -28,6 +28,10 @@ pub fn init_metrics() -> PrometheusHandle {
                 .expect("Failed to install Prometheus recorder");
 
             describe_metrics();
+
+            // Record cold start to ensure metrics page has data immediately
+            counter!("kroki_server_starts_total").increment(1);
+
             handle
         })
         .clone()
@@ -58,6 +62,10 @@ fn describe_metrics() {
     describe_gauge!(
         "kroki_circuit_breaker_state",
         "Current state of the circuit breaker (0=closed, 1=open, 2=half-open)"
+    );
+    describe_counter!(
+        "kroki_server_starts_total",
+        "Total number of server cold starts"
     );
 }
 

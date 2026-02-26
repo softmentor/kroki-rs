@@ -198,6 +198,7 @@ pub async fn root(State(state): State<AppState>) -> impl IntoResponse {
                     <li><a href="http://localhost:{}/health">🔍 Health Check</a></li>
                     {}
                     <li><a href="http://localhost:{}">⚙️ Admin Dashboard</a></li>
+                    <li><a href="https://softmentor.github.io/kroki-rs/" target="_blank">📖 Documentation & Help</a></li>
                 </ul>
             </div>
         </div>
@@ -436,8 +437,15 @@ async fn render_diagram(
 
     // 6. Generate
     let render_start = std::time::Instant::now();
-    match provider.generate(&request.source, base_format).await {
-        Ok(mut bytes) => {
+    let timeout_duration = std::time::Duration::from_millis(state.config.server.timeout_ms);
+
+    match tokio::time::timeout(
+        timeout_duration,
+        provider.generate(&request.source, base_format),
+    )
+    .await
+    {
+        Ok(Ok(mut bytes)) => {
             let render_duration = render_start.elapsed().as_secs_f64();
             if state.config.server.metrics.enabled {
                 crate::server::metrics::Metrics::record_conversion_time(
@@ -558,7 +566,7 @@ async fn render_diagram(
             )
                 .into_response()
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             // Record failure for circuit breaker
             if let Some(ref cb) = state.circuit_breaker {
                 cb.record_failure(&request.provider);
@@ -585,6 +593,35 @@ async fn render_diagram(
                 Json(problem),
             )
                 .into_response()
+        }
+        Err(_) => {
+            // Global timeout exceeded
+            tracing::warn!(
+                "Global timeout of {}ms exceeded for provider '{}'",
+                state.config.server.timeout_ms,
+                request.provider
+            );
+
+            if state.config.server.metrics.enabled {
+                crate::server::metrics::Metrics::increment_errors(
+                    &request.provider,
+                    &request.format,
+                    "request_timeout",
+                );
+            }
+
+            (
+                StatusCode::GATEWAY_TIMEOUT,
+                Json(ProblemDetails::new(
+                    "https://kroki.io/errors/request-timeout",
+                    "Gateway Timeout",
+                    504,
+                ).with_detail(&format!(
+                    "The diagram generation for '{}' timed out after {}ms. Consider a smaller diagram or increasing KROKI_TIMEOUT.",
+                    request.provider,
+                    state.config.server.timeout_ms
+                )))
+            ).into_response()
         }
     }
 }

@@ -20,8 +20,23 @@ ifneq ($(CARGO_TARGET_DIR),)
 endif
 RELEASE_BIN = $(RELEASE_DIR)/$(BINARY_NAME)
 
-ifneq (, $(shell which sccache 2>/dev/null))
-export RUSTC_WRAPPER=sccache
+SCCACHE_ENABLED ?= true
+
+ifeq ($(SCCACHE_ENABLED),true)
+# Enable sccache if available, unless explicitly disabled
+ifeq ($(USE_SCCACHE),)
+    ifneq ($(RUSTC_WRAPPER),)
+        # Keep existing wrapper
+    else
+        ifneq (, $(shell which sccache 2>/dev/null))
+            export RUSTC_WRAPPER=sccache
+        endif
+    endif
+else ifneq ($(USE_SCCACHE),false)
+    export RUSTC_WRAPPER=sccache
+endif
+else
+unexport RUSTC_WRAPPER
 endif
 
 .PHONY: build
@@ -65,8 +80,12 @@ fmt:
 fix:
 	cargo clippy --fix --allow-dirty --allow-staged $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
 
+.PHONY: doc-myst
+doc-myst:
+	cd docs && mystmd build --html
+
 .PHONY: doc
-doc:
+doc: doc-myst
 	cargo doc --no-deps --document-private-items $(JOBS_FLAG) $(FEAT_FLAG) $(CARGO_FLAGS)
 
 .PHONY: clean

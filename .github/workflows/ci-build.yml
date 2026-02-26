@@ -4,10 +4,9 @@
 # Local equivalent: ./dflow ci-verify  (uses same image, same make targets, consistent paths)
 #
 # Job graph:
-#   prep ──► build ──► lint          (fmt-check + clippy, parallel with test/smoke-verify)
-#        │          ├──► test         (nextest, parallel with lint/smoke-verify)
-#        │          └──► smoke-verify (smoke-test + dist verify, parallel with lint/test)
-#        └──────────────────────────── (prep also feeds image tag to all container jobs)
+#   prep ──► build ──► verify  (runs fmt, clippy, test, smoke-test concurrently;
+#        │                       reports each as a separate PR commit status)
+#        └──────────────────── (prep also feeds image tag to all container jobs)
 #
 # Cache key: cargo-<runner.os>-<Cargo.lock + rust-toolchain hash>
 #   - Invalidates on dep changes (Cargo.lock) or toolchain bump (rust-toolchain.toml)
@@ -55,18 +54,30 @@ jobs:
       packages: write
     outputs:
       fingerprint: ${{ steps.fingerprint.outputs.hash }}
+      image: ${{ steps.fingerprint.outputs.image }}
     steps:
       - uses: actions/checkout@v4
 
       - name: "Verify Version Sync"
         run: ./dflow ci-verify --version-check
 
+      - name: "Login to GHCR"
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: "Compute CI Image Fingerprint"
         id: fingerprint
         run: |
           HASH=$(make -s print-base-fingerprint)
           echo "hash=$HASH" >> $GITHUB_OUTPUT
+          IMAGE="ghcr.io/${{ github.repository }}-ci:$HASH"
+          IMAGE=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
           echo "📌 Fingerprint: $HASH"
+          echo "📌 Image: $IMAGE"
 
       - name: "Prune Redundant Caches"
         continue-on-error: true
@@ -86,38 +97,51 @@ jobs:
       - name: "Ensure CI Image Available"
         id: ensure_image
         run: |
-          FINGERPRINT="${{ steps.fingerprint.outputs.hash }}"
-          IMAGE="ghcr.io/${{ github.repository }}-ci:${FINGERPRINT}"
+          IMAGE="${{ steps.fingerprint.outputs.image }}"
 
           # 1. Load from tar cache (fastest — avoids any network)
           if [ -f ci-image.tar ]; then
             echo "📦 Loading CI image from cache tar..."
             docker load -i ci-image.tar
-            echo "✅ Image loaded from cache."
+            # Downstream container: jobs pull from GHCR (different runner), so ensure it's there.
+            # This handles the case where the tar was cached from a local-only build.
+            if ! docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+              echo "📤 Image loaded from tar but missing in GHCR — pushing..."
+              docker push "$IMAGE"
+            fi
+            echo "✅ Image ready (local + GHCR)."
             exit 0
           fi
 
-          # 2. Pull from GHCR (normal path after base-image.yml has run)
-          echo "🔍 Cache miss — pulling from GHCR..."
-          if docker pull "$IMAGE" 2>/dev/null; then
-            echo "✅ Pulled $IMAGE from GHCR. Saving tar for cache..."
+          # 2. Check if image exists in GHCR (normal path after base-image.yml has run)
+          echo "🔍 Checking GHCR for image..."
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "✅ Image $IMAGE found in GHCR. Pulling to local daemon..."
+            docker pull "$IMAGE"
             docker save -o ci-image.tar "$IMAGE"
             exit 0
           fi
 
-          # 3. Build-on-demand fallback (amd64 only, no push)
-          # Triggered when: Dockerfile changed in a PR before base-image.yml ran on main.
-          # base-image.yml is the canonical builder; this is a convenience fallback only.
-          echo "⚠️  Image not in GHCR. Building on-demand (amd64, no push)..."
+          # 3. Build-on-demand fallback: PUSH to GHCR so downstream container jobs can pull it.
+          # This ensures PRs with Dockerfile changes are verified correctly.
+          echo "⚠️  Image not in GHCR. Building and Pushing on-demand (amd64)..."
           docker buildx build \
-            --load \
+            --push \
             --target ci \
             --build-arg RUST_VERSION="$(make -s print-rust-version)" \
             -t "$IMAGE" \
-            -t "ghcr.io/${{ github.repository }}-ci:latest" \
             .
+          
+          # Pull back to local for the docs-verify step in this job
+          docker pull "$IMAGE"
           docker save -o ci-image.tar "$IMAGE"
-          echo "✅ Build-on-demand complete. Tar saved for downstream jobs."
+          echo "✅ Build and Push complete."
+
+      - name: "Verify Documentation (MyST)"
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || contains(github.ref, 'release/')
+        run: |
+          IMAGE="${{ steps.fingerprint.outputs.image }}"
+          docker run --rm -v "$(pwd):/app" -w /app "$IMAGE" make doc-myst
 
   # ---------------------------------------------------------------------------
   # Phase 2 — Build: compile all targets in release mode inside the CI container.
@@ -133,7 +157,10 @@ jobs:
       actions: write
       packages: read
     container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
+      image: ${{ needs.prep.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
       options: --security-opt seccomp=unconfined
     env:
       IS_CONTAINER: "true"
@@ -182,7 +209,10 @@ jobs:
     needs: [prep, build]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository }}-ci:${{ needs.prep.outputs.fingerprint }}
+      image: ${{ needs.prep.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
       options: --security-opt seccomp=unconfined
     permissions:
       contents: read

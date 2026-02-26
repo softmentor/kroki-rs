@@ -37,8 +37,8 @@ This guide provides practical solutions for common issues encountered during dev
 - **Fix**: Ensure container builds use `target/ci` (automatically handled by `repro-ci.sh`). If stuck, wipe the target: `rm -rf target/ci`.
 
 ### 5. Sccache Connectivity Failures
-- **Symptom**: `sccache` returns 400 Bad Request or fails to connect to GHA backend.
-- **Fix**: Our infrastructure now uses **disk-based sccache**. Ensure `SCCACHE_GHA_ENABLED` is `false` and that `.cargo-cache/sccache` is correctly mounted and has write permissions.
+- **Symptom**: `sccache` returns 400 Bad Request, fails to connect to the GHA backend, or `Operation not permitted` when running locally.
+- **Fix**: Our infrastructure now uses **disk-based sccache**. Ensure `SCCACHE_GHA_ENABLED` is `false` and that `.cargo-cache/sccache` is correctly mounted and has write permissions. On systems where `sccache` cannot run (e.g., sandboxed macOS), disable the wrapper for the local session with `SCCACHE_ENABLED=false ./dflow dev` (or `./dflow ci-verify`). This skips the `RUSTC_WRAPPER` entirely without affecting CI.
 
 ## Debugging Tools
 

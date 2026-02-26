@@ -1,9 +1,14 @@
+---
+title: "ADR 0004: Universal Browser Rendering Pool"
+label: kroki-rs.adr.0004
+---
+
 # ADR 0004: Universal Browser Rendering Pool
 
 | Field | Value |
 | :--- | :--- |
-| **Status** | Accepted (Supercedes original Playwright plan) |
-| **Updated** | 2026-02-25 |
+| **Status** | Accepted (TTL Recycling: Planned) |
+| **Updated** | 2026-02-26 |
 
 ## Context
 
@@ -19,7 +24,7 @@ We have implemented a **Native Browser Rendering Pool** directly in Rust.
 2.  **Pooling Strategy**:
     -   A persistent `Browser` instance is launched at startup.
     -   Requests are handled via a pool of `BrowserContext` objects (Incognito-like isolation).
-    -   **TTL Recycling**: Each context is recycled after a configurable number of requests (`context_ttl_requests`) to prevent cumulative memory bloat typical in long-running Chromium processes.
+    -   **TTL Recycling (Planned)**: Each context will be recycled after a configurable number of requests to prevent cumulative memory bloat. *Currently tracked as technical debt (TD-22).*
 3.  **Harnessing**: Diagrams are rendered by injecting minimized library bundles into the page context and capturing the resulting HTML/SVG.
 
 ## Consequences
@@ -27,4 +32,4 @@ We have implemented a **Native Browser Rendering Pool** directly in Rust.
 -   **Positive**: Zero Node.js or Playwright runtime dependency.
 -   **Positive**: Dramatically reduced container image size (no Node/NPM).
 -   **Positive**: Lower latency due to elimination of inter-process communication with a Node.js daemon.
--   **Configuration**: Settings originally intended for Playwright (`pool_size`, `context_ttl_requests`) are now applied directly to the native Rust pool.
+-   **Configuration**: Settings originally intended for Playwright (`pool_size`) are applied directly to the native Rust pool. `context_ttl_requests` is currently a placeholder in the config.

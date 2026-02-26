@@ -29,7 +29,7 @@ Kroki-rs brings the simplicity of the unified Kroki API to the speed and safety 
 
 ## The Motive
 
-> **Developer time is precious. Documentation shouldn't be a chore.**
+> **Diagrams should be version controlled, reviewable, and effortless — a lightweight, high-performance, and minimal dependencies rendering engine for all your documentation needs.**
 
 Managing multiple rendering engines—Mermaid, Graphviz, D2—often leads to "Docker bloat" or complex CI/CD setups. We built **Kroki-rs** to solve this.
 

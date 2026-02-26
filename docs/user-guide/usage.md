@@ -31,9 +31,9 @@ kroki-rs batch -f webp --out-dir ./output ./my-diagrams
 ```
 *Kroki-rs will automatically detect the diagram type from the file extension (e.g., `.mmd` -> `mermaid`, `.d2` -> `d2`).*
 
-### Examples
+### CLI Examples
 
-```{dropdown} Click to view conversion examples for all supported types
+:::::{dropdown} Click to view conversion examples for all supported types
 ::::{tab-set}
 
 :::{tab-item} Graphviz
@@ -47,13 +47,6 @@ kroki-rs convert -t graphviz -f svg tests/fixtures/test.dot > output.svg
 **Command:**
 ```bash
 kroki-rs convert -t mermaid -f svg tests/fixtures/test.mmd > output.svg
-```
-:::
-
-:::{tab-item} PlantUML
-**Command:**
-```bash
-kroki-rs convert -t plantuml -f svg tests/fixtures/test.puml > output.svg
 ```
 :::
 
@@ -107,9 +100,7 @@ kroki-rs convert -t vegalite -f svg tests/fixtures/test.vl.json > output.svg
 :::
 
 ::::
-```
-
----
+:::::
 
 ## Server Mode
 
@@ -185,4 +176,4 @@ kroki-rs serve --dry-run
 This will print the discovery log without starting the server, showing which tools were found and where.
 
 ### Browser Worker Debugging
-For diagrams using the browser pool (Mermaid, BPMN, PlantUML), ensure your system has a compatible Chromium/Chrome binary. If running on a headless server without a window manager, ensure `Xvfb` is installed or use the official [**Docker Image**](#kroki-rs.user-guide.docker-deployment) which handles these dependencies automatically.
+For diagrams using the browser pool (Mermaid, BPMN), ensure your system has a compatible Chromium/Chrome binary. If running on a headless server without a window manager, ensure `Xvfb` is installed or use the official [**Docker Image**](#kroki-rs.user-guide.docker-deployment) which handles these dependencies automatically.

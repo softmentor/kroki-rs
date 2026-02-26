@@ -26,7 +26,7 @@ if [ "$DELETE_FAILED" = "true" ]; then
     if [ -n "$(echo $BAD_RUNS | tr -d ' ')" ]; then
         COUNT=$(echo "$BAD_RUNS" | wc -w | tr -d ' ')
         echo "🗑️  Deleting $COUNT failed/canceled runs..."
-        echo "$BAD_RUNS" | xargs -I {} gh run delete {}
+        printf '%s\n' $BAD_RUNS | xargs -I {} gh run delete {}
     else
         echo "✨ No failed or canceled runs found."
     fi
