@@ -64,7 +64,7 @@ ifeq ($(STEPS_PARALLEL),true)
 else
 	@$(MAKE) fmt lint build
 endif
-	@$(MAKE) test smoke-test
+	@$(MAKE) test smoke-test doc-myst
 ifeq ($(RUN_SERVER),true)
 	@$(MAKE) serve
 endif
@@ -87,7 +87,7 @@ ifeq ($(STEPS_PARALLEL),true)
 else
 	@$(MAKE) fmt lint build
 endif
-	@$(MAKE) test-ci smoke-test verify
+	@$(MAKE) test-ci smoke-test verify doc-myst
 	@echo "🌟 Production-level verification (GitHub/Remote) complete."
 
 .PHONY: teardown

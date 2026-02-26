@@ -82,7 +82,13 @@ fix:
 
 .PHONY: doc-myst
 doc-myst:
-	cd docs && myst build --html
+	@if command -v myst >/dev/null 2>&1; then \
+		echo "📚 Building MyST documentation..."; \
+		cd docs && myst build --html; \
+		echo "✅ Documentation built successfully."; \
+	else \
+		echo "⚠️  MyST not found, skipping documentation build."; \
+	fi
 
 .PHONY: doc
 doc: doc-myst
