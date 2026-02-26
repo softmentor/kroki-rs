@@ -11,7 +11,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT"
 
 # --- Environment Setup (Handle container-specific Git settings early) ---
-if [ "$IS_CONTAINER" = "true" ]; then
+if [ "$IS_CONTAINER" = "true" ] || [ "$GITHUB_ACTIONS" = "true" ]; then
     git config --global --add safe.directory "$(pwd)" || true
 fi
 
