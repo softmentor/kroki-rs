@@ -10,6 +10,11 @@ set -e
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT"
 
+# --- Environment Setup (Handle container-specific Git settings early) ---
+if [ "$IS_CONTAINER" = "true" ]; then
+    git config --global --add safe.directory "$(pwd)" || true
+fi
+
 # --- Version synchronicity (Cargo.toml vs Git tag) ---
 # Supports both local and GHA (GITHUB_REF). Skip if not on a version tag.
 run_version_check() {
@@ -226,8 +231,6 @@ fi
 # This MUST happen after TARGET is captured from arguments.
 if [ "$IS_CONTAINER" = "true" ]; then
     echo "✅ Already inside CI container. Executing $TARGET directly..."
-    # Ensure Git doesn't complain about ownership in the mounted workspace
-    git config --global --add safe.directory "$(pwd)" || true
     # Any remaining arguments are passed to make (JOBS passed only if explicitly set)
     make $TARGET ${JOBS:+JOBS=$JOBS} "$@"
     manage_sccache "after"
