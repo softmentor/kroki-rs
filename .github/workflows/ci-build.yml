@@ -137,12 +137,6 @@ jobs:
           docker save -o ci-image.tar "$IMAGE"
           echo "✅ Build and Push complete."
 
-      - name: "Verify Documentation (MyST)"
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || contains(github.ref, 'release/')
-        run: |
-          IMAGE="${{ steps.fingerprint.outputs.image }}"
-          docker run --rm -v "$(pwd):/app" -w /app "$IMAGE" make doc-myst
-
   # ---------------------------------------------------------------------------
   # Phase 2 — Build: compile all targets in release mode inside the CI container.
   # Warms the cargo/sccache cache; saves it for all downstream Verify jobs.
@@ -267,6 +261,9 @@ jobs:
           
           bash src-scripts/gh-tasks/gh-check-wrapper.sh "smoke-test" \
             "bash -c './dflow ci-verify smoke-test && ./dflow ci-verify verify'" &
+          
+          bash src-scripts/gh-tasks/gh-check-wrapper.sh "doc" \
+            "make doc-myst" &
           
           # Wait for all background checks to complete
           wait
