@@ -29,7 +29,8 @@ Kroki-rs brings the simplicity of the unified Kroki API to the speed and safety 
 
 ## The Motive
 
-> **Developer time is precious. Documentation shouldn't be a chore.**
+> **Documentation belongs in Git. Diagrams belong in Code.**
+> **Versioned, reviewable, and effortless—your architecture's single source of truth.**
 
 Managing multiple rendering engines—Mermaid, Graphviz, D2—often leads to "Docker bloat" or complex CI/CD setups. We built **Kroki-rs** to solve this.
 
