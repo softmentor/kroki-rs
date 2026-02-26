@@ -46,6 +46,8 @@ jobs:
     container:
       image: ${{ matrix.use_container && format('ghcr.io/{0}-ci:{1}', github.repository, needs.fingerprint.outputs.hash) || '' }}
       options: --user root
+    env:
+      IS_CONTAINER: ${{ matrix.use_container }}
     permissions:
       contents: write
       packages: read
